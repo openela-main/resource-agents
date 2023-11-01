@@ -1,0 +1,11 @@
+--- a/heartbeat/gcp-ilb	2021-11-09 14:13:20.311243373 +0100
++++ b/heartbeat/gcp-ilb	2021-11-09 14:13:50.269329165 +0100
+@@ -28,7 +28,7 @@
+ OCF_RESKEY_cat_default="socat"
+ OCF_RESKEY_port_default="60000"
+ OCF_RESKEY_log_enable_default="false"
+-OCF_RESKEY_log_cmd_default="gcloud"
++OCF_RESKEY_log_cmd_default="gcloud-ra"
+ OCF_RESKEY_log_params_default="logging write GCPILB"
+ OCF_RESKEY_log_end_params_default=""
+ 

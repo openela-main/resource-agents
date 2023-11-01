@@ -1,0 +1,43 @@
+From c6ea93fcb499c84c3d8e9aad2ced65065a3f6d51 Mon Sep 17 00:00:00 2001
+From: Fujii Masao <fujii@postgresql.org>
+Date: Tue, 19 Jul 2022 22:34:08 +0900
+Subject: [PATCH] Fix bug in handling of child process exit.
+
+When storage_mon detects that a child process exits with zero,
+it resets the test_forks[] entry for the child process to 0, to avoid
+waitpid() for the process again in the loop. But, previously,
+storage_mon didn't do that when it detected that a child process
+exited with non-zero. Which caused waitpid() to be called again
+for the process already gone and to report an error like
+"waitpid on XXX failed: No child processes" unexpectedly.
+In this case, basically storage_mon should wait until all the child
+processes exit and return the final score, instead.
+
+This patch fixes this issue by making storage_mon reset test_works[]
+entry even when a child process exits with non-zero.
+---
+ tools/storage_mon.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index 3c82d5ee8..83a48ca36 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -232,13 +232,13 @@ int main(int argc, char *argv[])
+ 
+ 				if (w == test_forks[i]) {
+ 					if (WIFEXITED(wstatus)) {
+-						if (WEXITSTATUS(wstatus) == 0) {
+-							finished_count++;
+-							test_forks[i] = 0;
+-						} else {
++						if (WEXITSTATUS(wstatus) != 0) {
+ 							syslog(LOG_ERR, "Error reading from device %s", devices[i]);
+ 							final_score += scores[i];
+ 						}
++
++						finished_count++;
++						test_forks[i] = 0;
+ 					}
+ 				}
+ 			}

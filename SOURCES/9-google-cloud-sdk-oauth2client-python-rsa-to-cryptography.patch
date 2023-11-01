@@ -1,0 +1,129 @@
+diff -uNr a/bundled/gcp/google-cloud-sdk/lib/third_party/oauth2client/_pure_python_crypt.py b/bundled/gcp/google-cloud-sdk/lib/third_party/oauth2client/_pure_python_crypt.py
+--- a/bundled/gcp/google-cloud-sdk/lib/third_party/oauth2client/_pure_python_crypt.py	1980-01-01 09:00:00.000000000 +0100
++++ b/bundled/gcp/google-cloud-sdk/lib/third_party/oauth2client/_pure_python_crypt.py	2019-04-04 11:56:00.292677044 +0200
+@@ -19,8 +19,14 @@
+ certificates.
+ """
+ 
++from pyasn1.codec.der import decoder
+ from pyasn1_modules import pem
+-import rsa
++from pyasn1_modules.rfc2459 import Certificate
++from pyasn1_modules.rfc5208 import PrivateKeyInfo
++from cryptography.hazmat.primitives import serialization, hashes
++from cryptography.hazmat.primitives.asymmetric import padding
++from cryptography import x509
++from cryptography.hazmat.backends import default_backend
+ import six
+ 
+ from oauth2client import _helpers
+@@ -40,7 +46,7 @@
+                  '-----END RSA PRIVATE KEY-----')
+ _PKCS8_MARKER = ('-----BEGIN PRIVATE KEY-----',
+                  '-----END PRIVATE KEY-----')
+-_PKCS8_SPEC = None
++_PKCS8_SPEC = PrivateKeyInfo()
+ 
+ 
+ def _bit_list_to_bytes(bit_list):
+@@ -67,7 +73,8 @@
+     """
+ 
+     def __init__(self, pubkey):
+-        self._pubkey = pubkey
++        self._pubkey = serialization.load_pem_public_key(pubkey,
++            backend=default_backend())
+ 
+     def verify(self, message, signature):
+         """Verifies a message against a signature.
+@@ -84,8 +91,9 @@
+         """
+         message = _helpers._to_bytes(message, encoding='utf-8')
+         try:
+-            return rsa.pkcs1.verify(message, signature, self._pubkey)
+-        except (ValueError, rsa.pkcs1.VerificationError):
++            return self._pubkey.verify(signature, message, padding.PKCS1v15(),
++                hashes.SHA256())
++        except (ValueError, TypeError, InvalidSignature):
+             return False
+ 
+     @classmethod
+@@ -109,19 +117,18 @@
+         """
+         key_pem = _helpers._to_bytes(key_pem)
+         if is_x509_cert:
+-            from pyasn1.codec.der import decoder
+-            from pyasn1_modules import rfc2459
+-
+-            der = rsa.pem.load_pem(key_pem, 'CERTIFICATE')
+-            asn1_cert, remaining = decoder.decode(der, asn1Spec=rfc2459.Certificate())
++            der = x509.load_pem_x509_certificate(pem_data, default_backend())
++            asn1_cert, remaining = decoder.decode(der, asn1Spec=Certificate())
+             if remaining != b'':
+                 raise ValueError('Unused bytes', remaining)
+ 
+             cert_info = asn1_cert['tbsCertificate']['subjectPublicKeyInfo']
+             key_bytes = _bit_list_to_bytes(cert_info['subjectPublicKey'])
+-            pubkey = rsa.PublicKey.load_pkcs1(key_bytes, 'DER')
++            pubkey = serialization.load_der_public_key(decoded_key,
++                backend=default_backend())
+         else:
+-            pubkey = rsa.PublicKey.load_pkcs1(key_pem, 'PEM')
++            pubkey = serialization.load_pem_public_key(decoded_key,
++                backend=default_backend())
+         return cls(pubkey)
+ 
+ 
+@@ -134,6 +141,8 @@
+ 
+     def __init__(self, pkey):
+         self._key = pkey
++        self._pubkey = serialization.load_pem_private_key(pkey,
++            backend=default_backend())
+ 
+     def sign(self, message):
+         """Signs a message.
+@@ -145,7 +154,7 @@
+             string, The signature of the message for the given key.
+         """
+         message = _helpers._to_bytes(message, encoding='utf-8')
+-        return rsa.pkcs1.sign(message, self._key, 'SHA-256')
++        return self._key.sign(message, padding.PKCS1v15(), hashes.SHA256())
+ 
+     @classmethod
+     def from_string(cls, key, password='notasecret'):
+@@ -163,27 +172,24 @@
+             ValueError if the key cannot be parsed as PKCS#1 or PKCS#8 in
+             PEM format.
+         """
+-        global _PKCS8_SPEC
+         key = _helpers._from_bytes(key)  # pem expects str in Py3
+         marker_id, key_bytes = pem.readPemBlocksFromFile(
+             six.StringIO(key), _PKCS1_MARKER, _PKCS8_MARKER)
+ 
+         if marker_id == 0:
+-            pkey = rsa.key.PrivateKey.load_pkcs1(key_bytes,
+-                                                 format='DER')
+-        elif marker_id == 1:
+-            from pyasn1.codec.der import decoder
+-            from pyasn1_modules import rfc5208
++            pkey = serialization.load_der_private_key(
++                key_bytes, password=None,
++                backend=default_backend())
+ 
+-            if _PKCS8_SPEC is None:
+-              _PKCS8_SPEC = rfc5208.PrivateKeyInfo()
++        elif marker_id == 1:
+             key_info, remaining = decoder.decode(
+                 key_bytes, asn1Spec=_PKCS8_SPEC)
+             if remaining != b'':
+                 raise ValueError('Unused bytes', remaining)
+             pkey_info = key_info.getComponentByName('privateKey')
+-            pkey = rsa.key.PrivateKey.load_pkcs1(pkey_info.asOctets(),
+-                                                 format='DER')
++            pkey = serialization.load_der_private_key(
++                pkey_info.asOctets(), password=None,
++                backend=default_backend())
+         else:
+             raise ValueError('No key could be detected.')
+ 
