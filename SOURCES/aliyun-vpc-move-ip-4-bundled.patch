@@ -1,0 +1,15 @@
+--- a/heartbeat/aliyun-vpc-move-ip	2020-06-09 13:45:38.432860930 +0200
++++ b/heartbeat/aliyun-vpc-move-ip	2020-06-09 13:51:06.341211557 +0200
+@@ -35,10 +35,10 @@
+ USAGE="usage: $0 {start|stop|status|meta-data}";
+ 
+ if [ "${OCF_RESKEY_aliyuncli}" = "detect" ]; then
+-	OCF_RESKEY_aliyuncli="$(which aliyuncli 2> /dev/null || which aliyun 2> /dev/null)"
++	OCF_RESKEY_aliyuncli="$(which aliyuncli-ra 2> /dev/null || which aliyuncli 2> /dev/null || which aliyun 2> /dev/null)"
+ fi
+ 
+-if [ "${OCF_RESKEY_aliyuncli##*/}" = 'aliyuncli' ]; then
++if [ "${OCF_RESKEY_aliyuncli##*/}" = 'aliyuncli-ra' ] || [ "${OCF_RESKEY_aliyuncli##*/}" = 'aliyuncli' ]; then
+ 	OUTPUT="text"
+ 	EXECUTING='{ print $3 }'
+ 	IFS_=" "

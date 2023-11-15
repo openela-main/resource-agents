@@ -1,0 +1,49 @@
+From 21666c5c842b8a6028699ee78db75a1d7134fad0 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 4 Jan 2023 10:39:16 +0100
+Subject: [PATCH 1/2] Filesystem: remove validate-all mountpoint warning as it
+ is auto-created during start-action if it doesnt exist
+
+---
+ heartbeat/Filesystem | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index 44270ad98..65088029e 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -851,10 +851,6 @@ Filesystem_monitor()
+ #
+ Filesystem_validate_all()
+ {
+-	if [ -n "$MOUNTPOINT" ] && [ ! -d "$MOUNTPOINT" ]; then
+-		ocf_log warn "Mountpoint $MOUNTPOINT does not exist"
+-	fi
+-
+ 	# Check if the $FSTYPE is workable
+ 	# NOTE: Without inserting the $FSTYPE module, this step may be imprecise
+ 	# TODO: This is Linux specific crap.
+
+From 8a7f40b6ab93d8d39230d864ab06a57ff48d6f1f Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 5 Jan 2023 13:09:48 +0100
+Subject: [PATCH 2/2] CTDB: change public_addresses validate-all warning to
+ info
+
+---
+ heartbeat/CTDB.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/CTDB.in b/heartbeat/CTDB.in
+index 46f56cfac..b4af66bc1 100755
+--- a/heartbeat/CTDB.in
++++ b/heartbeat/CTDB.in
+@@ -940,7 +940,7 @@ ctdb_validate() {
+ 	fi
+ 
+ 	if [ -f "${OCF_RESKEY_ctdb_config_dir}/public_addresses" ]; then
+-		ocf_log warn "CTDB file '${OCF_RESKEY_ctdb_config_dir}/public_addresses' exists - CTDB will try to manage IP failover!"
++		ocf_log info "CTDB file '${OCF_RESKEY_ctdb_config_dir}/public_addresses' exists - CTDB will try to manage IP failover!"
+ 	fi
+ 
+ 	if [ ! -f "$OCF_RESKEY_ctdb_config_dir/nodes" ]; then

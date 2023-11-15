@@ -1,0 +1,366 @@
+From 764dacb6195f8940f13b9c322b1bc8189c5619fc Mon Sep 17 00:00:00 2001
+From: Lars Ellenberg <lars.ellenberg@linbit.com>
+Date: Mon, 6 Sep 2021 12:13:42 +0200
+Subject: [PATCH 1/6] Fix NFSv4 lock failover: set NFS Server Scope
+
+Problem: https://github.com/ClusterLabs/resource-agents/issues/1644
+RFC8881, 8.4.2.1 State Reclaim:
+
+| If the server scope is different, the client should not attempt to
+| reclaim locks. In this situation, no lock reclaim is possible.
+| Any attempt to re-obtain the locks with non-reclaim operations is
+| problematic since there is no guarantee that the existing
+| filehandles will be recognized by the new server, or that if
+| recognized, they denote the same objects. It is best to treat the
+| locks as having been revoked by the reconfiguration event.
+
+That's why for lock reclaim to even be attempted, we have to define and set
+the same server scope for NFSD on all cluster nodes in the NFS failover
+cluster. And in linux, that is done by setting the uts nodename for the
+command that starts the nfsd kernel threads.
+
+For "init scripts", just set it directly using unshare --uts.
+For systemd units, add NFS_SERVER_SCOPE to some environment files
+and inject the "unshare --uts" into the ExecStart command lines
+using override drop-in files.
+---
+ heartbeat/nfsserver | 120 +++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 119 insertions(+), 1 deletion(-)
+
+diff --git a/heartbeat/nfsserver b/heartbeat/nfsserver
+index 96b19abe36..0888378645 100755
+--- a/heartbeat/nfsserver
++++ b/heartbeat/nfsserver
+@@ -5,6 +5,18 @@
+ # by hxinwei@gmail.com
+ # License: GNU General Public License v2 (GPLv2) and later
+ 
++
++# I don't know for certain whether all services actuall _need_ this,
++# I know that at least nfs-server needs it.
++# The rgmanager resource agent in rgmanager/src/resources/nfsserver.sh.in
++# did the unshare for gssd and idmapd as well, even though it seems unclear why.
++# Let's start with just the nfs-server, and add others if/when we have clear
++# indication they need it.
++#NFSD_RELATED_SYSTEMD_SERVICE_FOR_UNSHARE_UTS_NAMESPACE="nfs-idmapd.service nfs-mountd.service nfs-server.service nfsdcld.service rpc-gssd.service rpc-statd.service rpcbind.service"
++NFSD_RELATED_SYSTEMD_SERVICE_FOR_UNSHARE_UTS_NAMESPACE="nfs-server.service"
++SYSTEMD_ENVIRONMENT_FILE_NFS_SERVER_SCOPE=/run/sysconfig/nfs-server-scope
++SYSTEMD_UNSHARE_UTS_DROPIN=51-resource-agents-unshare-uts.conf
++
+ if [ -n "$OCF_DEBUG_LIBRARY" ]; then
+     . $OCF_DEBUG_LIBRARY
+ else
+@@ -99,6 +111,31 @@ Specifies the length of sm-notify retry time (minutes).
+ <content type="integer" default="" />
+ </parameter>
+ 
++<parameter name="nfs_server_scope" unique="0" required="0">
++<longdesc lang="en">
++RFC8881, 8.4.2.1 State Reclaim:
++
++If the server scope is different, the client should not attempt to
++reclaim locks. In this situation, no lock reclaim is possible.
++Any attempt to re-obtain the locks with non-reclaim operations is
++problematic since there is no guarantee that the existing
++filehandles will be recognized by the new server, or that if
++recognized, they denote the same objects. It is best to treat the
++locks as having been revoked by the reconfiguration event.
++
++For lock reclaim to even be attempted, we have to define and set the same
++server scope for NFSD on all cluster nodes in the NFS failover cluster.
++
++This agent won't "guess" a suitable server scope name for you, you need to
++explicitly specify this. But without it, NFSv4 lock reclaim after failover
++won't work properly.  Suggested value: the failover "service IP".
++</longdesc>
++<shortdesc lang="en">
++RFC8881 NFS server scope for (lock) state reclaim after failover.
++</shortdesc>
++<content type="string"/>
++</parameter>
++
+ <parameter name="nfs_ip" unique="0" required="0">
+ <longdesc lang="en">
+ Comma separated list of floating IP addresses used to access the nfs service
+@@ -269,7 +306,11 @@ nfs_exec()
+ 	set_exec_mode
+ 
+ 	case $EXEC_MODE in 
+-		1) ${OCF_RESKEY_nfs_init_script} $cmd;;
++		1) if [ -z "$OCF_RESKEY_nfs_server_scope" ] ; then
++			${OCF_RESKEY_nfs_init_script} $cmd
++		   else
++			unshare -u /bin/sh -c "hostname ${OCF_RESKEY_nfs_server_scope}; exec ${OCF_RESKEY_nfs_init_script} $cmd"
++		   fi ;;
+ 		2) if ! echo $svc | grep -q "\."; then
+ 			svc="${svc}.service"
+ 		   fi
+@@ -623,6 +664,74 @@ notify_locks()
+ 	fi
+ }
+ 
++# Problem: https://github.com/ClusterLabs/resource-agents/issues/1644
++# RFC8881, 8.4.2.1 State Reclaim:
++#
++# | If the server scope is different, the client should not attempt to
++# | reclaim locks. In this situation, no lock reclaim is possible.
++# | Any attempt to re-obtain the locks with non-reclaim operations is
++# | problematic since there is no guarantee that the existing
++# | filehandles will be recognized by the new server, or that if
++# | recognized, they denote the same objects. It is best to treat the
++# | locks as having been revoked by the reconfiguration event.
++#
++# That's why for lock reclaim to even be attempted, we have to define and set
++# the same server scope for NFSD on all cluster nodes in the NFS failover
++# cluster. And in linux, that is done by setting the uts nodename for the
++# command that starts the nfsd kernel threads.
++#
++inject_unshare_uts_name_into_systemd_units ()
++{
++	local END_TAG="# END OF DROP-IN FOR NFS SERVER SCOPE"
++	local services
++	services=$(systemctl list-unit-files --no-legend $NFSD_RELATED_SYSTEMD_SERVICE_FOR_UNSHARE_UTS_NAMESPACE | cut -d ' ' -f1)
++
++	local svc dir dropin edited_exec_start do_reload=false
++	for svc in $services ; do
++		dir=/run/systemd/system/$svc.d
++		dropin=$dir/$SYSTEMD_UNSHARE_UTS_DROPIN
++		grep -sqF "$END_TAG" "$dropin" && continue
++
++		test -d "$dir" || mkdir -p "$dir"
++		test -e "$dropin" && rm -f "$dropin"
++
++		edited_exec_start=$(systemctl cat $svc | sed -ne "s#^ExecStart=\\(.*\\)#ExecStart=/usr/bin/unshare --uts /bin/sh -ec 'hostname \${NFS_SERVER_SCOPE}; exec \"\$@\"' -- \\1#p")
++		cat > "$dropin" <<___
++[Service]
++EnvironmentFile=$SYSTEMD_ENVIRONMENT_FILE_NFS_SERVER_SCOPE
++# reset list of exec start, then re-populate with unshared uts namespace
++ExecStart=
++$edited_exec_start
++$END_TAG
++___
++		do_reload=true
++		ocf_log debug "injected unshare --uts into $dropin"
++	done
++
++	mkdir -p "${SYSTEMD_ENVIRONMENT_FILE_NFS_SERVER_SCOPE%/*}"
++	echo "NFS_SERVER_SCOPE=$OCF_RESKEY_nfs_server_scope" > "$SYSTEMD_ENVIRONMENT_FILE_NFS_SERVER_SCOPE"
++
++	$do_reload && systemctl daemon-reload
++}
++
++remove_unshare_uts_dropins ()
++{
++	local services
++	services=$(systemctl list-unit-files --no-legend $NFSD_RELATED_SYSTEMD_SERVICE_FOR_UNSHARE_UTS_NAMESPACE)
++
++	local svc dir dropin do_reload=false
++	for svc in $services ; do
++		dir=/run/systemd/system/$svc.d
++		dropin=$dir/$SYSTEMD_UNSHARE_UTS_DROPIN
++		test -e "$dropin" || continue
++		rm -f "$dropin"
++		do_reload=true
++		ocf_log debug "removed unshare --uts from $svc"
++	done
++	rm -f "${SYSTEMD_ENVIRONMENT_FILE_NFS_SERVER_SCOPE}"
++	$do_reload && systemctl daemon-reload
++}
++
+ nfsserver_start ()
+ {
+ 	local rc;
+@@ -636,6 +745,13 @@ nfsserver_start ()
+ 	is_redhat_based && set_env_args
+ 	bind_tree
+ 	prepare_directory
++	case $EXEC_MODE in [23])
++		if [ -z "$OCF_RESKEY_nfs_server_scope" ] ; then
++			remove_unshare_uts_dropins
++		else
++			inject_unshare_uts_name_into_systemd_units
++		fi ;;
++	esac
+ 
+ 	if ! `mount | grep -q " on $OCF_RESKEY_rpcpipefs_dir "`; then
+ 		mount -t rpc_pipefs sunrpc $OCF_RESKEY_rpcpipefs_dir
+@@ -854,6 +970,8 @@ nfsserver_stop ()
+ 		ocf_log info "NFS server stopped"
+ 	fi
+ 
++	case $EXEC_MODE in [23]) remove_unshare_uts_dropins;; esac
++
+ 	return $rc
+ }
+ 
+
+From 515697b53c1614d05d39491c9af83e8d8b844b17 Mon Sep 17 00:00:00 2001
+From: Lars Ellenberg <lars.ellenberg@linbit.com>
+Date: Fri, 8 Oct 2021 12:01:41 +0200
+Subject: [PATCH 2/6] Fix NFSv4 lock failover: set NFS Server Scope, regardless
+ of EXEC_MODE
+
+Debian (and other systems) may provide "init scripts",
+which will only redirect back to systemd.
+
+If we just unshare --uts the init script invocation,
+the uts namespace is useless in that case.
+
+If systemd is running, mangle the nfs-server.service unit,
+independent of the "EXEC_MODE".
+---
+ heartbeat/nfsserver | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/heartbeat/nfsserver b/heartbeat/nfsserver
+index 0888378645..054aabbaf6 100755
+--- a/heartbeat/nfsserver
++++ b/heartbeat/nfsserver
+@@ -745,13 +745,20 @@ nfsserver_start ()
+ 	is_redhat_based && set_env_args
+ 	bind_tree
+ 	prepare_directory
+-	case $EXEC_MODE in [23])
++
++	# Debian (and other systems) may provide "init scripts",
++	# which will only redirect back to systemd.
++	# If we just unshare --uts the init script invocation,
++	# the uts namespace is useless in that case.
++	# If systemd is running, mangle the nfs-server.service unit,
++	# independent of the "EXEC_MODE" we detected.
++	if $systemd_is_running ; then
+ 		if [ -z "$OCF_RESKEY_nfs_server_scope" ] ; then
+ 			remove_unshare_uts_dropins
+ 		else
+ 			inject_unshare_uts_name_into_systemd_units
+-		fi ;;
+-	esac
++		fi
++	fi
+ 
+ 	if ! `mount | grep -q " on $OCF_RESKEY_rpcpipefs_dir "`; then
+ 		mount -t rpc_pipefs sunrpc $OCF_RESKEY_rpcpipefs_dir
+@@ -970,7 +977,9 @@ nfsserver_stop ()
+ 		ocf_log info "NFS server stopped"
+ 	fi
+ 
+-	case $EXEC_MODE in [23]) remove_unshare_uts_dropins;; esac
++	if $systemd_is_running; then
++		remove_unshare_uts_dropins
++	fi
+ 
+ 	return $rc
+ }
+@@ -1008,6 +1017,7 @@ nfsserver_validate ()
+ }
+ 
+ nfsserver_validate
++systemd_is_running && systemd_is_running=true || systemd_is_running=false
+ 
+ case $__OCF_ACTION in
+ 	start)      nfsserver_start
+
+From e83c20d88f404f9f9d829c654883d60eb6cc9ff3 Mon Sep 17 00:00:00 2001
+From: Lars Ellenberg <lars.ellenberg@linbit.com>
+Date: Fri, 8 Oct 2021 17:06:18 +0200
+Subject: [PATCH 3/6] Fix NFSv4 lock failover: add missing "|cut -f1" in
+ remove_unshare_uts_dropins
+
+---
+ heartbeat/nfsserver | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/nfsserver b/heartbeat/nfsserver
+index 054aabbaf6..d3db89a537 100755
+--- a/heartbeat/nfsserver
++++ b/heartbeat/nfsserver
+@@ -717,7 +717,7 @@ ___
+ remove_unshare_uts_dropins ()
+ {
+ 	local services
+-	services=$(systemctl list-unit-files --no-legend $NFSD_RELATED_SYSTEMD_SERVICE_FOR_UNSHARE_UTS_NAMESPACE)
++	services=$(systemctl list-unit-files --no-legend $NFSD_RELATED_SYSTEMD_SERVICE_FOR_UNSHARE_UTS_NAMESPACE | cut -d ' ' -f1)
+ 
+ 	local svc dir dropin do_reload=false
+ 	for svc in $services ; do
+
+From b5b0e4a0b60d285af576b2d8ecfbe95e5a177a87 Mon Sep 17 00:00:00 2001
+From: Lars Ellenberg <lars.ellenberg@linbit.com>
+Date: Fri, 8 Oct 2021 17:07:13 +0200
+Subject: [PATCH 4/6] Fix NFSv4 lock failover: get rid of "world-inaccessible"
+ warning
+
+by temporarily changing the umask before generating the dropins
+---
+ heartbeat/nfsserver | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/heartbeat/nfsserver b/heartbeat/nfsserver
+index d3db89a537..447e0302b2 100755
+--- a/heartbeat/nfsserver
++++ b/heartbeat/nfsserver
+@@ -687,6 +687,8 @@ inject_unshare_uts_name_into_systemd_units ()
+ 	services=$(systemctl list-unit-files --no-legend $NFSD_RELATED_SYSTEMD_SERVICE_FOR_UNSHARE_UTS_NAMESPACE | cut -d ' ' -f1)
+ 
+ 	local svc dir dropin edited_exec_start do_reload=false
++	local old_umask=$(umask)
++	umask 0022
+ 	for svc in $services ; do
+ 		dir=/run/systemd/system/$svc.d
+ 		dropin=$dir/$SYSTEMD_UNSHARE_UTS_DROPIN
+@@ -710,6 +712,7 @@ ___
+ 
+ 	mkdir -p "${SYSTEMD_ENVIRONMENT_FILE_NFS_SERVER_SCOPE%/*}"
+ 	echo "NFS_SERVER_SCOPE=$OCF_RESKEY_nfs_server_scope" > "$SYSTEMD_ENVIRONMENT_FILE_NFS_SERVER_SCOPE"
++	umask $old_umask
+ 
+ 	$do_reload && systemctl daemon-reload
+ }
+
+From 3c6c91ce5a00eeef9cd766389d73a0b42580a1e6 Mon Sep 17 00:00:00 2001
+From: Lars Ellenberg <lars.ellenberg@linbit.com>
+Date: Fri, 8 Oct 2021 17:08:09 +0200
+Subject: [PATCH 5/6] Fix NFSv4 lock failover: deal with "special executable
+ prefix" chars in ExecStart
+
+---
+ heartbeat/nfsserver | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/nfsserver b/heartbeat/nfsserver
+index 447e0302b2..5326bd2c6e 100755
+--- a/heartbeat/nfsserver
++++ b/heartbeat/nfsserver
+@@ -697,7 +697,7 @@ inject_unshare_uts_name_into_systemd_units ()
+ 		test -d "$dir" || mkdir -p "$dir"
+ 		test -e "$dropin" && rm -f "$dropin"
+ 
+-		edited_exec_start=$(systemctl cat $svc | sed -ne "s#^ExecStart=\\(.*\\)#ExecStart=/usr/bin/unshare --uts /bin/sh -ec 'hostname \${NFS_SERVER_SCOPE}; exec \"\$@\"' -- \\1#p")
++		edited_exec_start=$(systemctl cat $svc | sed -ne "s#^ExecStart=\\([-+:!@]*\\)\\(.*\\)#ExecStart=\\1/usr/bin/unshare --uts /bin/sh -c 'hostname \${NFS_SERVER_SCOPE}; exec \"\$@\"' -- \\2#p")
+ 		cat > "$dropin" <<___
+ [Service]
+ EnvironmentFile=$SYSTEMD_ENVIRONMENT_FILE_NFS_SERVER_SCOPE
+
+From 512fbaf61e6d24a1236ef50e323ea17a62485c36 Mon Sep 17 00:00:00 2001
+From: Lars Ellenberg <lars.ellenberg@linbit.com>
+Date: Fri, 8 Oct 2021 17:08:59 +0200
+Subject: [PATCH 6/6] Fix NFSv4 lock failover: add rpc-statd-notify to the
+ comment list of potentially interesting services
+
+---
+ heartbeat/nfsserver | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/nfsserver b/heartbeat/nfsserver
+index 5326bd2c6e..240dd1a76c 100755
+--- a/heartbeat/nfsserver
++++ b/heartbeat/nfsserver
+@@ -12,7 +12,7 @@
+ # did the unshare for gssd and idmapd as well, even though it seems unclear why.
+ # Let's start with just the nfs-server, and add others if/when we have clear
+ # indication they need it.
+-#NFSD_RELATED_SYSTEMD_SERVICE_FOR_UNSHARE_UTS_NAMESPACE="nfs-idmapd.service nfs-mountd.service nfs-server.service nfsdcld.service rpc-gssd.service rpc-statd.service rpcbind.service"
++#NFSD_RELATED_SYSTEMD_SERVICE_FOR_UNSHARE_UTS_NAMESPACE="nfs-idmapd.service nfs-mountd.service nfs-server.service nfsdcld.service rpc-gssd.service rpc-statd.service rpc-statd-notify.service rpcbind.service"
+ NFSD_RELATED_SYSTEMD_SERVICE_FOR_UNSHARE_UTS_NAMESPACE="nfs-server.service"
+ SYSTEMD_ENVIRONMENT_FILE_NFS_SERVER_SCOPE=/run/sysconfig/nfs-server-scope
+ SYSTEMD_UNSHARE_UTS_DROPIN=51-resource-agents-unshare-uts.conf

@@ -1,0 +1,137 @@
+From bf89ad06d5da5c05533c80a37a37c8dbbcd123aa Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 8 Dec 2022 15:40:07 +0100
+Subject: [PATCH] galera/mpathpersist/sg_persist/IPsrcaddr: only check notify
+ and promotable when OCF_CHECK_LEVEL=10
+
+Pacemaker has started running validate-all action before creating the
+resource. It doesnt provide notify/promotable settings while doing so,
+so this patch moves these checks to OCF_CHECK_LEVEL 10 and runs the
+validate action at OCF_CHECK_LEVEL 10 in the start-action.
+---
+ heartbeat/IPsrcaddr       | 13 ++++++++-----
+ heartbeat/galera.in       |  9 ++++++---
+ heartbeat/mpathpersist.in | 13 +++++++++----
+ heartbeat/sg_persist.in   | 13 +++++++++----
+ 4 files changed, 32 insertions(+), 16 deletions(-)
+
+diff --git a/heartbeat/IPsrcaddr b/heartbeat/IPsrcaddr
+index 1bd41a930..66e2ad8cd 100755
+--- a/heartbeat/IPsrcaddr
++++ b/heartbeat/IPsrcaddr
+@@ -510,11 +510,13 @@ srca_validate_all() {
+ 	fi
+ 
+ #	We should serve this IP address of course
+-	if ip_status "$ipaddress"; then
+-	  :
+-	else
+-	  ocf_exit_reason "We are not serving [$ipaddress], hence can not make it a preferred source address"
+-	  return $OCF_ERR_INSTALLED
++	if [ "$OCF_CHECK_LEVEL" -eq 10 ]; then
++		if ip_status "$ipaddress"; then
++			:
++		else
++			ocf_exit_reason "We are not serving [$ipaddress], hence can not make it a preferred source address"
++			return $OCF_ERR_INSTALLED
++		fi
+ 	fi
+ 	return $OCF_SUCCESS
+ }
+@@ -540,6 +542,7 @@ esac
+ 
+ ipaddress="$OCF_RESKEY_ipaddress"
+ 
++[ "$__OCF_ACTION" != "validate-all" ] && OCF_CHECK_LEVEL=10
+ srca_validate_all
+ rc=$?
+ if [ $rc -ne $OCF_SUCCESS ]; then
+diff --git a/heartbeat/galera.in b/heartbeat/galera.in
+index cd2fee7c0..6aed3e4b6 100755
+--- a/heartbeat/galera.in
++++ b/heartbeat/galera.in
+@@ -1015,9 +1015,11 @@ galera_stop()
+ 
+ galera_validate()
+ {
+-    if ! ocf_is_ms; then
+-        ocf_exit_reason "Galera must be configured as a multistate Master/Slave resource."
+-        return $OCF_ERR_CONFIGURED
++    if [ "$OCF_CHECK_LEVEL" -eq 10 ]; then
++        if ! ocf_is_ms; then
++            ocf_exit_reason "Galera must be configured as a multistate Master/Slave resource."
++            return $OCF_ERR_CONFIGURED
++        fi
+     fi
+ 
+     if [ -z "$OCF_RESKEY_wsrep_cluster_address" ]; then
+@@ -1035,6 +1037,7 @@ case "$1" in
+         exit $OCF_SUCCESS;;
+ esac
+ 
++[ "$__OCF_ACTION" = "start" ] && OCF_CHECK_LEVEL=10
+ galera_validate
+ rc=$?
+ LSB_STATUS_STOPPED=3
+diff --git a/heartbeat/mpathpersist.in b/heartbeat/mpathpersist.in
+index 0e2c2a4a0..8a46b9930 100644
+--- a/heartbeat/mpathpersist.in
++++ b/heartbeat/mpathpersist.in
+@@ -630,10 +630,11 @@ mpathpersist_action_notify() {
+ }
+ 
+ mpathpersist_action_validate_all () {
+-
+-    if [ "$OCF_RESKEY_CRM_meta_master_max" != "1" ] && [ "$RESERVATION_TYPE"  != "7" ] && [ "$RESERVATION_TYPE" != "8" ]; then
+-        ocf_log err "Master options misconfigured."
+-        exit $OCF_ERR_CONFIGURED
++    if [ "$OCF_CHECK_LEVEL" -eq 10 ]; then
++        if [ "$OCF_RESKEY_CRM_meta_master_max" != "1" ] && [ "$RESERVATION_TYPE"  != "7" ] && [ "$RESERVATION_TYPE" != "8" ]; then
++            ocf_log err "Master options misconfigured."
++            exit $OCF_ERR_CONFIGURED
++        fi
+     fi
+ 
+     return $OCF_SUCCESS
+@@ -659,6 +660,10 @@ case $ACTION in
+     start|promote|monitor|stop|demote)
+         ocf_log debug "$RESOURCE: starting action \"$ACTION\""
+         mpathpersist_init
++        if [ "$__OCF_ACTION" = "start" ]; then
++            OCF_CHECK_LEVEL=10
++            mpathpersist_action_validate_all
++        fi
+         mpathpersist_action_$ACTION
+         exit $?
+         ;;
+diff --git a/heartbeat/sg_persist.in b/heartbeat/sg_persist.in
+index 16048ea6f..620c02f4a 100644
+--- a/heartbeat/sg_persist.in
++++ b/heartbeat/sg_persist.in
+@@ -643,10 +643,11 @@ sg_persist_action_notify() {
+ }
+ 
+ sg_persist_action_validate_all () {
+-
+-    if [ "$OCF_RESKEY_CRM_meta_master_max" != "1" ] && [ "$RESERVATION_TYPE"  != "7" ] && [ "$RESERVATION_TYPE" != "8" ]; then
+-        ocf_log err "Master options misconfigured."
+-        exit $OCF_ERR_CONFIGURED
++    if [ "$OCF_CHECK_LEVEL" -eq 10 ]; then
++        if [ "$OCF_RESKEY_CRM_meta_master_max" != "1" ] && [ "$RESERVATION_TYPE"  != "7" ] && [ "$RESERVATION_TYPE" != "8" ]; then
++            ocf_log err "Master options misconfigured."
++            exit $OCF_ERR_CONFIGURED
++        fi
+     fi
+ 
+     return $OCF_SUCCESS
+@@ -672,6 +673,10 @@ case $ACTION in
+     start|promote|monitor|stop|demote)
+         ocf_log debug "$RESOURCE: starting action \"$ACTION\""
+         sg_persist_init
++        if [ "$__OCF_ACTION" = "start" ]; then
++            OCF_CHECK_LEVEL=10
++            sg_persist_action_validate_all
++        fi
+         sg_persist_action_$ACTION
+         exit $?
+         ;;

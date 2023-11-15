@@ -1,0 +1,24 @@
+From ed5bc606a4db5108995df9297698cf9dc14cccb2 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Tue, 18 Jan 2022 11:32:05 +0100
+Subject: [PATCH] mysql-common: fix local SSL connection by using
+ --ssl-mode=REQUIRED which is available on 5.7+ (--ssl is not available in
+ 8.0)
+
+---
+ heartbeat/mysql-common.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/mysql-common.sh b/heartbeat/mysql-common.sh
+index 459948b10..de8763544 100755
+--- a/heartbeat/mysql-common.sh
++++ b/heartbeat/mysql-common.sh
+@@ -97,7 +97,7 @@ MYSQL_BINDIR=`dirname ${OCF_RESKEY_binary}`
+ 
+ MYSQL=$OCF_RESKEY_client_binary
+ if ocf_is_true "$OCF_RESKEY_replication_require_ssl"; then
+-  MYSQL_OPTIONS_LOCAL_SSL_OPTIONS="--ssl"
++  MYSQL_OPTIONS_LOCAL_SSL_OPTIONS="--ssl-mode=REQUIRED"
+ else
+   MYSQL_OPTIONS_LOCAL_SSL_OPTIONS=""
+ fi

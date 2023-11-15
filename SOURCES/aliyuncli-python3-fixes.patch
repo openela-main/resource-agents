@@ -1,0 +1,398 @@
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsExportHandler.py b/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsExportHandler.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsExportHandler.py	2019-02-19 12:08:17.331785393 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsExportHandler.py	2019-02-19 14:40:39.656330971 +0100
+@@ -13,7 +13,7 @@
+     
+     def getFileName(self,keyValues):
+         filename = None
+-        if keyValues.has_key('--filename') and len(keyValues['--filename']) > 0:
++        if '--filename' in keyValues and len(keyValues['--filename']) > 0:
+             filename = keyValues['--filename'][0]
+         else:
+             return filename, "A file name is needed! please use \'--filename\' and add the file name."
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsImportHandler.py b/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsImportHandler.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsImportHandler.py	2019-02-19 12:08:17.331785393 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsImportHandler.py	2019-02-19 14:41:48.927128430 +0100
+@@ -13,7 +13,7 @@
+     
+     def getFileName(self,keyValues):
+         filename = None
+-        if keyValues.has_key('--filename') and len(keyValues['--filename']) > 0:
++        if '--filename' in keyValues and len(keyValues['--filename']) > 0:
+             filename = keyValues['--filename'][0]
+         else:
+             print("A profile is needed! please use \'--filename\' and add the profile name.")
+@@ -21,7 +21,7 @@
+ 
+     def getInstanceCount(self,keyValues):
+         count = 1
+-        if keyValues.has_key('--instancecount') and len(keyValues['--instancecount']) > 0:
++        if '--instancecount' in keyValues and len(keyValues['--instancecount']) > 0:
+             if  keyValues['--instancecount'][0].isdigit() and int(keyValues['--instancecount'][0]) >= 0:
+                 count = keyValues['--instancecount'][0]
+             else:
+@@ -113,7 +113,7 @@
+ 
+     def isAllocatePublicIpAddress(self,keyValues):
+         _publicIp = False
+-        if keyValues.has_key('--allocatepublicip') and len(keyValues['--allocatepublicip']) > 0:
++        if '--allocatepublicip' in keyValues and len(keyValues['--allocatepublicip']) > 0:
+             if  keyValues['--allocatepublicip'][0] == "yes":
+                 _publicIp = True
+         return _publicIp
+@@ -125,7 +125,7 @@
+             '''
+             data = json.loads(jsonbody)
+             '''
+-            if data.has_key('InstanceId') and len(data['InstanceId']) > 0:
++            if 'InstanceId' in data and len(data['InstanceId']) > 0:
+                 instanceId = data['InstanceId']
+         except Exception as e:
+             pass
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsExportHandler.py b/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsExportHandler.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsExportHandler.py	2019-02-19 12:08:17.331785393 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsExportHandler.py	2019-02-19 14:42:11.772731833 +0100
+@@ -38,7 +38,7 @@
+ 
+     def getFileName(self,keyValues):
+         filename = None
+-        if keyValues.has_key('--filename') and len(keyValues['--filename']) > 0:
++        if '--filename' in keyValues and len(keyValues['--filename']) > 0:
+             filename = keyValues['--filename'][0]
+         else:
+             return filename, "A file name is needed! please use \'--filename\' and add the file name."
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsImportHandler.py b/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsImportHandler.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsImportHandler.py	2019-02-19 12:08:17.331785393 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsImportHandler.py	2019-02-19 14:39:09.247900469 +0100
+@@ -13,7 +13,7 @@
+     
+     def getFileName(self,keyValues):
+         filename = None
+-        if keyValues.has_key('--filename') and len(keyValues['--filename']) > 0:
++        if '--filename' in keyValues and len(keyValues['--filename']) > 0:
+             filename = keyValues['--filename'][0]
+         else:
+             return filename, "A filename is needed! please use \'--filename\' and add the file name."
+@@ -21,7 +21,7 @@
+     def getInstanceCount(self,keyValues):
+         count = 1
+         import_count = "--count"
+-        if keyValues.has_key(import_count) and len(keyValues[import_count]) > 0:
++        if import_count in keyValues and len(keyValues[import_count]) > 0:
+             if  keyValues[import_count][0].isdigit() and int(keyValues[import_count][0]) >= 0:
+                 count = keyValues[import_count][0]
+             else:
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/advance/userConfigHandler.py b/bundled/aliyun/aliyun-cli/aliyuncli/advance/userConfigHandler.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/advance/userConfigHandler.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/advance/userConfigHandler.py	2019-02-19 11:01:46.116653274 +0100
+@@ -17,37 +17,37 @@
+ 
+     def getConfigHandlerOptions(self):
+         return [ConfigCmd.name]
+-				
++
+     def showConfig(self):
+         _credentialsPath = os.path.join(self.extensionCliHandler.aliyunConfigurePath,self.extensionCliHandler.credentials)
+         _configurePath = os.path.join(self.extensionCliHandler.aliyunConfigurePath,self.extensionCliHandler.configure)
+         config = dict()
+         configContent = dict() 
+-	credentialsContent = dict ()
+-	if os.path.exists(_configurePath):
++        credentialsContent = dict ()
++        if os.path.exists(_configurePath):
+             for line in open(_configurePath):
+                 line = line.strip('\n')
+                 if line.find('=') > 0:
+                     list = line.split("=",1)
+-		    configContent[list[0]] = list[1]
+-		else: 
+-		    pass
+-	config['configure'] = configContent
+-	if os.path.exists(_credentialsPath):
+-	    for line in open(_credentialsPath):
++                    configContent[list[0]] = list[1]
++                else: 
++                    pass
++        config['configure'] = configContent
++        if os.path.exists(_credentialsPath):
++            for line in open(_credentialsPath):
+                 line = line.strip('\n')
+                 if line.find('=') > 0:
+                     list = line.split("=",1)
+-		    credentialsContent[list[0]] = list[1]
+-		else: 
+-		    pass 
+-	config ['credentials'] = credentialsContent
+-	response.display_response("showConfigure",config,'table')
++                    credentialsContent[list[0]] = list[1]
++                else: 
++                    pass 
++        config ['credentials'] = credentialsContent
++        response.display_response("showConfigure",config,'table')
+     def importConfig():
+         pass
+     def exportConfig():
+         pass
+-	
++
+ 
+ 
+ if __name__ == "__main__":
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/advance/userProfileHandler.py b/bundled/aliyun/aliyun-cli/aliyuncli/advance/userProfileHandler.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/advance/userProfileHandler.py	2019-02-19 12:08:17.332785376 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/advance/userProfileHandler.py	2019-02-19 14:40:12.267806439 +0100
+@@ -20,7 +20,7 @@
+     def handleProfileCmd(self, cmd, keyValues):
+         if cmd.lower() == ProfileCmd.useProfile.lower(): # confirm command is right
+             #check --name is valid
+-            if keyValues.has_key(ProfileCmd.name) and len(keyValues[ProfileCmd.name]) > 0:
++            if ProfileCmd.name in keyValues and len(keyValues[ProfileCmd.name]) > 0:
+                 _value = keyValues[ProfileCmd.name][0] # use the first value
+                 self.extensionCliHandler.setUserProfile(_value)
+             else:
+@@ -34,7 +34,7 @@
+         newProfileName = ''
+         if cmd.lower() == ProfileCmd.addProfile.lower(): # confirm command is right
+             #check --name is valid
+-            if keyValues.has_key(ProfileCmd.name) and len(keyValues[ProfileCmd.name]) > 0:
++            if ProfileCmd.name in keyValues and len(keyValues[ProfileCmd.name]) > 0:
+                 _value = keyValues[ProfileCmd.name][0] # check the first value
+                 # only input key and secret
+                 newProfileName = _value
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliParser.py b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliParser.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliParser.py	2019-02-19 12:08:17.332785376 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliParser.py	2019-02-19 14:35:32.009660989 +0100
+@@ -137,9 +137,9 @@
+                         values.append(self.args[index])
+                         index = index + 1
+                     keyValues[currentValue] = values
+-        if keyValues.has_key(keystr) and keyValues[keystr].__len__() > 0:
++        if keystr in keyValues and keyValues[keystr].__len__() > 0:
+             _key = keyValues[keystr][0]
+-        if keyValues.has_key(secretstr) and keyValues[secretstr].__len__() > 0:
++        if secretstr in keyValues and keyValues[secretstr].__len__() > 0:
+             _secret = keyValues[secretstr][0]
+         #print("accesskeyid: ", _key , "accesskeysecret: ",_secret)
+         return _key, _secret
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/aliyuncli.py b/bundled/aliyun/aliyun-cli/aliyuncli/aliyuncli.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/aliyuncli.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/aliyuncli.py	2019-02-19 13:35:35.738680413 +0100
+@@ -19,8 +19,9 @@
+ '''
+ 
+ import sys 
+-reload(sys)
+-sys.setdefaultencoding('utf-8')
++if sys.version_info[0] < 3:
++    reload(sys)
++    sys.setdefaultencoding('utf-8')
+ __author__ = 'xixi.xxx'
+ import aliyunCliMain
+ 
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliUpgrade.py b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliUpgrade.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliUpgrade.py	2019-02-19 12:08:17.332785376 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliUpgrade.py	2019-02-19 11:15:19.920089641 +0100
+@@ -18,7 +18,7 @@
+ '''
+ 
+ import aliyunCliConfiugre
+-import urllib2
++import urllib3
+ import re
+ import os
+ import platform
+@@ -151,7 +151,7 @@
+ # this functino will get the latest version
+     def _getLatestTimeFromServer(self):
+         try:
+-            f = urllib2.urlopen(self.configure.server_url,data=None,timeout=5)
++            f = urllib3.urlopen(self.configure.server_url,data=None,timeout=5)
+             s = f.read()
+             return s
+         except Exception as e:
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunOpenApiData.py b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunOpenApiData.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunOpenApiData.py	2019-02-19 12:08:17.332785376 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunOpenApiData.py	2019-02-19 14:37:28.221649497 +0100
+@@ -26,7 +26,7 @@
+ import aliyunSdkConfigure
+ import json
+ import cliError
+-import urllib2
++import urllib3
+ import handleEndPoint
+ 
+ from __init__ import  __version__
+@@ -259,7 +259,7 @@
+     def changeEndPoint(self, classname, keyValues):
+         endpoint = "Endpoint"
+         try:
+-            if keyValues.has_key(endpoint) and keyValues[endpoint].__len__() > 0:
++            if endpoint in keyValues and keyValues[endpoint].__len__() > 0:
+                 classname._RestApi__domain = keyValues[endpoint][0]
+         except Exception as e:
+             pass
+@@ -444,10 +444,10 @@
+ 
+     def getTempVersion(self,keyValues):
+         key='--version'
+-        if keyValues is not None and keyValues.has_key(key):
++        if keyValues is not None and key in keyValues:
+             return keyValues.get(key)
+         key = 'version'
+-        if keyValues is not None and keyValues.has_key(key):
++        if keyValues is not None and key in keyValues:
+             return keyValues.get(key)
+ 
+     def getVersionFromFile(self,cmd):
+@@ -513,7 +513,7 @@
+         self.checkForServer(response,cmd,operation)
+     def getRequestId(self,response):
+         try:
+-            if response.has_key('RequestId') and len(response['RequestId']) > 0:
++            if 'RequestId' in response and len(response['RequestId']) > 0:
+                 requestId = response['RequestId']
+                 return  requestId
+         except Exception:
+@@ -532,7 +532,7 @@
+             ua = ""
+         url = configure.server_url + "?requesId=" + requestId + "&ak=" + ak +"&ua="+ua+"&cmd="+cmd+"&operation="+operation
+         try:
+-            f = urllib2.urlopen(url,data=None,timeout=5)
++            f = urllib3.urlopen(url,data=None,timeout=5)
+             s = f.read()
+             return s
+         except Exception :
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunSdkConfigure.py b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunSdkConfigure.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunSdkConfigure.py	2019-02-19 12:08:17.333785359 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunSdkConfigure.py	2019-02-19 14:38:04.032029661 +0100
+@@ -39,7 +39,7 @@
+ 
+     def sdkConfigure(self,cmd,operation):
+         keyValues = self.parser._getKeyValues()
+-        if keyValues.has_key('--version') and len(keyValues['--version']) > 0:
++        if '--version' in keyValues and len(keyValues['--version']) > 0:
+             version=keyValues['--version'][0]
+             filename=self.fileName
+             self.writeCmdVersionToFile(cmd,version,filename)
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/configure.py b/bundled/aliyun/aliyun-cli/aliyuncli/configure.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/configure.py	2019-02-19 12:08:17.333785359 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/configure.py	2019-02-19 11:12:58.670708353 +0100
+@@ -23,6 +23,8 @@
+ import aliyunCliParser
+ import platform
+ 
++if sys.version_info[0] > 2:
++    raw_input = input
+ 
+ OSS_CREDS_FILENAME = "%s/.aliyuncli/osscredentials" % os.path.expanduser('~')
+ OSS_CONFIG_SECTION = 'OSSCredentials'
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/paramOptimize.py b/bundled/aliyun/aliyun-cli/aliyuncli/paramOptimize.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/paramOptimize.py	2019-02-19 12:08:17.333785359 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/paramOptimize.py	2019-02-19 11:14:58.926181598 +0100
+@@ -19,7 +19,7 @@
+ #/usr/bin/env python
+ #!-*- coding:utf-8 -*-
+ import os
+-import urllib2
++import urllib3
+ import cliError
+ 
+ 
+@@ -64,9 +64,9 @@
+         print(e)
+ def _getParamFromUrl(prefix,value,mode):
+ 
+-    req = urllib2.Request(value)
++    req = urllib3.Request(value)
+     try:
+-        response=urllib2.urlopen(req)
++        response=urllib3.urlopen(req)
+         if response.getcode() == 200:
+             return response.read()
+         else:
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/six.py b/bundled/aliyun/aliyun-cli/aliyuncli/six.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/six.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/six.py	2019-02-19 11:14:40.505262286 +0100
+@@ -340,8 +340,8 @@
+ 
+ 
+ _urllib_error_moved_attributes = [
+-    MovedAttribute("URLError", "urllib2", "urllib.error"),
+-    MovedAttribute("HTTPError", "urllib2", "urllib.error"),
++    MovedAttribute("URLError", "urllib3", "urllib.error"),
++    MovedAttribute("HTTPError", "urllib3", "urllib.error"),
+     MovedAttribute("ContentTooShortError", "urllib", "urllib.error"),
+ ]
+ for attr in _urllib_error_moved_attributes:
+@@ -359,34 +359,34 @@
+ 
+ 
+ _urllib_request_moved_attributes = [
+-    MovedAttribute("urlopen", "urllib2", "urllib.request"),
+-    MovedAttribute("install_opener", "urllib2", "urllib.request"),
+-    MovedAttribute("build_opener", "urllib2", "urllib.request"),
++    MovedAttribute("urlopen", "urllib3", "urllib.request"),
++    MovedAttribute("install_opener", "urllib3", "urllib.request"),
++    MovedAttribute("build_opener", "urllib3", "urllib.request"),
+     MovedAttribute("pathname2url", "urllib", "urllib.request"),
+     MovedAttribute("url2pathname", "urllib", "urllib.request"),
+     MovedAttribute("getproxies", "urllib", "urllib.request"),
+-    MovedAttribute("Request", "urllib2", "urllib.request"),
+-    MovedAttribute("OpenerDirector", "urllib2", "urllib.request"),
+-    MovedAttribute("HTTPDefaultErrorHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("HTTPRedirectHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("HTTPCookieProcessor", "urllib2", "urllib.request"),
+-    MovedAttribute("ProxyHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("BaseHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("HTTPPasswordMgr", "urllib2", "urllib.request"),
+-    MovedAttribute("HTTPPasswordMgrWithDefaultRealm", "urllib2", "urllib.request"),
+-    MovedAttribute("AbstractBasicAuthHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("HTTPBasicAuthHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("ProxyBasicAuthHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("AbstractDigestAuthHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("HTTPDigestAuthHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("ProxyDigestAuthHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("HTTPHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("HTTPSHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("FileHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("FTPHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("CacheFTPHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("UnknownHandler", "urllib2", "urllib.request"),
+-    MovedAttribute("HTTPErrorProcessor", "urllib2", "urllib.request"),
++    MovedAttribute("Request", "urllib3", "urllib.request"),
++    MovedAttribute("OpenerDirector", "urllib3", "urllib.request"),
++    MovedAttribute("HTTPDefaultErrorHandler", "urllib3", "urllib.request"),
++    MovedAttribute("HTTPRedirectHandler", "urllib3", "urllib.request"),
++    MovedAttribute("HTTPCookieProcessor", "urllib3", "urllib.request"),
++    MovedAttribute("ProxyHandler", "urllib3", "urllib.request"),
++    MovedAttribute("BaseHandler", "urllib3", "urllib.request"),
++    MovedAttribute("HTTPPasswordMgr", "urllib3", "urllib.request"),
++    MovedAttribute("HTTPPasswordMgrWithDefaultRealm", "urllib3", "urllib.request"),
++    MovedAttribute("AbstractBasicAuthHandler", "urllib3", "urllib.request"),
++    MovedAttribute("HTTPBasicAuthHandler", "urllib3", "urllib.request"),
++    MovedAttribute("ProxyBasicAuthHandler", "urllib3", "urllib.request"),
++    MovedAttribute("AbstractDigestAuthHandler", "urllib3", "urllib.request"),
++    MovedAttribute("HTTPDigestAuthHandler", "urllib3", "urllib.request"),
++    MovedAttribute("ProxyDigestAuthHandler", "urllib3", "urllib.request"),
++    MovedAttribute("HTTPHandler", "urllib3", "urllib.request"),
++    MovedAttribute("HTTPSHandler", "urllib3", "urllib.request"),
++    MovedAttribute("FileHandler", "urllib3", "urllib.request"),
++    MovedAttribute("FTPHandler", "urllib3", "urllib.request"),
++    MovedAttribute("CacheFTPHandler", "urllib3", "urllib.request"),
++    MovedAttribute("UnknownHandler", "urllib3", "urllib.request"),
++    MovedAttribute("HTTPErrorProcessor", "urllib3", "urllib.request"),
+     MovedAttribute("urlretrieve", "urllib", "urllib.request"),
+     MovedAttribute("urlcleanup", "urllib", "urllib.request"),
+     MovedAttribute("URLopener", "urllib", "urllib.request"),
+diff -uNr a/bundled/aliyun/aliyun-cli/setup.py b/bundled/aliyun/aliyun-cli/setup.py
+--- a/bundled/aliyun/aliyun-cli/setup.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/setup.py	2019-02-19 13:33:29.069848394 +0100
+@@ -24,7 +24,7 @@
+ 
+ install_requires = [
+         'colorama>=0.2.5,<=0.3.3',
+-        'jmespath>=0.7.0,<=0.7.1',
++        'jmespath>=0.7.0',
+         ]
+ def main():
+     setup(

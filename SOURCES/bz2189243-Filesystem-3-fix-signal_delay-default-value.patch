@@ -1,0 +1,23 @@
+From f779fad52e5f515ca81218da6098398bdecac286 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 20 Jul 2023 10:18:12 +0200
+Subject: [PATCH] Filesystem: fix incorrect variable name for signal_delay
+ default in metadata
+
+---
+ heartbeat/Filesystem | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index b9aae8d50..066562891 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -293,7 +293,7 @@ Signals (names or numbers, whitespace separated) to send processes during forcef
+ How many seconds to wait after sending term/kill signals to processes in stop-action.
+ </longdesc>
+ <shortdesc lang="en">How many seconds to wait after sending term/kill signals to processes in stop-action</shortdesc>
+-<content type="string" default="${OCF_RESKEY_kill_signal_delay}" />
++<content type="string" default="${OCF_RESKEY_signal_delay_default}" />
+ </parameter>
+ 
+ </parameters>

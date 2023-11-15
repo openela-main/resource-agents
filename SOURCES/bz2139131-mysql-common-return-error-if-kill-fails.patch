@@ -1,0 +1,25 @@
+From 97a05e0e662ed922c9ecd016b39ab90ee233d5c9 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 24 Nov 2022 10:36:56 +0100
+Subject: [PATCH] mysql-common: return error in stop-action if kill fails to
+ stop the process, so the node can get fenced
+
+---
+ heartbeat/mysql-common.sh | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/heartbeat/mysql-common.sh b/heartbeat/mysql-common.sh
+index 34e1c6748..8104019b0 100755
+--- a/heartbeat/mysql-common.sh
++++ b/heartbeat/mysql-common.sh
+@@ -318,6 +318,10 @@ mysql_common_stop()
+     if [ $? != $OCF_NOT_RUNNING ]; then
+         ocf_log info "MySQL failed to stop after ${shutdown_timeout}s using SIGTERM. Trying SIGKILL..."
+         /bin/kill -KILL $pid > /dev/null
++        mysql_common_status info $pid
++        if [ $? != $OCF_NOT_RUNNING ]; then
++            return $OCF_ERR_GENERIC
++        fi
+     fi
+ 
+     ocf_log info "MySQL stopped";

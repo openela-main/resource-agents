@@ -1,0 +1,22 @@
+From 1c037b3ac0288509fb2b74fb4a661a504155da15 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 26 Aug 2021 12:27:50 +0200
+Subject: [PATCH] nfsnotify: fix default value for "notify_args"
+
+---
+ heartbeat/nfsnotify.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/nfsnotify.in b/heartbeat/nfsnotify.in
+index 851f6ad6b4..fe6d2793ba 100644
+--- a/heartbeat/nfsnotify.in
++++ b/heartbeat/nfsnotify.in
+@@ -33,7 +33,7 @@
+ # Parameter defaults
+ 
+ OCF_RESKEY_source_host_default=""
+-OCF_RESKEY_notify_args_default="false"
++OCF_RESKEY_notify_args_default=""
+ 
+ : ${OCF_RESKEY_source_host=${OCF_RESKEY_source_host_default}}
+ : ${OCF_RESKEY_notify_args=${OCF_RESKEY_notify_args_default}}

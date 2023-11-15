@@ -1,0 +1,27 @@
+From 739e6ce9096facd6d37dffd524c79c961e3fae38 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Fri, 11 Nov 2022 14:17:39 +0100
+Subject: [PATCH] vdo-vol: dont fail probe action when the underlying device
+ doesnt exist
+
+---
+ heartbeat/vdo-vol | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/heartbeat/vdo-vol b/heartbeat/vdo-vol
+index 94822cb82..29bd7b8fd 100755
+--- a/heartbeat/vdo-vol
++++ b/heartbeat/vdo-vol
+@@ -148,6 +148,12 @@ vdo_monitor(){
+ 	MODE=$(vdostats --verbose ${OCF_RESKEY_volume} | grep "operating mode" | awk '{print $NF}')
+ 
+ 	case "$status" in
++		*"ERROR - vdodumpconfig: Failed to make FileLayer from"*)
++			if ocf_is_probe; then
++			    return $OCF_NOT_RUNNING
++			fi
++			return $OCF_ERR_GENERIC
++			;;
+ 		*"Device mapper status: not available"*)
+ 			return $OCF_NOT_RUNNING
+ 			;;

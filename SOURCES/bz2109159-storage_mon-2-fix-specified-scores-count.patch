@@ -1,0 +1,36 @@
+From a68957e8f1e8169438acf5a4321f47ed7d8ceec1 Mon Sep 17 00:00:00 2001
+From: Fujii Masao <fujii@postgresql.org>
+Date: Tue, 19 Jul 2022 20:28:38 +0900
+Subject: [PATCH] storage_mon: Fix bug in checking of number of specified
+ scores.
+
+Previously specifying the maximum allowed number (MAX_DEVICES, currently 25)
+of devices and scores as arguments could cause storage_mon to fail unexpectedly
+with the error message "too many scores, max is 25". This issue happened
+because storage_mon checked whether the number of specified scores
+exceeded the upper limit by using the local variable "device_count" indicating
+the number of specified devices (not scores). So after the maximum number
+of devices arguments were interpreted, the appearance of next score argument
+caused the error even when the number of interpreted scores arguments had
+not exceeded the maximum.
+
+This patch fixes storage_mon so that it uses the local variable "score_count"
+indicating the number of specified scores, to check whether arguments for
+scores are specified more than the upper limit.
+---
+ tools/storage_mon.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index 3c82d5ee8..c749076c2 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
+ 				}
+ 				break;
+ 			case 's':
+-				if (device_count < MAX_DEVICES) {
++				if (score_count < MAX_DEVICES) {
+ 					int score = atoi(optarg);
+ 					if (score < 1 || score > 10) {
+ 						fprintf(stderr, "Score must be between 1 and 10 inclusive\n");

@@ -1,0 +1,64 @@
+From fcd2565602146c0b9317d159cecb8935e304c7ce Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 30 Sep 2021 10:23:17 +0200
+Subject: [PATCH] gcp-pd-move/gcp-vpc-move-route: dont fail failed resources
+ instantly (caused by OCF_ERR_CONFIGURED)
+
+---
+ heartbeat/gcp-pd-move.in        | 4 ++--
+ heartbeat/gcp-vpc-move-route.in | 6 +++---
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/heartbeat/gcp-pd-move.in b/heartbeat/gcp-pd-move.in
+index e99cc71f88..cbe703c3c5 100644
+--- a/heartbeat/gcp-pd-move.in
++++ b/heartbeat/gcp-pd-move.in
+@@ -157,7 +157,7 @@ def populate_vars():
+     CONN = googleapiclient.discovery.build('compute', 'v1')
+   except Exception as e:
+     logger.error('Couldn\'t connect with google api: ' + str(e))
+-    sys.exit(ocf.OCF_ERR_CONFIGURED)
++    sys.exit(ocf.OCF_ERR_GENERIC)
+ 
+   for param in PARAMETERS:
+     value = os.environ.get('OCF_RESKEY_%s' % param, PARAMETERS[param])
+@@ -172,7 +172,7 @@ def populate_vars():
+   except Exception as e:
+     logger.error(
+         'Couldn\'t get instance name, is this running inside GCE?: ' + str(e))
+-    sys.exit(ocf.OCF_ERR_CONFIGURED)
++    sys.exit(ocf.OCF_ERR_GENERIC)
+ 
+   PROJECT = get_metadata('project/project-id')
+   if PARAMETERS['disk_scope'] in ['detect', 'regional']:
+diff --git a/heartbeat/gcp-vpc-move-route.in b/heartbeat/gcp-vpc-move-route.in
+index dac6e4ea8c..6b240c04d0 100644
+--- a/heartbeat/gcp-vpc-move-route.in
++++ b/heartbeat/gcp-vpc-move-route.in
+@@ -243,7 +243,7 @@ def validate(ctx):
+     ctx.conn = googleapiclient.discovery.build('compute', 'v1', credentials=credentials, cache_discovery=False)
+   except Exception as e:
+     logger.error('Couldn\'t connect with google api: ' + str(e))
+-    sys.exit(OCF_ERR_CONFIGURED)
++    sys.exit(OCF_ERR_GENERIC)
+ 
+   ctx.ip = os.environ.get('OCF_RESKEY_ip')
+   if not ctx.ip:
+@@ -258,7 +258,7 @@ def validate(ctx):
+   except Exception as e:
+     logger.error(
+         'Instance information not found. Is this a GCE instance ?: %s', str(e))
+-    sys.exit(OCF_ERR_CONFIGURED)
++    sys.exit(OCF_ERR_GENERIC)
+ 
+   ctx.instance_url = '%s/projects/%s/zones/%s/instances/%s' % (
+       GCP_API_URL_PREFIX, ctx.project, ctx.zone, ctx.instance)
+@@ -273,7 +273,7 @@ def validate(ctx):
+   idxs = ctx.iproute.link_lookup(ifname=ctx.interface)
+   if not idxs:
+     logger.error('Network interface not found')
+-    sys.exit(OCF_ERR_CONFIGURED)
++    sys.exit(OCF_ERR_GENERIC)
+   ctx.iface_idx = idxs[0]
+ 
+ 
