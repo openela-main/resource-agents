@@ -1,0 +1,26 @@
+From 8b1d3257e5176a2f50a843a21888c4b4f51f370b Mon Sep 17 00:00:00 2001
+From: Valentin Vidic <vvidic@valentin-vidic.from.hr>
+Date: Sun, 3 Apr 2022 20:31:50 +0200
+Subject: [PATCH] openstack-info: fix bashism
+
+Also simplify striping of trailing comma.
+---
+ heartbeat/openstack-info.in | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/heartbeat/openstack-info.in b/heartbeat/openstack-info.in
+index f6dc1ee4d..f3a59fc7a 100755
+--- a/heartbeat/openstack-info.in
++++ b/heartbeat/openstack-info.in
+@@ -167,9 +167,9 @@ OSInfoStats() {
+ 			--column fixed_ips \
+ 			${port_id} | grep -P '\"subnet_id\": \".*\",$' |
+ 			grep -P -o '[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}')
+-		value+="${subnet_id}:${port_id},"
++		value="${value}${subnet_id}:${port_id},"
+ 	done
+-	value=$(echo ${value} | sed -e 's/,$//g')
++	value=${value%,}
+ 
+ 	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -n openstack_ports -v "$value"
+ 

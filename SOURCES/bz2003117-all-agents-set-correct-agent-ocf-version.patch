@@ -1,0 +1,2016 @@
+From d6b954890b496fcdd8a76d7c2dd44a36fa0ad42c Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 7 Oct 2021 11:10:16 +0200
+Subject: [PATCH 1/3] all agents: specify agent and OCF versions corrently in
+ metadata
+
+---
+ heartbeat/AoEtarget.in            | 2 +-
+ heartbeat/AudibleAlarm            | 2 +-
+ heartbeat/CTDB.in                 | 2 +-
+ heartbeat/ClusterMon              | 2 +-
+ heartbeat/Delay                   | 2 +-
+ heartbeat/Dummy                   | 2 +-
+ heartbeat/EvmsSCC                 | 2 +-
+ heartbeat/Evmsd                   | 2 +-
+ heartbeat/Filesystem              | 4 ++--
+ heartbeat/ICP                     | 2 +-
+ heartbeat/IPaddr                  | 2 +-
+ heartbeat/IPaddr2                 | 2 +-
+ heartbeat/IPsrcaddr               | 2 +-
+ heartbeat/IPv6addr.c              | 2 +-
+ heartbeat/LVM                     | 2 +-
+ heartbeat/LVM-activate            | 2 +-
+ heartbeat/LinuxSCSI               | 2 +-
+ heartbeat/MailTo                  | 2 +-
+ heartbeat/ManageRAID.in           | 4 ++--
+ heartbeat/ManageVE.in             | 4 ++--
+ heartbeat/NodeUtilization         | 2 +-
+ heartbeat/Pure-FTPd               | 2 +-
+ heartbeat/Raid1                   | 2 +-
+ heartbeat/Route                   | 2 +-
+ heartbeat/SAPDatabase             | 4 ++--
+ heartbeat/SAPInstance             | 4 ++--
+ heartbeat/SendArp                 | 2 +-
+ heartbeat/ServeRAID               | 2 +-
+ heartbeat/SphinxSearchDaemon      | 2 +-
+ heartbeat/Squid.in                | 2 +-
+ heartbeat/Stateful                | 2 +-
+ heartbeat/SysInfo.in              | 2 +-
+ heartbeat/VIPArip                 | 2 +-
+ heartbeat/VirtualDomain           | 4 ++--
+ heartbeat/WAS                     | 2 +-
+ heartbeat/WAS6                    | 2 +-
+ heartbeat/WinPopup                | 2 +-
+ heartbeat/Xen                     | 2 +-
+ heartbeat/Xinetd                  | 2 +-
+ heartbeat/ZFS                     | 2 +-
+ heartbeat/aliyun-vpc-move-ip      | 4 ++--
+ heartbeat/anything                | 2 +-
+ heartbeat/apache                  | 2 +-
+ heartbeat/asterisk                | 2 +-
+ heartbeat/aws-vpc-move-ip         | 4 ++--
+ heartbeat/aws-vpc-route53.in      | 2 +-
+ heartbeat/awseip                  | 2 +-
+ heartbeat/awsvip                  | 2 +-
+ heartbeat/azure-lb                | 2 +-
+ heartbeat/clvm.in                 | 2 +-
+ heartbeat/conntrackd.in           | 4 ++--
+ heartbeat/crypt                   | 2 +-
+ heartbeat/db2                     | 2 +-
+ heartbeat/dhcpd                   | 4 ++--
+ heartbeat/dnsupdate.in            | 2 +-
+ heartbeat/docker                  | 2 +-
+ heartbeat/docker-compose          | 4 ++--
+ heartbeat/dovecot                 | 4 ++--
+ heartbeat/eDir88.in               | 2 +-
+ heartbeat/ethmonitor              | 4 ++--
+ heartbeat/exportfs                | 2 +-
+ heartbeat/fio.in                  | 2 +-
+ heartbeat/galera.in               | 2 +-
+ heartbeat/garbd                   | 2 +-
+ heartbeat/gcp-ilb                 | 2 +-
+ heartbeat/gcp-pd-move.in          | 2 +-
+ heartbeat/gcp-vpc-move-ip.in      | 2 +-
+ heartbeat/gcp-vpc-move-route.in   | 2 +-
+ heartbeat/gcp-vpc-move-vip.in     | 2 +-
+ heartbeat/iSCSILogicalUnit.in     | 4 ++--
+ heartbeat/iSCSITarget.in          | 4 ++--
+ heartbeat/ids                     | 2 +-
+ heartbeat/iface-bridge            | 2 +-
+ heartbeat/iface-vlan              | 2 +-
+ heartbeat/ipsec                   | 2 +-
+ heartbeat/iscsi                   | 2 +-
+ heartbeat/jboss                   | 2 +-
+ heartbeat/jira.in                 | 4 ++--
+ heartbeat/kamailio.in             | 2 +-
+ heartbeat/lvmlockd                | 2 +-
+ heartbeat/lxc.in                  | 4 ++--
+ heartbeat/lxd-info.in             | 2 +-
+ heartbeat/machine-info.in         | 2 +-
+ heartbeat/mariadb.in              | 2 +-
+ heartbeat/mdraid                  | 2 +-
+ heartbeat/minio                   | 2 +-
+ heartbeat/mpathpersist.in         | 4 ++--
+ heartbeat/mysql                   | 2 +-
+ heartbeat/mysql-proxy             | 4 ++--
+ heartbeat/nagios                  | 4 ++--
+ heartbeat/named                   | 2 +-
+ heartbeat/nfsnotify.in            | 2 +-
+ heartbeat/nfsserver               | 2 +-
+ heartbeat/nginx                   | 2 +-
+ heartbeat/nvmet-namespace         | 4 ++--
+ heartbeat/nvmet-port              | 4 ++--
+ heartbeat/nvmet-subsystem         | 4 ++--
+ heartbeat/openstack-cinder-volume | 4 ++--
+ heartbeat/openstack-floating-ip   | 4 ++--
+ heartbeat/openstack-info.in       | 2 +-
+ heartbeat/openstack-virtual-ip    | 4 ++--
+ heartbeat/oraasm                  | 4 ++--
+ heartbeat/oracle                  | 2 +-
+ heartbeat/oralsnr                 | 2 +-
+ heartbeat/ovsmonitor              | 4 ++--
+ heartbeat/pgagent                 | 2 +-
+ heartbeat/pgsql                   | 2 +-
+ heartbeat/pingd                   | 2 +-
+ heartbeat/podman                  | 2 +-
+ heartbeat/portblock               | 2 +-
+ heartbeat/postfix                 | 4 ++--
+ heartbeat/pound                   | 2 +-
+ heartbeat/proftpd                 | 2 +-
+ heartbeat/rabbitmq-cluster.in     | 2 +-
+ heartbeat/redis.in                | 2 +-
+ heartbeat/rkt                     | 2 +-
+ heartbeat/rsyncd                  | 2 +-
+ heartbeat/rsyslog.in              | 2 +-
+ heartbeat/scsi2reservation        | 2 +-
+ heartbeat/sfex                    | 4 ++--
+ heartbeat/sg_persist.in           | 4 ++--
+ heartbeat/slapd.in                | 4 ++--
+ heartbeat/smb-share.in            | 2 +-
+ heartbeat/storage-mon.in          | 2 +-
+ heartbeat/sybaseASE.in            | 2 +-
+ heartbeat/symlink                 | 4 ++--
+ heartbeat/syslog-ng.in            | 2 +-
+ heartbeat/tomcat                  | 2 +-
+ heartbeat/varnish                 | 2 +-
+ heartbeat/vdo-vol                 | 4 ++--
+ heartbeat/vmware                  | 4 ++--
+ heartbeat/vsftpd.in               | 2 +-
+ heartbeat/zabbixserver            | 4 ++--
+ 133 files changed, 169 insertions(+), 169 deletions(-)
+
+diff --git a/heartbeat/AoEtarget.in b/heartbeat/AoEtarget.in
+index 5e3f01bccd..5a14c1ee7c 100644
+--- a/heartbeat/AoEtarget.in
++++ b/heartbeat/AoEtarget.in
+@@ -48,7 +48,7 @@ meta_data() {
+     cat <<EOF
+ <?xml version="1.0" encoding="UTF-8"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="AoEtarget">
++<resource-agent name="AoEtarget" version="1.0">
+   <version>1.0</version>
+   <longdesc lang="en">
+ This resource agent manages an ATA-over-Ethernet (AoE) target using vblade.
+diff --git a/heartbeat/AudibleAlarm b/heartbeat/AudibleAlarm
+index 19cb73e610..44a30884e0 100755
+--- a/heartbeat/AudibleAlarm
++++ b/heartbeat/AudibleAlarm
+@@ -37,7 +37,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="AudibleAlarm">
++<resource-agent name="AudibleAlarm" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/CTDB.in b/heartbeat/CTDB.in
+index a2a83be676..d25d026cab 100755
+--- a/heartbeat/CTDB.in
++++ b/heartbeat/CTDB.in
+@@ -153,7 +153,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="CTDB">
++<resource-agent name="CTDB" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/ClusterMon b/heartbeat/ClusterMon
+index 2bbf87da4b..161e309638 100755
+--- a/heartbeat/ClusterMon
++++ b/heartbeat/ClusterMon
+@@ -60,7 +60,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="ClusterMon">
++<resource-agent name="ClusterMon" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/Delay b/heartbeat/Delay
+index 56f4e4f0a7..7ba6623f24 100755
+--- a/heartbeat/Delay
++++ b/heartbeat/Delay
+@@ -50,7 +50,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="Delay">
++<resource-agent name="Delay" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/Dummy b/heartbeat/Dummy
+index c6f911ba2b..81a675d63a 100755
+--- a/heartbeat/Dummy
++++ b/heartbeat/Dummy
+@@ -48,7 +48,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="Dummy">
++<resource-agent name="Dummy" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/EvmsSCC b/heartbeat/EvmsSCC
+index 53aba4579c..a69113848f 100755
+--- a/heartbeat/EvmsSCC
++++ b/heartbeat/EvmsSCC
+@@ -65,7 +65,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="EvmsSCC">
++<resource-agent name="EvmsSCC" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/Evmsd b/heartbeat/Evmsd
+index 1f2413432f..6e30eae61e 100755
+--- a/heartbeat/Evmsd
++++ b/heartbeat/Evmsd
+@@ -43,7 +43,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="Evmsd">
++<resource-agent name="Evmsd" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index 4554e12d7f..54d24eef7b 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -131,8 +131,8 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="Filesystem">
+-<version>1.1</version>
++<resource-agent name="Filesystem" version="1.1">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Resource script for Filesystem. It manages a Filesystem on a
+diff --git a/heartbeat/ICP b/heartbeat/ICP
+index 90cfa3f740..0bf37dec42 100755
+--- a/heartbeat/ICP
++++ b/heartbeat/ICP
+@@ -66,7 +66,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="ICP">
++<resource-agent name="ICP" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/IPaddr b/heartbeat/IPaddr
+index fb0deab3bd..9b0ea8174f 100755
+--- a/heartbeat/IPaddr
++++ b/heartbeat/IPaddr
+@@ -89,7 +89,7 @@ meta_data() {
+         cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="IPaddr">
++<resource-agent name="IPaddr" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ This script manages IP alias IP addresses
+diff --git a/heartbeat/IPaddr2 b/heartbeat/IPaddr2
+index db0b0e547d..735dd77795 100755
+--- a/heartbeat/IPaddr2
++++ b/heartbeat/IPaddr2
+@@ -131,7 +131,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="IPaddr2">
++<resource-agent name="IPaddr2" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/IPsrcaddr b/heartbeat/IPsrcaddr
+index 7cdc3a9fe6..ec868409fe 100755
+--- a/heartbeat/IPsrcaddr
++++ b/heartbeat/IPsrcaddr
+@@ -93,7 +93,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="IPsrcaddr">
++<resource-agent name="IPsrcaddr" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/IPv6addr.c b/heartbeat/IPv6addr.c
+index c354c9dde8..7d1345cd11 100644
+--- a/heartbeat/IPv6addr.c
++++ b/heartbeat/IPv6addr.c
+@@ -835,7 +835,7 @@ meta_data_addr6(void)
+ 	const char* meta_data=
+ 	"<?xml version=\"1.0\"?>\n"
+ 	"<!DOCTYPE resource-agent SYSTEM \"ra-api-1.dtd\">\n"
+-	"<resource-agent name=\"IPv6addr\">\n"
++	"<resource-agent name=\"IPv6addr\" version=\"1.0\">\n"
+ 	"  <version>1.0</version>\n"
+ 	"  <longdesc lang=\"en\">\n"
+ 	"   This script manages IPv6 alias IPv6 addresses,It can add an IP6\n"
+diff --git a/heartbeat/LVM b/heartbeat/LVM
+index 287856e54b..b587bd8e38 100755
+--- a/heartbeat/LVM
++++ b/heartbeat/LVM
+@@ -67,7 +67,7 @@ meta_data() {
+ 	cat <<EOF
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="LVM">
++<resource-agent name="LVM" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/LVM-activate b/heartbeat/LVM-activate
+index 53223367e9..fadefcb7ab 100755
+--- a/heartbeat/LVM-activate
++++ b/heartbeat/LVM-activate
+@@ -92,7 +92,7 @@ meta_data() {
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+ 
+ 
+-<resource-agent name="LVM-activate">
++<resource-agent name="LVM-activate" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/LinuxSCSI b/heartbeat/LinuxSCSI
+index 015251eac4..306e7ee7ba 100755
+--- a/heartbeat/LinuxSCSI
++++ b/heartbeat/LinuxSCSI
+@@ -113,7 +113,7 @@ meta_data() {
+ 	cat <<EOF
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="LinuxSCSI">
++<resource-agent name="LinuxSCSI" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/MailTo b/heartbeat/MailTo
+index a180f21ffd..56940bafaa 100755
+--- a/heartbeat/MailTo
++++ b/heartbeat/MailTo
+@@ -52,7 +52,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="MailTo">
++<resource-agent name="MailTo" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/ManageRAID.in b/heartbeat/ManageRAID.in
+index 97301d6e0b..bf5c745f6e 100644
+--- a/heartbeat/ManageRAID.in
++++ b/heartbeat/ManageRAID.in
+@@ -96,8 +96,8 @@ meta_data()
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="ManageRAID">
+-  <version>1.00.2</version>
++<resource-agent name="ManageRAID" version="1.00.2">
++  <version>1.0</version>
+ 
+   <longdesc lang="en">
+     Manages starting, stopping and monitoring of RAID devices which
+diff --git a/heartbeat/ManageVE.in b/heartbeat/ManageVE.in
+index b8d251d391..f07ca5bdc6 100644
+--- a/heartbeat/ManageVE.in
++++ b/heartbeat/ManageVE.in
+@@ -73,8 +73,8 @@ meta_data()
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="ManageVE">
+-  <version>1.00.4</version>
++<resource-agent name="ManageVE" version="1.00.4">
++  <version>1.0</version>
+ 
+   <longdesc lang="en">
+     This OCF compliant resource agent manages OpenVZ VEs and thus requires
+diff --git a/heartbeat/NodeUtilization b/heartbeat/NodeUtilization
+index 64b812581b..f98ab13e9c 100755
+--- a/heartbeat/NodeUtilization
++++ b/heartbeat/NodeUtilization
+@@ -58,7 +58,7 @@ NodeUtilization_meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="NodeUtilization">
++<resource-agent name="NodeUtilization" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/Pure-FTPd b/heartbeat/Pure-FTPd
+index 6638c9db2b..1499dddc98 100755
+--- a/heartbeat/Pure-FTPd
++++ b/heartbeat/Pure-FTPd
+@@ -54,7 +54,7 @@ meta_data() {
+     cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="Pure-FTPd">
++<resource-agent name="Pure-FTPd" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ This script manages Pure-FTPd in an Active-Passive setup
+diff --git a/heartbeat/Raid1 b/heartbeat/Raid1
+index d719df9574..924d94c305 100755
+--- a/heartbeat/Raid1
++++ b/heartbeat/Raid1
+@@ -67,7 +67,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="Raid1">
++<resource-agent name="Raid1" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/Route b/heartbeat/Route
+index 3faf6d52ee..8b390615af 100755
+--- a/heartbeat/Route
++++ b/heartbeat/Route
+@@ -50,7 +50,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="Route">
++<resource-agent name="Route" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/SAPDatabase b/heartbeat/SAPDatabase
+index 3486303f10..563a6f3469 100755
+--- a/heartbeat/SAPDatabase
++++ b/heartbeat/SAPDatabase
+@@ -109,8 +109,8 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="SAPDatabase">
+-<version>2.14</version>
++<resource-agent name="SAPDatabase" version="2.14">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Resource script for SAP databases. It manages a SAP database of any type as an HA resource.
+diff --git a/heartbeat/SAPInstance b/heartbeat/SAPInstance
+index f8bcbc05b8..016f59aff2 100755
+--- a/heartbeat/SAPInstance
++++ b/heartbeat/SAPInstance
+@@ -110,8 +110,8 @@ sapinstance_meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="SAPInstance">
+-<version>2.14</version>
++<resource-agent name="SAPInstance" version="2.14">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Usually a SAP system consists of one database and at least one or more SAP instances (sometimes called application servers). One SAP Instance is defined by having exactly one instance profile. The instance profiles can usually be found in the directory /sapmnt/SID/profile. Each instance must be configured as it's own resource in the cluster configuration.
+diff --git a/heartbeat/SendArp b/heartbeat/SendArp
+index 9e4cbb1649..5af7bec3be 100755
+--- a/heartbeat/SendArp
++++ b/heartbeat/SendArp
+@@ -82,7 +82,7 @@ sendarp_meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="SendArp">
++<resource-agent name="SendArp" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/ServeRAID b/heartbeat/ServeRAID
+index 5c5b90451d..6d6596f00a 100755
+--- a/heartbeat/ServeRAID
++++ b/heartbeat/ServeRAID
+@@ -117,7 +117,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="ServeRAID">
++<resource-agent name="ServeRAID" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/SphinxSearchDaemon b/heartbeat/SphinxSearchDaemon
+index cad03794d6..d4e9e855f6 100755
+--- a/heartbeat/SphinxSearchDaemon
++++ b/heartbeat/SphinxSearchDaemon
+@@ -51,7 +51,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="SphinxSearchDaemon">
++<resource-agent name="SphinxSearchDaemon" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/Squid.in b/heartbeat/Squid.in
+index b186f9ab12..12e2489364 100644
+--- a/heartbeat/Squid.in
++++ b/heartbeat/Squid.in
+@@ -87,7 +87,7 @@ metadata_squid()
+     cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="Squid">
++<resource-agent name="Squid" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/Stateful b/heartbeat/Stateful
+index cc461405a2..aa2284467d 100755
+--- a/heartbeat/Stateful
++++ b/heartbeat/Stateful
+@@ -45,7 +45,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="Stateful">
++<resource-agent name="Stateful" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/SysInfo.in b/heartbeat/SysInfo.in
+index df4bf6dc00..c57b7b6614 100644
+--- a/heartbeat/SysInfo.in
++++ b/heartbeat/SysInfo.in
+@@ -48,7 +48,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="SysInfo">
++<resource-agent name="SysInfo" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/VIPArip b/heartbeat/VIPArip
+index 5fc7c94c91..688237d9d2 100755
+--- a/heartbeat/VIPArip
++++ b/heartbeat/VIPArip
+@@ -49,7 +49,7 @@ meta_data() {
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="VIPArip">
++<resource-agent name="VIPArip" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/VirtualDomain b/heartbeat/VirtualDomain
+index 140e297361..8db947a516 100755
+--- a/heartbeat/VirtualDomain
++++ b/heartbeat/VirtualDomain
+@@ -77,8 +77,8 @@ VirtualDomain_meta_data() {
+ 		cat <<EOF
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="VirtualDomain">
+-<version>1.1</version>
++<resource-agent name="VirtualDomain" version="1.1">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Resource agent for a virtual domain (a.k.a. domU, virtual machine,
+diff --git a/heartbeat/WAS b/heartbeat/WAS
+index 3d9831dab8..15b56e99e0 100755
+--- a/heartbeat/WAS
++++ b/heartbeat/WAS
+@@ -105,7 +105,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="WAS">
++<resource-agent name="WAS" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/WAS6 b/heartbeat/WAS6
+index 8f5f287e06..9223a7ee5b 100755
+--- a/heartbeat/WAS6
++++ b/heartbeat/WAS6
+@@ -87,7 +87,7 @@ meta_data() {
+         cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="WAS6">
++<resource-agent name="WAS6" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/WinPopup b/heartbeat/WinPopup
+index ee3f68346e..b48f3b9435 100755
+--- a/heartbeat/WinPopup
++++ b/heartbeat/WinPopup
+@@ -42,7 +42,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="WinPopup">
++<resource-agent name="WinPopup" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/Xen b/heartbeat/Xen
+index d28e96db68..1ef20d7b79 100755
+--- a/heartbeat/Xen
++++ b/heartbeat/Xen
+@@ -70,7 +70,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="Xen">
++<resource-agent name="Xen" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/Xinetd b/heartbeat/Xinetd
+index e4cef5a1fa..778e18c1a9 100755
+--- a/heartbeat/Xinetd
++++ b/heartbeat/Xinetd
+@@ -38,7 +38,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="Xinetd">
++<resource-agent name="Xinetd" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/ZFS b/heartbeat/ZFS
+index 3e1c0e934e..5574d328f0 100755
+--- a/heartbeat/ZFS
++++ b/heartbeat/ZFS
+@@ -38,7 +38,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="ZFS">
++<resource-agent name="ZFS" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ This script manages ZFS pools
+diff --git a/heartbeat/aliyun-vpc-move-ip b/heartbeat/aliyun-vpc-move-ip
+index feb575b60c..1a3a1a014c 100755
+--- a/heartbeat/aliyun-vpc-move-ip
++++ b/heartbeat/aliyun-vpc-move-ip
+@@ -175,8 +175,8 @@ ecs_ip_metadata() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="aliyun-vpc-move-ip">
+-<version>2.0</version>
++<resource-agent name="aliyun-vpc-move-ip" version="2.0">
++<version>1.0</version>
+ <longdesc lang="en">
+ Resource Agent to move IP addresses within a VPC of the Aliyun Webservices ECS
+ by changing an entry in an specific routing table
+diff --git a/heartbeat/anything b/heartbeat/anything
+index 766895a5d4..137a612634 100755
+--- a/heartbeat/anything
++++ b/heartbeat/anything
+@@ -236,7 +236,7 @@ anything_meta() {
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="anything">
++<resource-agent name="anything" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ This is a generic OCF RA to manage almost anything.
+diff --git a/heartbeat/apache b/heartbeat/apache
+index b249a46c75..448225ed77 100755
+--- a/heartbeat/apache
++++ b/heartbeat/apache
+@@ -474,7 +474,7 @@ apache_meta_data(){
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="apache">
++<resource-agent name="apache" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/asterisk b/heartbeat/asterisk
+index ed34d7a10f..272a350f91 100755
+--- a/heartbeat/asterisk
++++ b/heartbeat/asterisk
+@@ -86,7 +86,7 @@ meta_data() {
+     cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="asterisk">
++<resource-agent name="asterisk" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/aws-vpc-move-ip b/heartbeat/aws-vpc-move-ip
+index 3ca3d6bd63..5d52040808 100755
+--- a/heartbeat/aws-vpc-move-ip
++++ b/heartbeat/aws-vpc-move-ip
+@@ -76,8 +76,8 @@ metadata() {
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="aws-vpc-move-ip">
+-<version>2.0</version>
++<resource-agent name="aws-vpc-move-ip" version="2.0">
++<version>1.0</version>
+ <longdesc lang="en">
+ Resource Agent to move IP addresses within a VPC of the Amazon Webservices EC2
+ by changing an entry in an specific routing table
+diff --git a/heartbeat/aws-vpc-route53.in b/heartbeat/aws-vpc-route53.in
+index f7c2dc2427..22cbb35833 100644
+--- a/heartbeat/aws-vpc-route53.in
++++ b/heartbeat/aws-vpc-route53.in
+@@ -75,7 +75,7 @@ metadata() {
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="aws-vpc-route53">
++<resource-agent name="aws-vpc-route53" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ Update Route53 record of Amazon Webservices EC2 by updating an entry in a
+diff --git a/heartbeat/awseip b/heartbeat/awseip
+index 12ffffaa3c..dc48460c85 100755
+--- a/heartbeat/awseip
++++ b/heartbeat/awseip
+@@ -55,7 +55,7 @@ meta_data() {
+     cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="awseip">
++<resource-agent name="awseip" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/awsvip b/heartbeat/awsvip
+index 044d049c6b..037278e296 100755
+--- a/heartbeat/awsvip
++++ b/heartbeat/awsvip
+@@ -54,7 +54,7 @@ meta_data() {
+     cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="awsvip">
++<resource-agent name="awsvip" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/azure-lb b/heartbeat/azure-lb
+index ade1b45772..7f585bf77c 100755
+--- a/heartbeat/azure-lb
++++ b/heartbeat/azure-lb
+@@ -47,7 +47,7 @@ lb_metadata() {
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="azure-lb">
++<resource-agent name="azure-lb" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ Resource agent to answer Azure Load Balancer health probe requests
+diff --git a/heartbeat/clvm.in b/heartbeat/clvm.in
+index fd9afe24dd..a5db7a5134 100644
+--- a/heartbeat/clvm.in
++++ b/heartbeat/clvm.in
+@@ -48,7 +48,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="clvm">
++<resource-agent name="clvm" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/conntrackd.in b/heartbeat/conntrackd.in
+index aa6d3b8c94..f115250d6c 100644
+--- a/heartbeat/conntrackd.in
++++ b/heartbeat/conntrackd.in
+@@ -46,8 +46,8 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="conntrackd">
+-<version>1.2</version>
++<resource-agent name="conntrackd" version="1.2">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Master/Slave OCF Resource Agent for conntrackd
+diff --git a/heartbeat/crypt b/heartbeat/crypt
+index 05bded7c56..56db379666 100755
+--- a/heartbeat/crypt
++++ b/heartbeat/crypt
+@@ -50,7 +50,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="crypt">
++<resource-agent name="crypt" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/db2 b/heartbeat/db2
+index 459136cbd7..03146a9570 100755
+--- a/heartbeat/db2
++++ b/heartbeat/db2
+@@ -58,7 +58,7 @@ db2_meta_data() {
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="db2">
++<resource-agent name="db2" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ Resource Agent that manages an IBM DB2 LUW databases in Standard role as primitive or in HADR roles in master/slave configuration. Multiple partitions are supported.
+diff --git a/heartbeat/dhcpd b/heartbeat/dhcpd
+index 46027b39b9..4df4923778 100755
+--- a/heartbeat/dhcpd
++++ b/heartbeat/dhcpd
+@@ -83,8 +83,8 @@ dhcpd_meta_data()  {
+         cat <<EOF
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="dhcpd">
+-  <version>0.1</version>
++<resource-agent name="dhcpd" version="0.1">
++  <version>1.0</version>
+   <longdesc lang="en">
+ Manage an ISC DHCP server service in a chroot environment.
+   </longdesc>
+diff --git a/heartbeat/dnsupdate.in b/heartbeat/dnsupdate.in
+index 34a6c56f30..4fcd2a8ba2 100644
+--- a/heartbeat/dnsupdate.in
++++ b/heartbeat/dnsupdate.in
+@@ -47,7 +47,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="dnsupdate">
++<resource-agent name="dnsupdate" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/docker b/heartbeat/docker
+index 41ac421293..11b46a85a6 100755
+--- a/heartbeat/docker
++++ b/heartbeat/docker
+@@ -46,7 +46,7 @@ meta_data()
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="docker">
++<resource-agent name="docker" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/docker-compose b/heartbeat/docker-compose
+index 79043ef332..3bc6774186 100755
+--- a/heartbeat/docker-compose
++++ b/heartbeat/docker-compose
+@@ -54,8 +54,8 @@ meta_data()
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="docker-compose">
+-<version>1.0.3</version>
++<resource-agent name="docker-compose" version="1.0.3">
++<version>1.0</version>
+ <longdesc lang="en">
+ Manages docker services using docker-compose as an OCF resource in an High Availability setup.
+ It relies on a well-tested docker compose YAML file which distributed on an identical location on all cluster nodes.
+diff --git a/heartbeat/dovecot b/heartbeat/dovecot
+index edd3d1ba96..5775241c94 100755
+--- a/heartbeat/dovecot
++++ b/heartbeat/dovecot
+@@ -49,8 +49,8 @@ meta_data() {
+         cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="dovecot">
+-<version>0.1</version>
++<resource-agent name="dovecot" version="0.1">
++<version>1.0</version>
+ <longdesc lang="en">
+ This script manages Dovecot as an OCF resource in a high-availability setup.
+ </longdesc>
+diff --git a/heartbeat/eDir88.in b/heartbeat/eDir88.in
+index 2ef8bbd7cd..cd945d2c31 100644
+--- a/heartbeat/eDir88.in
++++ b/heartbeat/eDir88.in
+@@ -81,7 +81,7 @@ eDir_meta_data() {
+ cat <<-EOFB
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="eDir88">
++<resource-agent name="eDir88" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/ethmonitor b/heartbeat/ethmonitor
+index cf0321ab40..e2c3efa285 100755
+--- a/heartbeat/ethmonitor
++++ b/heartbeat/ethmonitor
+@@ -79,8 +79,8 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="ethmonitor">
+-<version>1.2</version>
++<resource-agent name="ethmonitor" version="1.2">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Monitor the vitality of a local network interface.
+diff --git a/heartbeat/exportfs b/heartbeat/exportfs
+index 15f30bcbd3..2ad0e9892e 100755
+--- a/heartbeat/exportfs
++++ b/heartbeat/exportfs
+@@ -27,7 +27,7 @@ exportfs_meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="exportfs">
++<resource-agent name="exportfs" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/fio.in b/heartbeat/fio.in
+index 0347c1ca60..4a312517b4 100644
+--- a/heartbeat/fio.in
++++ b/heartbeat/fio.in
+@@ -43,7 +43,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="fio">
++<resource-agent name="fio" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/galera.in b/heartbeat/galera.in
+index 7f5f2f1eb2..c363eb2546 100755
+--- a/heartbeat/galera.in
++++ b/heartbeat/galera.in
+@@ -125,7 +125,7 @@ meta_data() {
+    cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="galera">
++<resource-agent name="galera" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/garbd b/heartbeat/garbd
+index f2a7266dc7..24a6e69bfc 100755
+--- a/heartbeat/garbd
++++ b/heartbeat/garbd
+@@ -101,7 +101,7 @@ meta_data() {
+    cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="garbd">
++<resource-agent name="garbd" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/gcp-ilb b/heartbeat/gcp-ilb
+index 0bac316c4c..28484b2416 100755
+--- a/heartbeat/gcp-ilb
++++ b/heartbeat/gcp-ilb
+@@ -70,7 +70,7 @@ ilb_metadata() {
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="gcp-ilb">
++<resource-agent name="gcp-ilb" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+     Resource Agent that wraps /usr/bin/nc or /usr/bin/socat to reply to health checks in Google Cloud.
+diff --git a/heartbeat/gcp-pd-move.in b/heartbeat/gcp-pd-move.in
+index cbe703c3c5..1e811196e3 100644
+--- a/heartbeat/gcp-pd-move.in
++++ b/heartbeat/gcp-pd-move.in
+@@ -68,7 +68,7 @@ METADATA_SERVER = 'http://metadata.google.internal/computeMetadata/v1/'
+ METADATA_HEADERS = {'Metadata-Flavor': 'Google'}
+ METADATA = '''<?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="gcp-pd-move">
++<resource-agent name="gcp-pd-move" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ Resource Agent that can attach or detach a regional/zonal disk on current GCP
+diff --git a/heartbeat/gcp-vpc-move-ip.in b/heartbeat/gcp-vpc-move-ip.in
+index c9393481e6..2e63b2bf48 100755
+--- a/heartbeat/gcp-vpc-move-ip.in
++++ b/heartbeat/gcp-vpc-move-ip.in
+@@ -68,7 +68,7 @@ metadata() {
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="gcp-vpc-move-ip">
++<resource-agent name="gcp-vpc-move-ip" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ Resource Agent that can move a floating IP addresse within a GCP VPC by changing an 
+diff --git a/heartbeat/gcp-vpc-move-route.in b/heartbeat/gcp-vpc-move-route.in
+index 6b240c04d0..3f543feeaa 100644
+--- a/heartbeat/gcp-vpc-move-route.in
++++ b/heartbeat/gcp-vpc-move-route.in
+@@ -70,7 +70,7 @@ METADATA_HEADERS = {'Metadata-Flavor': 'Google'}
+ METADATA = \
+ '''<?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="gcp-vpc-move-route">
++<resource-agent name="gcp-vpc-move-route" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ Resource Agent that can move a floating IP addresse within a GCP VPC by changing an
+diff --git a/heartbeat/gcp-vpc-move-vip.in b/heartbeat/gcp-vpc-move-vip.in
+index 7e9d61f551..331226be5e 100755
+--- a/heartbeat/gcp-vpc-move-vip.in
++++ b/heartbeat/gcp-vpc-move-vip.in
+@@ -61,7 +61,7 @@ METADATA_HEADERS = {'Metadata-Flavor': 'Google'}
+ METADATA = \
+ '''<?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="gcp-vpc-move-vip">
++<resource-agent name="gcp-vpc-move-vip" version="1.0">
+   <version>1.0</version>
+   <longdesc lang="en">Floating IP Address or Range on Google Cloud Platform - Using Alias IP address functionality to attach a secondary IP range to a running instance</longdesc>
+   <shortdesc lang="en">Floating IP Address or Range on Google Cloud Platform</shortdesc>
+diff --git a/heartbeat/iSCSILogicalUnit.in b/heartbeat/iSCSILogicalUnit.in
+index 767c739666..86ab1b095d 100644
+--- a/heartbeat/iSCSILogicalUnit.in
++++ b/heartbeat/iSCSILogicalUnit.in
+@@ -91,8 +91,8 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="iSCSILogicalUnit">
+-<version>0.9</version>
++<resource-agent name="iSCSILogicalUnit" version="0.9">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Manages iSCSI Logical Unit. An iSCSI Logical unit is a subdivision of
+diff --git a/heartbeat/iSCSITarget.in b/heartbeat/iSCSITarget.in
+index 2bfc718b8f..221d484773 100644
+--- a/heartbeat/iSCSITarget.in
++++ b/heartbeat/iSCSITarget.in
+@@ -62,8 +62,8 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="iSCSITarget">
+-<version>0.9</version>
++<resource-agent name="iSCSITarget" version="0.9">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Manages iSCSI targets. An iSCSI target is a collection of SCSI Logical
+diff --git a/heartbeat/ids b/heartbeat/ids
+index 8300f69a5c..0d9e1e169e 100755
+--- a/heartbeat/ids
++++ b/heartbeat/ids
+@@ -129,7 +129,7 @@ ids_meta_data() {
+     cat <<-!
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="ids">
++<resource-agent name="ids" version="1.0">
+ <version>1.0</version>
+ 
+ 
+diff --git a/heartbeat/iface-bridge b/heartbeat/iface-bridge
+index e1dfecbff4..75d5371ddd 100755
+--- a/heartbeat/iface-bridge
++++ b/heartbeat/iface-bridge
+@@ -98,7 +98,7 @@ bridge_meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="iface-bridge">
++<resource-agent name="iface-bridge" version="1.0">
+   <version>1.0</version>
+ 
+   <longdesc lang="en">
+diff --git a/heartbeat/iface-vlan b/heartbeat/iface-vlan
+index d0481373c0..019c2e158c 100755
+--- a/heartbeat/iface-vlan
++++ b/heartbeat/iface-vlan
+@@ -76,7 +76,7 @@ vlan_meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="iface-vlan">
++<resource-agent name="iface-vlan" version="1.0">
+   <version>1.0</version>
+ 
+   <longdesc lang="en">
+diff --git a/heartbeat/ipsec b/heartbeat/ipsec
+index c35c2b337f..c842955bf1 100755
+--- a/heartbeat/ipsec
++++ b/heartbeat/ipsec
+@@ -50,7 +50,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="ipsec">
++<resource-agent name="ipsec" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/iscsi b/heartbeat/iscsi
+index 602a658014..d25aec234a 100755
+--- a/heartbeat/iscsi
++++ b/heartbeat/iscsi
+@@ -71,7 +71,7 @@ meta_data() {
+ 	cat <<EOF
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="iscsi">
++<resource-agent name="iscsi" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/jboss b/heartbeat/jboss
+index 76460dabde..948355a083 100755
+--- a/heartbeat/jboss
++++ b/heartbeat/jboss
+@@ -329,7 +329,7 @@ metadata_jboss()
+     cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="jboss">
++<resource-agent name="jboss" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/jira.in b/heartbeat/jira.in
+index 6a4d9c5705..66a8e53f0d 100644
+--- a/heartbeat/jira.in
++++ b/heartbeat/jira.in
+@@ -198,8 +198,8 @@ jira_meta_data(){
+     cat <<EOF
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="jira">
+-  <version>0.1</version>
++<resource-agent name="jira" version="0.1">
++  <version>1.0</version>
+   <longdesc lang="en">
+ OCF Resource Agent to manage JIRA software
+   </longdesc>
+diff --git a/heartbeat/kamailio.in b/heartbeat/kamailio.in
+index ec194a9135..4f6af3dbd0 100644
+--- a/heartbeat/kamailio.in
++++ b/heartbeat/kamailio.in
+@@ -89,7 +89,7 @@ meta_data() {
+   cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="kamailio">
++<resource-agent name="kamailio" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/lvmlockd b/heartbeat/lvmlockd
+index 685eda36e0..05bb0a2e55 100755
+--- a/heartbeat/lvmlockd
++++ b/heartbeat/lvmlockd
+@@ -50,7 +50,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="lvmlockd">
++<resource-agent name="lvmlockd" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/lxc.in b/heartbeat/lxc.in
+index b6c076b32d..1ffbc46ad3 100644
+--- a/heartbeat/lxc.in
++++ b/heartbeat/lxc.in
+@@ -58,8 +58,8 @@ meta_data() {
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="lxc">
+-<version>0.1</version>
++<resource-agent name="lxc" version="0.1">
++<version>1.0</version>
+ <longdesc lang="en">Allows LXC containers to be managed by the cluster.
+ Notes for lxc Versions before 1.0.0, where the Container is stopped using kill -PWR instead of lxc-stop:
+ It is 'assumed' that the 'init' system will do an orderly shudown if presented with a 'kill -PWR' signal.
+diff --git a/heartbeat/lxd-info.in b/heartbeat/lxd-info.in
+index 5fc928aff3..f9fb44ac49 100644
+--- a/heartbeat/lxd-info.in
++++ b/heartbeat/lxd-info.in
+@@ -48,7 +48,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="lxd-info">
++<resource-agent name="lxd-info" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/machine-info.in b/heartbeat/machine-info.in
+index aa9bbd4c4c..bfa7ce5fc0 100644
+--- a/heartbeat/machine-info.in
++++ b/heartbeat/machine-info.in
+@@ -48,7 +48,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="machine-info">
++<resource-agent name="machine-info" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/mariadb.in b/heartbeat/mariadb.in
+index c1969d70e0..3b6feb6f88 100644
+--- a/heartbeat/mariadb.in
++++ b/heartbeat/mariadb.in
+@@ -72,7 +72,7 @@ meta_data() {
+    cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="mariadb">
++<resource-agent name="mariadb" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/mdraid b/heartbeat/mdraid
+index 6f5f563f77..1e6a5d0276 100755
+--- a/heartbeat/mdraid
++++ b/heartbeat/mdraid
+@@ -51,7 +51,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="mdraid">
++<resource-agent name="mdraid" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/minio b/heartbeat/minio
+index 8b47561a49..16ceeed422 100755
+--- a/heartbeat/minio
++++ b/heartbeat/minio
+@@ -53,7 +53,7 @@ meta_data() {
+         cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="minio">
++<resource-agent name="minio" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ This script manages Minio in an Active-Passive setup
+diff --git a/heartbeat/mpathpersist.in b/heartbeat/mpathpersist.in
+index 813a1b1fdc..fcf1b3a4bd 100644
+--- a/heartbeat/mpathpersist.in
++++ b/heartbeat/mpathpersist.in
+@@ -74,8 +74,8 @@ meta_data() {
+     cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="mpathpersist">
+-<version>1.1</version>
++<resource-agent name="mpathpersist" version="1.1">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ This resource agent manages SCSI persistent reservations on multipath devices.
+diff --git a/heartbeat/mysql b/heartbeat/mysql
+index a1a223cf10..720de8c1a6 100755
+--- a/heartbeat/mysql
++++ b/heartbeat/mysql
+@@ -75,7 +75,7 @@ meta_data() {
+    cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="mysql">
++<resource-agent name="mysql" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/mysql-proxy b/heartbeat/mysql-proxy
+index b79f311259..e34396d9a5 100755
+--- a/heartbeat/mysql-proxy
++++ b/heartbeat/mysql-proxy
+@@ -109,8 +109,8 @@ meta_data() {
+         cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="mysql-proxy">
+-<version>0.1</version>
++<resource-agent name="mysql-proxy" version="0.1">
++<version>1.0</version>
+ <longdesc lang="en">
+ This script manages MySQL Proxy as an OCF resource in a high-availability setup.
+ 
+diff --git a/heartbeat/nagios b/heartbeat/nagios
+index 3d07b141c8..a45d5b8be8 100755
+--- a/heartbeat/nagios
++++ b/heartbeat/nagios
+@@ -52,8 +52,8 @@ nagios_meta_data() {
+         cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="nagios">
+-<version>0.75</version>
++<resource-agent name="nagios" version="0.75">
++<version>1.0</version>
+ 
+ <longdesc lang="en">OCF Resource script for Nagios 3.x or 4.x. It manages a Nagios instance as a HA resource.</longdesc>
+ <shortdesc lang="en">Nagios resource agent</shortdesc>
+diff --git a/heartbeat/named b/heartbeat/named
+index 535410df57..f3a17e9ecd 100755
+--- a/heartbeat/named
++++ b/heartbeat/named
+@@ -67,7 +67,7 @@ named_meta_data() {
+         cat <<EOF
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="named">
++<resource-agent name="named" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/nfsnotify.in b/heartbeat/nfsnotify.in
+index 8e80f77e97..6e49535577 100644
+--- a/heartbeat/nfsnotify.in
++++ b/heartbeat/nfsnotify.in
+@@ -58,7 +58,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="nfsnotify">
++<resource-agent name="nfsnotify" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/nfsserver b/heartbeat/nfsserver
+index 96b19abe36..9624ad3abd 100755
+--- a/heartbeat/nfsserver
++++ b/heartbeat/nfsserver
+@@ -39,7 +39,7 @@ nfsserver_meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="nfsserver">
++<resource-agent name="nfsserver" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/nginx b/heartbeat/nginx
+index 9a778c7f58..07da7681b3 100755
+--- a/heartbeat/nginx
++++ b/heartbeat/nginx
+@@ -636,7 +636,7 @@ metadata_nginx(){
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="nginx">
++<resource-agent name="nginx" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/nvmet-namespace b/heartbeat/nvmet-namespace
+index 0ea31f121b..fa9a9f8e9c 100755
+--- a/heartbeat/nvmet-namespace
++++ b/heartbeat/nvmet-namespace
+@@ -41,8 +41,8 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="nvmet-namespace">
+-<version>0.9</version>
++<resource-agent name="nvmet-namespace" version="0.9">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Manages NVMe-oF namespaces. An NVMe-oF namespace is part of an NVMe-oF target.
+diff --git a/heartbeat/nvmet-port b/heartbeat/nvmet-port
+index 8728857d97..cbf1109754 100755
+--- a/heartbeat/nvmet-port
++++ b/heartbeat/nvmet-port
+@@ -46,8 +46,8 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="nvmet-port">
+-<version>0.9</version>
++<resource-agent name="nvmet-port" version="0.9">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Manages NVMe-oF ports. An NVMe-oF port is part of an NVMe-oF target.
+diff --git a/heartbeat/nvmet-subsystem b/heartbeat/nvmet-subsystem
+index d469fc17b2..e004ec142d 100755
+--- a/heartbeat/nvmet-subsystem
++++ b/heartbeat/nvmet-subsystem
+@@ -41,8 +41,8 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="nvmet-subsystem">
+-<version>0.9</version>
++<resource-agent name="nvmet-subsystem" version="0.9">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Manages NVMe-oF subsystems. An NVMe-oF subsystem is part of an NVMe-oF target.
+diff --git a/heartbeat/openstack-cinder-volume b/heartbeat/openstack-cinder-volume
+index f18fb5c5e4..4cea25f037 100755
+--- a/heartbeat/openstack-cinder-volume
++++ b/heartbeat/openstack-cinder-volume
+@@ -59,8 +59,8 @@ metadata() {
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="openstack-cinder-volume">
+-<version>2.0</version>
++<resource-agent name="openstack-cinder-volume" version="2.0">
++<version>1.0</version>
+ <longdesc lang="en">
+ Resource Agent to attach a cinder volume to an instance.
+ It relies on attributes given by openstack-info resource agent (openstack_id attribute).
+diff --git a/heartbeat/openstack-floating-ip b/heartbeat/openstack-floating-ip
+index 0e4a96099f..6a0c5bd7b2 100755
+--- a/heartbeat/openstack-floating-ip
++++ b/heartbeat/openstack-floating-ip
+@@ -57,8 +57,8 @@ metadata() {
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="openstack-floating-ip">
+-<version>2.0</version>
++<resource-agent name="openstack-floating-ip" version="2.0">
++<version>1.0</version>
+ <longdesc lang="en">
+ Resource Agent to move a floating IP address from an instance to another one.
+ It relies on attributes given by openstack-info resource agent (openstack_ports, openstack_id attributes).
+diff --git a/heartbeat/openstack-info.in b/heartbeat/openstack-info.in
+index 95c95d28ff..53215ed2ef 100755
+--- a/heartbeat/openstack-info.in
++++ b/heartbeat/openstack-info.in
+@@ -53,7 +53,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="openstack-info">
++<resource-agent name="openstack-info" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/openstack-virtual-ip b/heartbeat/openstack-virtual-ip
+index 45aa87d82e..d96705fdfc 100755
+--- a/heartbeat/openstack-virtual-ip
++++ b/heartbeat/openstack-virtual-ip
+@@ -57,8 +57,8 @@ metadata() {
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="openstack-virtual-ip">
+-<version>2.0</version>
++<resource-agent name="openstack-virtual-ip" version="2.0">
++<version>1.0</version>
+ <longdesc lang="en">
+ Resource Agent to move a virtual IP address from an instance to another one
+ by adding an allowed-address pair associated with an instance port.
+diff --git a/heartbeat/oraasm b/heartbeat/oraasm
+index 3cc3342125..34c8df0b11 100755
+--- a/heartbeat/oraasm
++++ b/heartbeat/oraasm
+@@ -42,8 +42,8 @@ oraasm_meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="oraasm">
+-<version>0.75</version>
++<resource-agent name="oraasm" version="0.75">
++<version>1.0</version>
+ 
+ <longdesc lang="en">OCF Resource script for Oracle ASM. It uses the ohasd init-script to manage a Oracle ASM Disk Group as a HA resource.</longdesc>
+ <shortdesc lang="en">Oracle ASM resource agent</shortdesc>
+diff --git a/heartbeat/oracle b/heartbeat/oracle
+index 124060834e..caee18a8ac 100755
+--- a/heartbeat/oracle
++++ b/heartbeat/oracle
+@@ -74,7 +74,7 @@ oracle_meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="oracle">
++<resource-agent name="oracle" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/oralsnr b/heartbeat/oralsnr
+index 1ecf8fca88..dd0df1c614 100755
+--- a/heartbeat/oralsnr
++++ b/heartbeat/oralsnr
+@@ -70,7 +70,7 @@ oralsnr_meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="oralsnr">
++<resource-agent name="oralsnr" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/ovsmonitor b/heartbeat/ovsmonitor
+index 8a80a8c923..d03902ea88 100755
+--- a/heartbeat/ovsmonitor
++++ b/heartbeat/ovsmonitor
+@@ -72,8 +72,8 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="ovsmonitor">
+-<version>0.1</version>
++<resource-agent name="ovsmonitor" version="0.1">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Monitor the vitality of a local ovs bond.
+diff --git a/heartbeat/pgagent b/heartbeat/pgagent
+index eea80fe4ac..b1e61b35d0 100755
+--- a/heartbeat/pgagent
++++ b/heartbeat/pgagent
+@@ -79,7 +79,7 @@ meta_data() {
+         cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="pgagent">
++<resource-agent name="pgagent" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">This is a pgagent Resource Agent.</longdesc>
+ <shortdesc lang="en">Controls pgagent</shortdesc>
+diff --git a/heartbeat/pgsql b/heartbeat/pgsql
+index a93400c0e5..e3a39038fb 100755
+--- a/heartbeat/pgsql
++++ b/heartbeat/pgsql
+@@ -132,7 +132,7 @@ meta_data() {
+     cat <<EOF
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="pgsql">
++<resource-agent name="pgsql" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/pingd b/heartbeat/pingd
+index 57fa0dba37..e2d5c31a66 100755
+--- a/heartbeat/pingd
++++ b/heartbeat/pingd
+@@ -61,7 +61,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="pingd">
++<resource-agent name="pingd" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/podman b/heartbeat/podman
+index 034dfff76e..fd901c968e 100755
+--- a/heartbeat/podman
++++ b/heartbeat/podman
+@@ -47,7 +47,7 @@ meta_data()
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="podman">
++<resource-agent name="podman" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/portblock b/heartbeat/portblock
+index 2e84a101f9..f1a7cc8c1b 100755
+--- a/heartbeat/portblock
++++ b/heartbeat/portblock
+@@ -131,7 +131,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="portblock">
++<resource-agent name="portblock" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/postfix b/heartbeat/postfix
+index 300fbc3688..7f88a91fbe 100755
+--- a/heartbeat/postfix
++++ b/heartbeat/postfix
+@@ -52,8 +52,8 @@ meta_data() {
+         cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="postfix">
+-<version>0.1</version>
++<resource-agent name="postfix" version="0.1">
++<version>1.0</version>
+ <longdesc lang="en">
+ This script manages Postfix as an OCF resource in a high-availability setup.
+ </longdesc>
+diff --git a/heartbeat/pound b/heartbeat/pound
+index 7a0ad547b4..48aa221839 100755
+--- a/heartbeat/pound
++++ b/heartbeat/pound
+@@ -50,7 +50,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="pound">
++<resource-agent name="pound" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/proftpd b/heartbeat/proftpd
+index e5cf36eece..a9fc5ffd76 100755
+--- a/heartbeat/proftpd
++++ b/heartbeat/proftpd
+@@ -61,7 +61,7 @@ meta_data() {
+         cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="proftpd">
++<resource-agent name="proftpd" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ This script manages Proftpd in an Active-Passive setup
+diff --git a/heartbeat/rabbitmq-cluster.in b/heartbeat/rabbitmq-cluster.in
+index abd0662f26..0b8916c287 100755
+--- a/heartbeat/rabbitmq-cluster.in
++++ b/heartbeat/rabbitmq-cluster.in
+@@ -67,7 +67,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="rabbitmq-cluster">
++<resource-agent name="rabbitmq-cluster" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/redis.in b/heartbeat/redis.in
+index f53d469641..7f886c7ea9 100755
+--- a/heartbeat/redis.in
++++ b/heartbeat/redis.in
+@@ -91,7 +91,7 @@ redis_meta_data() {
+ 	cat <<EOI
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="redis">
++<resource-agent name="redis" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/rkt b/heartbeat/rkt
+index 2d3ef0e24c..724986f6c8 100755
+--- a/heartbeat/rkt
++++ b/heartbeat/rkt
+@@ -40,7 +40,7 @@ meta_data()
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="rkt">
++<resource-agent name="rkt" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/rsyncd b/heartbeat/rsyncd
+index cd4ab91c5a..d15aaf6a8a 100755
+--- a/heartbeat/rsyncd
++++ b/heartbeat/rsyncd
+@@ -52,7 +52,7 @@ meta_data()
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="rsyncd">
++<resource-agent name="rsyncd" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ This script manages rsync daemon
+diff --git a/heartbeat/rsyslog.in b/heartbeat/rsyslog.in
+index 9cb9a0ad68..80d5c17563 100644
+--- a/heartbeat/rsyslog.in
++++ b/heartbeat/rsyslog.in
+@@ -74,7 +74,7 @@ metadata_rsyslog()
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="rsyslog">
++<resource-agent name="rsyslog" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/scsi2reservation b/heartbeat/scsi2reservation
+index 3e4ff9584f..9b29ec4608 100755
+--- a/heartbeat/scsi2reservation
++++ b/heartbeat/scsi2reservation
+@@ -23,7 +23,7 @@ scsi2reserve_meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="scsi2reservation">
++<resource-agent name="scsi2reservation" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/sfex b/heartbeat/sfex
+index ac82191938..b079ca0aac 100755
+--- a/heartbeat/sfex
++++ b/heartbeat/sfex
+@@ -68,8 +68,8 @@ meta_data() {
+     cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="sfex">
+-<version>1.3</version>
++<resource-agent name="sfex" version="1.3">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Resource script for SF-EX. It manages a shared storage medium exclusively .
+diff --git a/heartbeat/sg_persist.in b/heartbeat/sg_persist.in
+index 7af38034e7..678762f408 100644
+--- a/heartbeat/sg_persist.in
++++ b/heartbeat/sg_persist.in
+@@ -75,8 +75,8 @@ meta_data() {
+     cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="sg_persist">
+-<version>1.1</version>
++<resource-agent name="sg_persist" version="1.1">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ This resource agent manages SCSI PERSISTENT RESERVATIONS.
+diff --git a/heartbeat/slapd.in b/heartbeat/slapd.in
+index bd3995bdc1..ffccd1d357 100644
+--- a/heartbeat/slapd.in
++++ b/heartbeat/slapd.in
+@@ -89,8 +89,8 @@ meta_data()
+   cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="slapd">
+-<version>0.1</version>
++<resource-agent name="slapd" version="0.1">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ Resource script for Stand-alone LDAP Daemon (slapd). It manages a slapd instance as an OCF resource.
+diff --git a/heartbeat/smb-share.in b/heartbeat/smb-share.in
+index a904febb1a..8a1a0a8604 100755
+--- a/heartbeat/smb-share.in
++++ b/heartbeat/smb-share.in
+@@ -138,7 +138,7 @@ meta_data() {
+         cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="smb-share">
++<resource-agent name="smb-share" version="1.0">
+     <version>1.0</version>
+     <longdesc lang="en">
+ This RA is used to control samba shares on the fly.
+diff --git a/heartbeat/storage-mon.in b/heartbeat/storage-mon.in
+index 875095670e..4cd861c1b6 100644
+--- a/heartbeat/storage-mon.in
++++ b/heartbeat/storage-mon.in
+@@ -69,7 +69,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="storage-mon">
++<resource-agent name="storage-mon" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/sybaseASE.in b/heartbeat/sybaseASE.in
+index fef76474e6..8b315029b1 100755
+--- a/heartbeat/sybaseASE.in
++++ b/heartbeat/sybaseASE.in
+@@ -139,7 +139,7 @@ meta_data()
+ 	cat <<EOT
+ <?xml version="1.0" ?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="sybaseASE" >
++<resource-agent name="sybaseASE" version="1.0">
+ 	<version>1.0</version>
+ 
+ 	<longdesc lang="en">
+diff --git a/heartbeat/symlink b/heartbeat/symlink
+index 1266061ddf..decd9f74e5 100755
+--- a/heartbeat/symlink
++++ b/heartbeat/symlink
+@@ -37,8 +37,8 @@ meta_data() {
+         cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="symlink">
+-<version>1.1</version>
++<resource-agent name="symlink" version="1.1">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ This resource agent that manages a symbolic link (symlink).
+diff --git a/heartbeat/syslog-ng.in b/heartbeat/syslog-ng.in
+index 47a23f1887..246db28b76 100644
+--- a/heartbeat/syslog-ng.in
++++ b/heartbeat/syslog-ng.in
+@@ -88,7 +88,7 @@ metadata_syslog_ng()
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="syslog-ng">
++<resource-agent name="syslog-ng" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/tomcat b/heartbeat/tomcat
+index 4e6c04c376..fa2715140b 100755
+--- a/heartbeat/tomcat
++++ b/heartbeat/tomcat
+@@ -339,7 +339,7 @@ metadata_tomcat()
+     cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="tomcat">
++<resource-agent name="tomcat" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/varnish b/heartbeat/varnish
+index 07a4f6449f..5fbf35c61a 100755
+--- a/heartbeat/varnish
++++ b/heartbeat/varnish
+@@ -85,7 +85,7 @@ meta_data() {
+ 	cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="varnish">
++<resource-agent name="varnish" version="1.0">
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+diff --git a/heartbeat/vdo-vol b/heartbeat/vdo-vol
+index 3c79df58a2..94822cb82c 100755
+--- a/heartbeat/vdo-vol
++++ b/heartbeat/vdo-vol
+@@ -38,8 +38,8 @@ vdo_meta_data() {
+         cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="vdo-vol">
+-<version>0.75</version>
++<resource-agent name="vdo-vol" version="0.75">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ OCF Resource script for VDO (Virtual Data Optimizer) volume(s). It manages VDO volume(s) as a HA resource.
+diff --git a/heartbeat/vmware b/heartbeat/vmware
+index 7cd61dd5fd..f784fb10ad 100755
+--- a/heartbeat/vmware
++++ b/heartbeat/vmware
+@@ -311,8 +311,8 @@ meta_data() {
+   cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="vmware">
+-<version>0.2</version>
++<resource-agent name="vmware" version="0.2">
++<version>1.0</version>
+ <longdesc lang="en">
+ OCF compliant script to control vmware server 2.0 virtual machines.
+ </longdesc>
+diff --git a/heartbeat/vsftpd.in b/heartbeat/vsftpd.in
+index 57f6669b7a..3831c4fa82 100644
+--- a/heartbeat/vsftpd.in
++++ b/heartbeat/vsftpd.in
+@@ -50,7 +50,7 @@ meta_data()
+ cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="vsftpd">
++<resource-agent name="vsftpd" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+ This script manages vsftpd
+diff --git a/heartbeat/zabbixserver b/heartbeat/zabbixserver
+index 08f7e798b7..b4b5b7c2be 100755
+--- a/heartbeat/zabbixserver
++++ b/heartbeat/zabbixserver
+@@ -55,8 +55,8 @@ zabbixserver_meta_data() {
+     cat <<END
+ <?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="zabbixserver">
+-<version>0.0.1</version>
++<resource-agent name="zabbixserver" version="0.0.1">
++<version>1.0</version>
+ 
+ <longdesc lang="en">
+ This is a Zabbix server Resource Agent for zabbix_server monitoring
+
+From d03aedd47b392437d11a24be1bcc5696caa7fbc5 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 7 Oct 2021 11:10:51 +0200
+Subject: [PATCH 2/3] ocf.py: add agent and OCF version parameters (both
+ defaults to 1.0)
+
+---
+ heartbeat/ocf.py | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/heartbeat/ocf.py b/heartbeat/ocf.py
+index 6dbc10d6b7..dda2fed4bb 100644
+--- a/heartbeat/ocf.py
++++ b/heartbeat/ocf.py
+@@ -305,10 +305,12 @@ class Agent(object):
+ 	of how to use it.
+ 	"""
+ 
+-	def __init__(self, name, shortdesc, longdesc):
++	def __init__(self, name, shortdesc, longdesc, version=1.0, ocf_version=1.0):
+ 		self.name = name
+ 		self.shortdesc = shortdesc
+ 		self.longdesc = longdesc
++		self.version = version
++		self.ocf_version = ocf_version
+ 		self.parameters = []
+ 		self.actions = []
+ 		self._handlers = {}
+@@ -342,8 +344,8 @@ def __str__(self):
+ 	def to_xml(self):
+ 		return """<?xml version="1.0"?>
+ <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+-<resource-agent name="{name}">
+-<version>1.0</version>
++<resource-agent name="{name}" version="{version}">
++<version>{ocf_version}</version>
+ <longdesc lang="en">
+ {longdesc}
+ </longdesc>
+@@ -359,6 +361,8 @@ def to_xml(self):
+ 
+ </resource-agent>
+ """.format(name=self.name,
++		   version = self.version,
++		   ocf_version = self.ocf_version,
+ 		   longdesc=self.longdesc,
+ 		   shortdesc=self.shortdesc,
+ 		   parameters="".join(p.to_xml() for p in self.parameters),
+
+From 22dd98f5c325d0b48ade6ad7406d3c45b7dfec2c Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 7 Oct 2021 15:29:25 +0200
+Subject: [PATCH 3/3] metadata.rng: update to support resource agent version
+ according to the OCF standard
+
+---
+ heartbeat/metadata.rng | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/heartbeat/metadata.rng b/heartbeat/metadata.rng
+index ac534db82d..3dd7355472 100644
+--- a/heartbeat/metadata.rng
++++ b/heartbeat/metadata.rng
+@@ -2,6 +2,8 @@
+ 
+ <start><element name="resource-agent">
+ 	<attribute name="name" />
++	<optional><attribute name="version" /></optional>
++
+ 	<element name="version"> <text /> </element>
+ 	<element name="longdesc"> <attribute name="lang" /> <text /> </element>
+ 	<element name="shortdesc"> <attribute name="lang" /> <text /> </element>

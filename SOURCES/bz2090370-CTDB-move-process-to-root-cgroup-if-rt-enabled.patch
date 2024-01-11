@@ -1,0 +1,47 @@
+From 99c4f2af92a10155cf072198c72deffaed3883a5 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 3 Aug 2022 17:20:31 +0200
+Subject: [PATCH] CTDB: move process to root cgroup if realtime scheduling is
+ enabled
+
+---
+ heartbeat/CTDB.in           |  2 ++
+ heartbeat/ocf-shellfuncs.in | 12 ++++++++++++
+ 2 files changed, 14 insertions(+)
+
+diff --git a/heartbeat/CTDB.in b/heartbeat/CTDB.in
+index d25d026ca..46f56cfac 100755
+--- a/heartbeat/CTDB.in
++++ b/heartbeat/CTDB.in
+@@ -709,6 +709,8 @@ EOF
+ invoke_ctdbd() {
+ 	local vers="$1"
+ 
++	ocf_move_to_root_cgroup_if_rt_enabled
++
+ 	ocf_version_cmp "$vers" "4.9.0"
+ 	if [ "$?" -ne "0" ]; then
+ 		# With 4.9+, all ctdbd binary parameters are provided as
+diff --git a/heartbeat/ocf-shellfuncs.in b/heartbeat/ocf-shellfuncs.in
+index 6be4e4e30..2c53a967a 100644
+--- a/heartbeat/ocf-shellfuncs.in
++++ b/heartbeat/ocf-shellfuncs.in
+@@ -672,6 +672,18 @@ EOF
+ 	systemctl daemon-reload
+ }
+ 
++# move process to root cgroup if realtime scheduling is enabled
++ocf_move_to_root_cgroup_if_rt_enabled()
++{
++	if [ -e "/sys/fs/cgroup/cpu/cpu.rt_runtime_us" ]; then
++		echo $$ >> /sys/fs/cgroup/cpu/tasks
++
++		if [ "$?" -ne "0" ]; then
++			ocf_log warn "Unable to move PID $$ to the root cgroup"
++		fi
++	fi
++}
++
+ # usage: crm_mon_no_validation args...
+ # run crm_mon without any cib schema validation
+ # This is useful when an agent runs in a bundle to avoid potential

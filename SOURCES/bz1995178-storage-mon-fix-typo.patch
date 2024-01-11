@@ -1,0 +1,23 @@
+From 09cde6531a87fd6a04568eaae94d5c489f36a8b6 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 6 Sep 2021 15:07:41 +0200
+Subject: [PATCH] storage-mon: update metadata to suggest usage in combination
+ with HealthSMART agent
+
+---
+ heartbeat/storage-mon.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/storage-mon.in b/heartbeat/storage-mon.in
+index 5b289fe55..875095670 100644
+--- a/heartbeat/storage-mon.in
++++ b/heartbeat/storage-mon.in
+@@ -75,7 +75,7 @@ meta_data() {
+ <longdesc lang="en">
+ System health agent that checks the storage I/O status of the given drives and
+ updates the #health-storage attribute. Usage is highly recommended in combination
+-with storage-mon monitoring agent. The agent currently support a maximum of 25
++with the HealthSMART monitoring agent. The agent currently support a maximum of 25
+ devices per instance.
+ </longdesc>
+ <shortdesc lang="en">storage I/O health status</shortdesc>

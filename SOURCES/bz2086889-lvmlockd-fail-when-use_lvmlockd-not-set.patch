@@ -1,0 +1,25 @@
+From b3885f7d95fe390371f806c7f3debb3ec8ad012d Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Tue, 7 Jun 2022 15:20:11 +0200
+Subject: [PATCH] lvmlockd: fail when use_lvmlockd has not been set
+
+---
+ heartbeat/lvmlockd | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/heartbeat/lvmlockd b/heartbeat/lvmlockd
+index 05bb0a2e5..dc7bd2d7e 100755
+--- a/heartbeat/lvmlockd
++++ b/heartbeat/lvmlockd
+@@ -179,6 +179,11 @@ setup_lvm_config()
+ 	out=$(lvmconfig 'global/locking_type' 2> /dev/null)
+ 	lock_type=$(echo "$out" | cut -d'=' -f2)
+ 
++	if [ -z "$use_lvmlockd" ]; then
++		ocf_exit_reason "\"use_lvmlockd\" not set in /etc/lvm/lvm.conf ..."
++		exit $OCF_ERR_CONFIGURED
++	fi
++
+ 	if [ -n "$use_lvmlockd" ] && [ "$use_lvmlockd" != 1 ] ; then
+ 		ocf_log info "setting \"use_lvmlockd=1\" in /etc/lvm/lvm.conf ..."
+ 		sed -i 's,^[[:blank:]]*use_lvmlockd[[:blank:]]*=.*,\ \ \ \ use_lvmlockd = 1,g' /etc/lvm/lvm.conf

@@ -1,0 +1,766 @@
+diff --color -uNr a/doc/man/Makefile.am b/doc/man/Makefile.am
+--- a/doc/man/Makefile.am	2021-08-25 09:31:14.033615965 +0200
++++ b/doc/man/Makefile.am	2021-08-24 17:59:40.679372762 +0200
+@@ -97,6 +97,8 @@
+                           ocf_heartbeat_ManageRAID.7 \
+                           ocf_heartbeat_ManageVE.7 \
+                           ocf_heartbeat_NodeUtilization.7 \
++                          ocf_heartbeat_nova-compute-wait.7 \
++                          ocf_heartbeat_NovaEvacuate.7 \
+                           ocf_heartbeat_Pure-FTPd.7 \
+                           ocf_heartbeat_Raid1.7 \
+                           ocf_heartbeat_Route.7 \
+diff --color -uNr a/heartbeat/Makefile.am b/heartbeat/Makefile.am
+--- a/heartbeat/Makefile.am	2021-08-25 09:31:14.034615967 +0200
++++ b/heartbeat/Makefile.am	2021-08-24 17:59:40.679372762 +0200
+@@ -29,6 +29,8 @@
+ 
+ ocfdir		        = $(OCF_RA_DIR_PREFIX)/heartbeat
+ 
++ospdir			= $(OCF_RA_DIR_PREFIX)/openstack
++
+ dtddir			= $(datadir)/$(PACKAGE_NAME)
+ dtd_DATA		= ra-api-1.dtd metadata.rng
+ 
+@@ -50,6 +52,9 @@
+ send_ua_SOURCES         = send_ua.c IPv6addr_utils.c
+ send_ua_LDADD           = $(LIBNETLIBS)
+ 
++osp_SCRIPTS	     =  nova-compute-wait	\
++			NovaEvacuate
++
+ ocf_SCRIPTS	      = AoEtarget		\
+ 			AudibleAlarm		\
+ 			ClusterMon		\
+diff --color -uNr a/heartbeat/nova-compute-wait b/heartbeat/nova-compute-wait
+--- a/heartbeat/nova-compute-wait	1970-01-01 01:00:00.000000000 +0100
++++ b/heartbeat/nova-compute-wait	2021-08-24 17:59:40.678372759 +0200
+@@ -0,0 +1,317 @@
++#!/bin/sh
++# Copyright 2015 Red Hat, Inc.
++#
++# Description:  Manages compute daemons
++#
++# Authors: Andrew Beekhof
++#
++# Support:      openstack@lists.openstack.org
++# License:      Apache Software License (ASL) 2.0
++#
++
++
++#######################################################################
++# Initialization:
++
++###
++: ${OCF_FUNCTIONS_DIR=${OCF_ROOT}/lib/heartbeat}
++. ${OCF_FUNCTIONS_DIR}/ocf-shellfuncs
++###
++
++: ${__OCF_ACTION=$1}
++
++#######################################################################
++
++meta_data() {
++	cat <<END
++<?xml version="1.0"?>
++<!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
++<resource-agent name="nova-compute-wait" version="1.0">
++<version>1.0</version>
++
++<longdesc lang="en">
++OpenStack Nova Compute Server.
++</longdesc>
++<shortdesc lang="en">OpenStack Nova Compute Server</shortdesc>
++
++<parameters>
++
++<parameter name="auth_url" unique="0" required="1">
++<longdesc lang="en">Deprecated - do not use anymore.</longdesc>
++<shortdesc lang="en">Deprecated - do not use anymore</shortdesc>
++<content type="string" default="" />
++</parameter>
++
++<parameter name="username" unique="0" required="1">
++<longdesc lang="en">Deprecated - do not use anymore.</longdesc>
++<shortdesc lang="en">Deprecated - do not use anymore</shortdesc>
++</parameter>
++
++<parameter name="password" unique="0" required="1">
++<longdesc lang="en">Deprecated - do not use anymore.</longdesc>
++<shortdesc lang="en">Deprecated - do not use anymore</shortdesc>
++<content type="string" default="" />
++</parameter>
++
++<parameter name="tenant_name" unique="0" required="1">
++<longdesc lang="en">Deprecated - do not use anymore.</longdesc>
++<shortdesc lang="en">Deprecated - do not use anymore</shortdesc>
++<content type="string" default="" />
++</parameter>
++
++<parameter name="domain" unique="0" required="0">
++<longdesc lang="en">
++DNS domain in which hosts live, useful when the cluster uses short names and nova uses FQDN
++</longdesc>
++<shortdesc lang="en">DNS domain</shortdesc>
++<content type="string" default="" />
++</parameter>
++
++<parameter name="endpoint_type" unique="0" required="0">
++<longdesc lang="en">Deprecated - do not use anymore.</longdesc>
++<shortdesc lang="en">Deprecated - do not use anymore</shortdesc>
++<content type="string" default="" />
++</parameter>
++
++<parameter name="no_shared_storage" unique="0" required="0">
++<longdesc lang="en">Deprecated - do not use anymore.</longdesc>
++<shortdesc lang="en">Deprecated - do not use anymore</shortdesc>
++<content type="boolean" default="0" />
++</parameter>
++
++<parameter name="evacuation_delay" unique="0" required="0">
++<longdesc lang="en">
++How long to wait for nova to finish evacuating instances elsewhere
++before starting nova-compute.  Only used when the agent detects
++evacuations might be in progress.
++
++You may need to increase the start timeout when increasing this value.
++</longdesc>
++<shortdesc lang="en">Delay to allow evacuations time to complete</shortdesc>
++<content type="integer" default="120" />
++</parameter>
++
++</parameters>
++
++<actions>
++<action name="start"        timeout="600" />
++<action name="stop"         timeout="300" />
++<action name="monitor"      timeout="20" interval="10" depth="0"/>
++<action name="validate-all" timeout="20" />
++<action name="meta-data"    timeout="5" />
++</actions>
++</resource-agent>
++END
++}
++
++#######################################################################
++
++# don't exit on TERM, to test that lrmd makes sure that we do exit
++trap sigterm_handler TERM
++sigterm_handler() {
++	ocf_log info "They use TERM to bring us down. No such luck."
++	return
++}
++
++nova_usage() {
++	cat <<END
++usage: $0 {start|stop|monitor|validate-all|meta-data}
++
++Expects to have a fully populated OCF RA-compliant environment set.
++END
++}
++
++nova_start() {
++    build_unfence_overlay
++
++    state=$(attrd_updater -p -n evacuate -N ${NOVA_HOST} | sed -e 's/.*value=//' | tr -d '"' )
++    if [ "x$state" = x ]; then
++	: never been fenced
++
++    elif [ "x$state" = xno ]; then
++	: has been evacuated, however it could have been 1s ago
++	ocf_log info "Pausing to give evacuations from ${NOVA_HOST} time to complete"
++	sleep ${OCF_RESKEY_evacuation_delay}
++
++    else
++	while [ "x$state" != "xno" ]; do
++	    ocf_log info "Waiting for pending evacuations from ${NOVA_HOST}"
++	    state=$(attrd_updater -p -n evacuate -N ${NOVA_HOST} | sed -e 's/.*value=//' | tr -d '"' )
++	    sleep 5
++	done
++
++	ocf_log info "Pausing to give evacuations from ${NOVA_HOST} time to complete"
++	sleep ${OCF_RESKEY_evacuation_delay}
++    fi
++
++    touch "$statefile"
++
++    return $OCF_SUCCESS
++}
++
++nova_stop() {
++    rm -f "$statefile"
++    return $OCF_SUCCESS
++}
++
++nova_monitor() {
++    if [ ! -f "$statefile" ]; then
++        return $OCF_NOT_RUNNING
++    fi
++
++    return $OCF_SUCCESS
++}
++
++nova_notify() {
++    return $OCF_SUCCESS
++}
++
++build_unfence_overlay() {
++    fence_options=""
++
++    if [ -z "${OCF_RESKEY_auth_url}" ]; then
++	candidates=$(/usr/sbin/stonith_admin -l ${NOVA_HOST})
++	for candidate in ${candidates}; do
++	    pcs stonith show $d | grep -q fence_compute
++	    if [ $? = 0 ]; then
++		ocf_log info "Unfencing nova based on: $candidate"
++		fence_auth=$(pcs stonith show $candidate | grep Attributes: | sed -e s/Attributes:// -e s/-/_/g -e 's/[^ ]\+=/OCF_RESKEY_\0/g' -e s/passwd/password/g)
++		eval "export $fence_auth"
++		break
++	    fi
++	done
++    fi    
++
++    # Copied from NovaEvacuate 
++    if [ -z "${OCF_RESKEY_auth_url}" ]; then
++        ocf_exit_reason "auth_url not configured"
++        exit $OCF_ERR_CONFIGURED
++    fi
++
++    fence_options="${fence_options} -k ${OCF_RESKEY_auth_url}"
++
++    if [ -z "${OCF_RESKEY_username}" ]; then
++        ocf_exit_reason "username not configured"
++        exit $OCF_ERR_CONFIGURED
++    fi
++
++    fence_options="${fence_options} -l ${OCF_RESKEY_username}"
++
++    if [ -z "${OCF_RESKEY_password}" ]; then
++        ocf_exit_reason "password not configured"
++        exit $OCF_ERR_CONFIGURED
++    fi
++
++    fence_options="${fence_options} -p ${OCF_RESKEY_password}"
++
++    if [ -z "${OCF_RESKEY_tenant_name}" ]; then
++        ocf_exit_reason "tenant_name not configured"
++        exit $OCF_ERR_CONFIGURED
++    fi
++
++    fence_options="${fence_options} -t ${OCF_RESKEY_tenant_name}"
++
++    if [ -n "${OCF_RESKEY_domain}" ]; then
++        fence_options="${fence_options} -d ${OCF_RESKEY_domain}"
++    fi
++
++    if [ -n "${OCF_RESKEY_region_name}" ]; then
++        fence_options="${fence_options} \
++            --region-name ${OCF_RESKEY_region_name}"
++    fi
++
++    if [ -n "${OCF_RESKEY_insecure}" ]; then
++        if ocf_is_true "${OCF_RESKEY_insecure}"; then
++            fence_options="${fence_options} --insecure"
++        fi
++    fi
++
++    if [ -n "${OCF_RESKEY_no_shared_storage}" ]; then
++        if ocf_is_true "${OCF_RESKEY_no_shared_storage}"; then
++            fence_options="${fence_options} --no-shared-storage"
++        fi
++    fi
++
++    if [ -n "${OCF_RESKEY_endpoint_type}" ]; then
++        case ${OCF_RESKEY_endpoint_type} in
++            adminURL|publicURL|internalURL)
++                ;;
++            *)
++                ocf_exit_reason "endpoint_type ${OCF_RESKEY_endpoint_type}" \
++                    "not valid. Use adminURL or publicURL or internalURL"
++                exit $OCF_ERR_CONFIGURED
++                ;;
++        esac
++        fence_options="${fence_options} -e ${OCF_RESKEY_endpoint_type}"
++    fi
++
++    mkdir -p /run/systemd/system/openstack-nova-compute.service.d
++    cat<<EOF>/run/systemd/system/openstack-nova-compute.service.d/unfence-20.conf
++[Service]
++ExecStartPost=/sbin/fence_compute ${fence_options} -o on -n ${NOVA_HOST}
++EOF
++}
++
++nova_validate() {
++    rc=$OCF_SUCCESS
++
++    check_binary crudini
++    check_binary nova-compute
++    check_binary fence_compute
++
++    if [ ! -f /etc/nova/nova.conf ]; then
++	   ocf_exit_reason "/etc/nova/nova.conf not found"
++	   exit $OCF_ERR_CONFIGURED
++    fi
++
++    # Is the state directory writable?
++    state_dir=$(dirname $statefile)
++    touch "$state_dir/$$"
++    if [ $? != 0 ]; then
++        ocf_exit_reason "Invalid state directory: $state_dir"
++        return $OCF_ERR_ARGS
++    fi
++    rm -f "$state_dir/$$"
++
++    NOVA_HOST=$(crudini --get /etc/nova/nova.conf DEFAULT host 2>/dev/null)
++    if [ $? = 1 ]; then
++        short_host=$(uname -n | awk -F. '{print $1}')
++        if [ "x${OCF_RESKEY_domain}" != x ]; then
++            NOVA_HOST=${short_host}.${OCF_RESKEY_domain}
++        else
++            NOVA_HOST=$(uname -n)
++        fi
++    fi
++
++    if [ $rc != $OCF_SUCCESS ]; then
++	exit $rc
++    fi
++    return $rc
++}
++
++statefile="${HA_RSCTMP}/${OCF_RESOURCE_INSTANCE}.active"
++
++: ${OCF_RESKEY_evacuation_delay=120}
++case $__OCF_ACTION in
++meta-data)	meta_data
++		exit $OCF_SUCCESS
++		;;
++usage|help)	nova_usage
++		exit $OCF_SUCCESS
++		;;
++esac
++
++case $__OCF_ACTION in
++start)		nova_validate; nova_start;;
++stop)		nova_stop;;
++monitor)	nova_validate; nova_monitor;;
++notify)		nova_notify;;
++validate-all)	exit $OCF_SUCCESS;;
++*)		nova_usage
++		exit $OCF_ERR_UNIMPLEMENTED
++		;;
++esac
++rc=$?
++ocf_log debug "${OCF_RESOURCE_INSTANCE} $__OCF_ACTION : $rc"
++exit $rc
++
+diff --color -uNr a/heartbeat/NovaEvacuate b/heartbeat/NovaEvacuate
+--- a/heartbeat/NovaEvacuate	1970-01-01 01:00:00.000000000 +0100
++++ b/heartbeat/NovaEvacuate	2021-08-24 17:59:40.682372770 +0200
+@@ -0,0 +1,407 @@
++#!/bin/bash
++#
++# Copyright 2015 Red Hat, Inc.
++#
++# Description:  Manages evacuation of nodes running nova-compute
++#
++# Authors: Andrew Beekhof
++#
++# Support:      openstack@lists.openstack.org
++# License:      Apache Software License (ASL) 2.0
++#
++
++
++#######################################################################
++# Initialization:
++
++###
++: ${OCF_FUNCTIONS_DIR=${OCF_ROOT}/lib/heartbeat}
++. ${OCF_FUNCTIONS_DIR}/ocf-shellfuncs
++###
++
++: ${__OCF_ACTION=$1}
++
++#######################################################################
++
++meta_data() {
++	cat <<END
++<?xml version="1.0"?>
++<!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
++<resource-agent name="NovaEvacuate" version="1.0">
++<version>1.0</version>
++
++<longdesc lang="en">
++Facility for tacking a list of compute nodes and reliably evacuating the ones that fence_evacuate has flagged.
++</longdesc>
++<shortdesc lang="en">Evacuator for OpenStack Nova Compute Server</shortdesc>
++
++<parameters>
++
++<parameter name="auth_url" unique="0" required="1">
++<longdesc lang="en">
++Authorization URL for connecting to keystone in admin context
++</longdesc>
++<shortdesc lang="en">Authorization URL</shortdesc>
++<content type="string" default="" />
++</parameter>
++
++<parameter name="username" unique="0" required="1">
++<longdesc lang="en">
++Username for connecting to keystone in admin context
++</longdesc>
++<shortdesc lang="en">Username</shortdesc>
++</parameter>
++
++<parameter name="password" unique="0" required="1">
++<longdesc lang="en">
++Password for connecting to keystone in admin context
++</longdesc>
++<shortdesc lang="en">Password</shortdesc>
++<content type="string" default="" />
++</parameter>
++
++<parameter name="tenant_name" unique="0" required="1">
++<longdesc lang="en">
++Tenant name for connecting to keystone in admin context.
++Note that with Keystone V3 tenant names are only unique within a domain.
++</longdesc>
++<shortdesc lang="en">Keystone v2 Tenant or v3 Project Name</shortdesc>
++<content type="string" default="" />
++</parameter>
++
++<parameter name="user_domain" unique="0" required="1">
++<longdesc lang="en">
++User's domain name. Used when authenticating to Keystone.
++</longdesc>
++<shortdesc lang="en">Keystone v3 User Domain</shortdesc>
++<content type="string" default="" />
++</parameter>
++
++<parameter name="project_domain" unique="0" required="1">
++<longdesc lang="en">
++Domain name containing project. Used when authenticating to Keystone.
++</longdesc>
++<shortdesc lang="en">Keystone v3 Project Domain</shortdesc>
++<content type="string" default="" />
++</parameter>
++
++<parameter name="endpoint_type" unique="0" required="0">
++<longdesc lang="en">
++Nova API location (internal, public or admin URL)
++</longdesc>
++<shortdesc lang="en">Nova API location (internal, public or admin URL)</shortdesc>
++<content type="string" default="" />
++</parameter>
++
++<parameter name="region_name" unique="0" required="0">
++<longdesc lang="en">
++Region name for connecting to nova.
++</longdesc>
++<shortdesc lang="en">Region name</shortdesc>
++<content type="string" default="" />
++</parameter>
++
++<parameter name="insecure" unique="0" required="0">
++<longdesc lang="en">
++Explicitly allow client to perform "insecure" TLS (https) requests.
++The server's certificate will not be verified against any certificate authorities.
++This option should be used with caution.
++</longdesc>
++<shortdesc lang="en">Allow insecure TLS requests</shortdesc>
++<content type="boolean" default="0" />
++</parameter>
++
++<parameter name="no_shared_storage" unique="0" required="0">
++<longdesc lang="en">
++Disable shared storage recovery for instances. Use at your own risk!
++</longdesc>
++<shortdesc lang="en">Disable shared storage recovery for instances</shortdesc>
++<content type="boolean" default="0" />
++</parameter>
++
++<parameter name="verbose" unique="0" required="0">
++<longdesc lang="en">
++Enable extra logging from the evacuation process
++</longdesc>
++<shortdesc lang="en">Enable debug logging</shortdesc>
++<content type="boolean" default="0" />
++</parameter>
++
++<parameter name="evacuate_delay" unique="0" required="0">
++<longdesc lang="en">
++Allows delaying the nova evacuate API call, e.g. to give a storage array time to clean
++up eventual locks/leases.
++</longdesc>
++<shortdesc lang="en">Nova evacuate delay</shortdesc>
++<content type="integer" default="0" />
++</parameter>
++
++</parameters>
++
++<actions>
++<action name="start"        timeout="20" />
++<action name="stop"         timeout="20" />
++<action name="monitor"      timeout="600" interval="10" depth="0"/>
++<action name="validate-all" timeout="20" />
++<action name="meta-data"    timeout="5" />
++</actions>
++</resource-agent>
++END
++}
++
++#######################################################################
++
++# don't exit on TERM, to test that lrmd makes sure that we do exit
++trap sigterm_handler TERM
++sigterm_handler() {
++	ocf_log info "They use TERM to bring us down. No such luck."
++	return
++}
++
++evacuate_usage() {
++	cat <<END
++usage: $0 {start|stop|monitor|validate-all|meta-data}
++
++Expects to have a fully populated OCF RA-compliant environment set.
++END
++}
++
++evacuate_stop() {
++    rm -f "$statefile"
++    return $OCF_SUCCESS
++}
++
++evacuate_start() {
++    touch "$statefile"
++    # Do not invole monitor here so that the start timeout can be low
++    return $?
++}
++
++update_evacuation() {
++    attrd_updater -p -n evacuate -Q -N ${1} -v ${2}
++    arc=$?
++    if [ ${arc} != 0 ]; then
++	ocf_log warn "Can not set evacuation state of ${1} to ${2}: ${arc}"
++    fi
++    return ${arc}
++}
++
++handle_evacuations() {
++    while [ $# -gt 0 ]; do
++	node=$1 
++	state=$2
++	shift; shift;
++	need_evacuate=0
++
++	case $state in
++	    "")
++	        ;;
++	    no)
++		ocf_log debug "$node is either fine or already handled"
++		;;
++	    yes) need_evacuate=1
++		;; 
++	    *@*)
++		where=$(echo $state | awk -F@ '{print $1}')
++		when=$(echo $state | awk -F@ '{print $2}')
++		now=$(date +%s)
++
++		if [ $(($now - $when)) -gt 60 ]; then
++		    ocf_log info "Processing partial evacuation of $node by $where at $when"
++		    need_evacuate=1
++		else
++		    # Give some time for any in-flight evacuations to either complete or fail
++		    # Nova won't react well if there are two overlapping requests 
++		    ocf_log info "Deferring processing partial evacuation of $node by $where at $when"
++		fi
++		;;
++	esac
++
++	if [ $need_evacuate = 1 ]; then
++	    fence_agent="fence_compute"
++
++	    if have_binary fence_evacuate
++	    then
++		fence_agent="fence_evacuate"
++	    fi
++
++            if [ ${OCF_RESKEY_evacuate_delay} != 0 ]; then
++                ocf_log info "Delaying nova evacuate by $OCF_RESKEY_evacuate_delay seconds"
++                sleep ${OCF_RESKEY_evacuate_delay}
++            fi
++
++	    ocf_log notice "Initiating evacuation of $node with $fence_agent"
++	    $fence_agent ${fence_options} -o status -n ${node}
++	    if [ $? = 1 ]; then
++		ocf_log info "Nova does not know about ${node}"
++		# Dont mark as no because perhaps nova is unavailable right now
++		continue
++	    fi
++
++	    update_evacuation ${node} "$(uname -n)@$(date +%s)"
++	    if [ $? != 0 ]; then
++		return $OCF_SUCCESS
++	    fi
++
++	    $fence_agent ${fence_options} -o off -n $node
++	    rc=$?
++
++	    if [ $rc = 0 ]; then
++		update_evacuation ${node} no
++		ocf_log notice "Completed evacuation of $node"
++	    else
++		ocf_log warn "Evacuation of $node failed: $rc"
++		update_evacuation ${node} yes
++	    fi
++	fi
++    done
++
++    return $OCF_SUCCESS
++}
++
++evacuate_monitor() {
++    if [ ! -f "$statefile" ]; then
++	return $OCF_NOT_RUNNING
++    fi
++
++    handle_evacuations $(
++        attrd_updater -n evacuate -A \
++            2> >(grep -v "attribute does not exist" 1>&2) |
++            sed 's/ value=""/ value="no"/' |
++            tr '="' '  ' |
++            awk '{print $4" "$6}'
++    )
++    return $OCF_SUCCESS
++}
++
++evacuate_validate() {
++    rc=$OCF_SUCCESS
++    fence_options=""
++
++    
++    if ! have_binary fence_evacuate; then
++       check_binary fence_compute
++    fi
++
++    # Is the state directory writable? 
++    state_dir=$(dirname $statefile)
++    touch "$state_dir/$$"
++    if [ $? != 0 ]; then
++	ocf_exit_reason "Invalid state directory: $state_dir"
++	return $OCF_ERR_ARGS
++    fi
++    rm -f "$state_dir/$$"
++
++    if [ -z "${OCF_RESKEY_auth_url}" ]; then
++	   ocf_exit_reason "auth_url not configured"
++	   exit $OCF_ERR_CONFIGURED
++    fi
++
++    fence_options="${fence_options} -k ${OCF_RESKEY_auth_url}"
++
++    if [ -z "${OCF_RESKEY_username}" ]; then
++	   ocf_exit_reason "username not configured"
++	   exit $OCF_ERR_CONFIGURED
++    fi
++
++    fence_options="${fence_options} -l ${OCF_RESKEY_username}"
++
++    if [ -z "${OCF_RESKEY_password}" ]; then
++	   ocf_exit_reason "password not configured"
++	   exit $OCF_ERR_CONFIGURED
++    fi
++
++    fence_options="${fence_options} -p ${OCF_RESKEY_password}"
++
++    if [ -z "${OCF_RESKEY_tenant_name}" ]; then
++	   ocf_exit_reason "tenant_name not configured"
++	   exit $OCF_ERR_CONFIGURED
++    fi
++
++    fence_options="${fence_options} -t ${OCF_RESKEY_tenant_name}"
++
++    if [ -n "${OCF_RESKEY_user_domain}" ]; then
++        fence_options="${fence_options} -u ${OCF_RESKEY_user_domain}"
++    fi
++
++    if [ -n "${OCF_RESKEY_project_domain}" ]; then
++        fence_options="${fence_options} -P ${OCF_RESKEY_project_domain}"
++    fi
++
++    if [ -n "${OCF_RESKEY_region_name}" ]; then
++        fence_options="${fence_options} \
++            --region-name ${OCF_RESKEY_region_name}"
++    fi
++
++    if [ -n "${OCF_RESKEY_insecure}" ]; then
++        if ocf_is_true "${OCF_RESKEY_insecure}"; then
++            fence_options="${fence_options} --insecure"
++        fi
++    fi
++
++    if [ -n "${OCF_RESKEY_no_shared_storage}" ]; then
++	if ocf_is_true "${OCF_RESKEY_no_shared_storage}"; then
++	    fence_options="${fence_options} --no-shared-storage"
++	fi
++    fi
++
++    if [ -n "${OCF_RESKEY_verbose}" ]; then
++        if ocf_is_true "${OCF_RESKEY_verbose}"; then
++            fence_options="${fence_options} --verbose"
++        fi
++    fi
++
++    if [ -n "${OCF_RESKEY_endpoint_type}" ]; then
++	case ${OCF_RESKEY_endpoint_type} in
++	    adminURL|publicURL|internalURL) ;;
++	    *)
++		ocf_exit_reason "endpoint_type ${OCF_RESKEY_endpoint_type} not valid. Use adminURL or publicURL or internalURL"
++		exit $OCF_ERR_CONFIGURED
++	    ;;
++	esac
++	fence_options="${fence_options} -e ${OCF_RESKEY_endpoint_type}"
++    fi
++
++    if [ -z "${OCF_RESKEY_evacuate_delay}" ]; then
++        OCF_RESKEY_evacuate_delay=0
++    fi
++
++    if [ $rc != $OCF_SUCCESS ]; then
++	exit $rc
++    fi
++    return $rc
++}
++
++statefile="${HA_RSCTMP}/${OCF_RESOURCE_INSTANCE}.active"
++
++case $__OCF_ACTION in
++    start)
++	evacuate_validate
++	evacuate_start
++	;;
++    stop)
++	evacuate_stop
++	;;
++    monitor)
++	evacuate_validate
++	evacuate_monitor
++	;;
++    meta-data)
++	meta_data
++	exit $OCF_SUCCESS
++	;;
++    usage|help)
++	evacuate_usage
++	exit $OCF_SUCCESS
++	;;
++    validate-all)
++	exit $OCF_SUCCESS
++	;;
++    *)
++	evacuate_usage
++	exit $OCF_ERR_UNIMPLEMENTED
++	;;
++esac
++rc=$?
++ocf_log debug "${OCF_RESOURCE_INSTANCE} $__OCF_ACTION : $rc"
++exit $rc

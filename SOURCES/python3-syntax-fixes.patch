@@ -1,0 +1,705 @@
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsExportHandler.py b/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsExportHandler.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsExportHandler.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsExportHandler.py	2018-10-08 12:36:31.868765636 +0200
+@@ -52,8 +52,8 @@
+                             if not filename == None:
+                                 self.exportInstanceToFile(result,filename)
+                             else:
+-                                print 'Filename is needed'
+-                    except Exception,e:
++                                print('Filename is needed')
++                    except Exception as e:
+                         print(e)
+     def _optimizeResult(self,result):
+         keys = result.keys()
+@@ -81,9 +81,9 @@
+         fp = open(fileName,'w')
+         try :
+             fp.write(json.dumps(result,indent=4))
+-            print "success"
++            print("success")
+         except IOError:
+-            print "Error: can\'t find file or read data"
++            print("Error: can\'t find file or read data")
+         finally:
+             fp.close()
+ 			
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsImportHandler.py b/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsImportHandler.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsImportHandler.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/advance/ecsImportHandler.py	2018-10-08 12:36:53.882358851 +0200
+@@ -16,7 +16,7 @@
+         if keyValues.has_key('--filename') and len(keyValues['--filename']) > 0:
+             filename = keyValues['--filename'][0]
+         else:
+-            print "A profile is needed! please use \'--filename\' and add the profile name."
++            print("A profile is needed! please use \'--filename\' and add the profile name.")
+         return filename
+ 
+     def getInstanceCount(self,keyValues):
+@@ -25,7 +25,7 @@
+             if  keyValues['--instancecount'][0].isdigit() and int(keyValues['--instancecount'][0]) >= 0:
+                 count = keyValues['--instancecount'][0]
+             else:
+-                print "InstanceCount should be a positive number! The default value(1) will be used!"
++                print("InstanceCount should be a positive number! The default value(1) will be used!")
+         return int(count)
+     
+     def getSubOperations(self,cmd,operation):
+@@ -65,8 +65,8 @@
+                                     _newkeyValues["RegionId"] = newkeyValues["RegionId"]
+                                     self._handExtraOperation(cmd,extraOperation,_newkeyValues,version,secureRequest)
+                                 else:
+-                                    print "InstanceId  is need!"
+-                    except Exception,e:
++                                    print("InstanceId  is need!")
++                    except Exception as e:
+                         print(e)
+ 
+     def _handExtraOperation(self,cmd,extraOperation,keyValues,version , secureRequest = False):
+@@ -81,7 +81,7 @@
+                         response.display_response("error", result, "json")
+                     else:
+                         response.display_response(extraOperation, result, "json")
+-                except Exception,e:
++                except Exception as e:
+                     print(e)
+ 
+ 
+@@ -127,7 +127,7 @@
+             '''
+             if data.has_key('InstanceId') and len(data['InstanceId']) > 0:
+                 instanceId = data['InstanceId']
+-        except Exception,e:
++        except Exception as e:
+             pass
+         finally:
+             return instanceId
+@@ -156,5 +156,5 @@
+ if __name__ == "__main__":
+     handler = EcsImportHandler()
+     handler.getKVFromJson('ttt')
+-    print handler.getKVFromJson('ttt')
++    print(handler.getKVFromJson('ttt'))
+ 
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsExportHandler.py b/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsExportHandler.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsExportHandler.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsExportHandler.py	2018-10-08 12:37:08.373091088 +0200
+@@ -77,8 +77,8 @@
+                         if not filename == None:
+                             self.exportInstanceToFile(result,filename)
+                         else:
+-                            print 'Filename is needed'
+-                except Exception,e:
++                            print('Filename is needed')
++                except Exception as e:
+                     print(e)
+ 
+     def exportInstanceToFile(self, result, filename):
+@@ -96,9 +96,9 @@
+         fp = open(fileName,'w')
+         try :
+             fp.write(json.dumps(result,indent=4))
+-            print "success"
++            print("success")
+         except IOError:
+-            print "Error: can\'t find file or read data"
++            print("Error: can\'t find file or read data")
+         finally:
+             fp.close()
+ 
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsImportHandler.py b/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsImportHandler.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsImportHandler.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/advance/rdsImportHandler.py	2018-10-08 12:36:20.997966509 +0200
+@@ -26,7 +26,7 @@
+                 count = keyValues[import_count][0]
+             else:
+                 pass
+-                # print "InstanceCount should be a positive number! The default value(1) will be used!"
++                # print("InstanceCount should be a positive number! The default value(1) will be used!")
+         return int(count), "InstanceCount is "+str(count)+" created."
+     
+     def getSubOperations(self,cmd,operation):
+@@ -46,7 +46,7 @@
+                     if self.apiHandler.needSetDefaultRegion(cmdInstance, newkeyValues):
+                         newkeyValues["RegionId"] = [self.extensionHandler.getUserRegion()]
+                     newkeyValues["ClientToken"] = [self.random_str()]
+-                    # print newkeyValues.keys()
++                    # print(newkeyValues.keys())
+                     # return
+                     # self._setAttr(cmdInstance, newkeyValues) # set all key values in instance
+                     # self.apiHandler.changeEndPoint(cmdInstance, newkeyValues)
+@@ -58,7 +58,7 @@
+                             response.display_response("error", result, "json")
+                         else:
+                             response.display_response(item, result, "json")
+-                    except Exception,e:
++                    except Exception as e:
+                         print(e)
+    
+     def getKVFromJson(self,filename):
+@@ -77,7 +77,7 @@
+             fp = open(fileName,'r')
+             data=json.loads(fp.read())
+             keys = data.keys()
+-            # print keys, type(data['Items']['DBInstanceAttribute'][0])
++            # print(keys, type(data['Items']['DBInstanceAttribute'][0]))
+             # instanceAttribute = data['Items']['DBInstanceAttribute'][0]
+             items = data['Items']['DBInstanceAttribute'][0]
+             keys = items.keys()
+@@ -130,7 +130,7 @@
+ if __name__ == "__main__":
+     handler = RdsImportDBInstanceHandler()
+     # handler.getKVFromJson('ttt')
+-    # print handler.getKVFromJson('ttt')
+-    print handler.random_str()
++    # print(handler.getKVFromJson('ttt'))
++    print(handler.random_str())
+ 
+ 
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/advance/userProfileHandler.py b/bundled/aliyun/aliyun-cli/aliyuncli/advance/userProfileHandler.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/advance/userProfileHandler.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/advance/userProfileHandler.py	2018-10-08 12:11:19.743703469 +0200
+@@ -24,9 +24,9 @@
+                 _value = keyValues[ProfileCmd.name][0] # use the first value
+                 self.extensionCliHandler.setUserProfile(_value)
+             else:
+-                print "Do your forget profile name? please use \'--name\' and add the profile name."
++                print("Do your forget profile name? please use \'--name\' and add the profile name.")
+         else:
+-            print "[", cmd, "] is not right, do you mean "+ProfileCmd.useProfile+" ?"
++            print("[", cmd, "] is not right, do you mean "+ProfileCmd.useProfile+" ?")
+ 
+     def addProfileCmd(self, cmd, keyValues):
+         userKey = ''
+@@ -52,12 +52,12 @@
+                 finally:
+                     f.close()
+         else:
+-            print "[", cmd, "] is not right, do you mean "+ProfileCmd.addProfile+" ?"
++            print("[", cmd, "] is not right, do you mean "+ProfileCmd.addProfile+" ?")
+ 
+ 
+ if __name__ == "__main__":
+     handler = ProfileHandler()
+     handler.handleProfileCmd("useprofile", {'--name':["profile444"]})
+-    print handler.extensionCliHandler.getUserProfile()
++    print(handler.extensionCliHandler.getUserProfile())
+     handler.addProfileCmd("addProfile", {})
+-    handler.addProfileCmd("addProfile", {'--name':["profile2222"]})
+\ No newline at end of file
++    handler.addProfileCmd("addProfile", {'--name':["profile2222"]})
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliHelp.py b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliHelp.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliHelp.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliHelp.py	2018-10-08 12:12:25.602486634 +0200
+@@ -24,14 +24,14 @@
+         self.openApiDataHandler = aliyunOpenApiData.aliyunOpenApiDataHandler()
+ 
+     def showUsage(self):
+-        print "usage: aliyuncli <command> <operation> [options and parameters]"
++        print("usage: aliyuncli <command> <operation> [options and parameters]")
+ 
+     def showExample(self):
+-        print "show example"
++        print("show example")
+ 
+     def showCmdError(self, cmd):
+         self.showUsage()
+-        print "<aliyuncli> the valid command as follows:\n"
++        print("<aliyuncli> the valid command as follows:\n")
+         cmds = self.openApiDataHandler.getApiCmds()
+         self.printAsFormat(cmds)
+ 
+@@ -44,7 +44,7 @@
+                 error.printInFormat("Wrong version", "The sdk version is not exit.")
+                 return None
+         self.showUsage()
+-        print "["+cmd+"]","valid operations as follows:\n"
++        print("["+cmd+"]","valid operations as follows:\n")
+         operations = self.openApiDataHandler.getApiOperations(cmd, version)
+         extensions = self.openApiDataHandler.getExtensionOperationsFromCmd(cmd)
+         operations.update(extensions)
+@@ -56,8 +56,8 @@
+         self.printAsFormat(operations)
+ 
+     def showParameterError(self, cmd, operation, parameterlist):
+-        print 'usage: aliyuncli <command> <operation> [options and parameters]'
+-        print '['+cmd+"."+operation+']: current operation can uses parameters as follow :\n'
++        print('usage: aliyuncli <command> <operation> [options and parameters]')
++        print('['+cmd+"."+operation+']: current operation can uses parameters as follow :\n')
+         self.printAsFormat(parameterlist)
+         pass
+ 
+@@ -72,7 +72,7 @@
+             tmpList.append(item)
+             count = count+1
+             if len(tmpList) == 2:
+-                print '{0:40}'.format(tmpList[0]),'\t|',format(tmpList[1],'<10')
++                print('{0:40}'.format(tmpList[0]),'\t|',format(tmpList[1],'<10'))
+                 tmpList = list()
+             if len(tmpList) == 1 and count == len(mlist):
+-                print tmpList[0]
+\ No newline at end of file
++                print(tmpList[0])
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliMain.py b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliMain.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliMain.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliMain.py	2018-10-08 12:12:42.799168903 +0200
+@@ -91,7 +91,7 @@
+                             keyValues["RegionId"] = [self.extensionHandler.getUserRegion()]
+                         #check necessaryArgs as:accesskeyid accesskeysecret regionId
+                         if not self.handler.hasNecessaryArgs(keyValues):
+-                            print 'accesskeyid/accesskeysecret/regionId is absence'
++                            print('accesskeyid/accesskeysecret/regionId is absence')
+                             return
+                         result = self.handler.getResponse(cmd,operation,className,cmdInstance,keyValues,secureRequest)
+                         if result is None:
+@@ -102,7 +102,7 @@
+                         else:
+                             response.display_response(operation, result, outPutFormat,keyValues)
+                     else:
+-                        print 'aliyuncli internal error, please contact: haowei.yao@alibaba-inc.com'
++                        print('aliyuncli internal error, please contact: haowei.yao@alibaba-inc.com')
+             elif self.handler.isAvailableExtensionOperation(cmd, operation):
+                 if self.args.__len__() >= 3 and self.args[2] == 'help':
+                     import commandConfigure
+@@ -125,7 +125,7 @@
+     def showInstanceAttribute(self, cmd, operation, classname):
+         if self.args.__len__() >= 3 and self.args[2] == "help":
+             self.helper.showParameterError(cmd, operation, self.completer._help_to_show_instance_attribute(classname))
+-            #print self.completer._help_to_show_instance_attribute(cmdInstance)
++            #print(self.completer._help_to_show_instance_attribute(cmdInstance))
+             return True
+         return False
+ 
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliParser.py b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliParser.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliParser.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliParser.py	2018-10-08 12:12:54.764947819 +0200
+@@ -141,7 +141,7 @@
+             _key = keyValues[keystr][0]
+         if keyValues.has_key(secretstr) and keyValues[secretstr].__len__() > 0:
+             _secret = keyValues[secretstr][0]
+-        #print "accesskeyid: ", _key , "accesskeysecret: ",_secret
++        #print("accesskeyid: ", _key , "accesskeysecret: ",_secret)
+         return _key, _secret
+ 
+ 
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliUpgrade.py b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliUpgrade.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliUpgrade.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunCliUpgrade.py	2018-10-08 12:13:23.672413710 +0200
+@@ -161,12 +161,12 @@
+ 
+ if __name__ == "__main__":
+     upgradeHandler = aliyunCliUpgradeHandler()
+-    # print upgradeHandler.getLatestTimeFromServer()
++    # print(upgradeHandler.getLatestTimeFromServer())
+     # flag, url = upgradeHandler.isNewVersionReady()
+     # if flag:
+-    #     print url
++    #     print(url)
+     # else:
+-    #     print "current version is latest one"
+-    # print "final test:"
+-    print upgradeHandler.checkForUpgrade()
+-    print upgradeHandler.handleUserChoice("N")
++    #     print("current version is latest one")
++    # print("final test:")
++    print(upgradeHandler.checkForUpgrade())
++    print(upgradeHandler.handleUserChoice("N"))
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunExtensionCliHandler.py b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunExtensionCliHandler.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunExtensionCliHandler.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunExtensionCliHandler.py	2018-10-08 12:14:46.830877248 +0200
+@@ -127,35 +127,35 @@
+ 
+ # this api will show help page when user input aliyuncli help(-h or --help)
+     def showAliyunCliHelp(self):
+-        print color.bold+"ALIYUNCLI()"+color.end
+-        print color.bold+"\nNAME"+color.end
+-        print "\taliyuncli -"
+-        print color.bold+"\nDESCRIPTION"+color.end
+-        print "\tThe Aliyun Command Line Interface is a unified tool to manage your aliyun services. "
+-        print color.bold+"\nSYNOPSIS"+color.end
+-        print "\taliyuncli <command> <operation> [options and parameters]"
+-        print "\n\taliyuncli has supported command completion now. The detail you can check our site."
+-        print color.bold+"OPTIONS"+color.end
+-        print color.bold+"\tconfigure"+color.end
+-        print "\n\tThis option will help you save the key and secret and your favorite output format (text, json or table)"
+-        print color.bold+"\n\t--output"+color.end+" (string)"
+-        print "\n\tThe formatting style for command output."
+-        print "\n\to json"
+-        print "\n\to text"
+-        print "\n\to table"
++        print(color.bold+"ALIYUNCLI()"+color.end)
++        print(color.bold+"\nNAME"+color.end)
++        print("\taliyuncli -")
++        print(color.bold+"\nDESCRIPTION"+color.end)
++        print("\tThe Aliyun Command Line Interface is a unified tool to manage your aliyun services. ")
++        print(color.bold+"\nSYNOPSIS"+color.end)
++        print("\taliyuncli <command> <operation> [options and parameters]")
++        print("\n\taliyuncli has supported command completion now. The detail you can check our site.")
++        print(color.bold+"OPTIONS"+color.end)
++        print(color.bold+"\tconfigure"+color.end)
++        print("\n\tThis option will help you save the key and secret and your favorite output format (text, json or table)")
++        print(color.bold+"\n\t--output"+color.end+" (string)")
++        print("\n\tThe formatting style for command output.")
++        print("\n\to json")
++        print("\n\to text")
++        print("\n\to table")
+         
+-        print color.bold+"\n\t--secure"+color.end
+-        print "\n\tMaking secure requests(HTTPS) to service"
++        print(color.bold+"\n\t--secure"+color.end)
++        print("\n\tMaking secure requests(HTTPS) to service")
+         
+-        print color.bold+"\nAVAILABLE SERVICES"+color.end
+-        print "\n\to ecs"
+-        print "\n\to ess"
+-        print "\n\to mts"
+-        print "\n\to rds"
+-        print "\n\to slb"
++        print(color.bold+"\nAVAILABLE SERVICES"+color.end)
++        print("\n\to ecs")
++        print("\n\to ess")
++        print("\n\to mts")
++        print("\n\to rds")
++        print("\n\to slb")
+ 
+     def showCurrentVersion(self):
+-        print self._version
++        print(self._version)
+ 
+     def findConfigureFilePath(self):
+         homePath = ""
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunOpenApiData.py b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunOpenApiData.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunOpenApiData.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunOpenApiData.py	2018-10-08 12:16:00.008525187 +0200
+@@ -39,9 +39,9 @@
+ 
+ 
+ def oss_notice():
+-    print "OSS operation in aliyuncli is not supported."
+-    print "Please use 'ossutil' command line tool for Alibaba Cloud OSS operation."
+-    print "You can find information about 'ossutil' here: https://github.com/aliyun/ossutil.\n"
++    print("OSS operation in aliyuncli is not supported.")
++    print("Please use 'ossutil' command line tool for Alibaba Cloud OSS operation.")
++    print("You can find information about 'ossutil' here: https://github.com/aliyun/ossutil.\n")
+ 
+     
+ try:
+@@ -391,22 +391,22 @@
+             return jsonobj
+         
+         except ImportError as e:
+-            print module, 'is not exist!'
++            print(module, 'is not exist!')
+             sys.exit(1)            
+ 
+         except ServerException as e:
+             error = cliError.error()
+             error.printInFormat(e.get_error_code(), e.get_error_msg())
+-            print "Detail of Server Exception:\n"
+-            print str(e)
++            print("Detail of Server Exception:\n")
++            print(str(e))
+             sys.exit(1)
+         
+         except ClientException as e:            
+-            # print e.get_error_msg()
++            # print(e.get_error_msg())
+             error = cliError.error()
+             error.printInFormat(e.get_error_code(), e.get_error_msg())
+-            print "Detail of Client Exception:\n"
+-            print str(e)
++            print("Detail of Client Exception:\n")
++            print(str(e))
+             sys.exit(1)
+ 
+     def getSetFuncs(self,classname):
+@@ -549,6 +549,6 @@
+ 
+ if __name__ == '__main__':
+     handler = aliyunOpenApiDataHandler()
+-    print "###############",handler.isAvailableExtensionOperation('ecs', 'exportInstance')
+-    print "###############",handler.isAvailableOperation('ecs', 'DescribeInstances')
+-    print "###############",handler.getExtensionOperationsFromCmd('ecs')
++    print("###############",handler.isAvailableExtensionOperation('ecs', 'exportInstance'))
++    print("###############",handler.isAvailableOperation('ecs', 'DescribeInstances'))
++    print("###############",handler.getExtensionOperationsFromCmd('ecs'))
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunSdkConfigure.py b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunSdkConfigure.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/aliyunSdkConfigure.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/aliyunSdkConfigure.py	2018-10-08 12:16:14.865250686 +0200
+@@ -44,7 +44,7 @@
+             filename=self.fileName
+             self.writeCmdVersionToFile(cmd,version,filename)
+         else:
+-            print "A argument is needed! please use \'--version\' and add the sdk version."
++            print("A argument is needed! please use \'--version\' and add the sdk version.")
+             return
+     def showVersions(self,cmd,operation,stream=None):
+         configureVersion='(not configure)'
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/commandConfigure.py b/bundled/aliyun/aliyun-cli/aliyuncli/commandConfigure.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/commandConfigure.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/commandConfigure.py	2018-10-08 12:17:34.763774477 +0200
+@@ -55,7 +55,7 @@
+                 # _mlist = self.rds.extensionOptions[self.rds.exportDBInstance]
+                 self.appendList(parameterList, self.rds.extensionOptions[self.rds.exportDBInstance])
+             if operation.lower() == self.rds.importDBInstance.lower():
+-                # print "haha", (self.rds.extensionOptions[self.rds.importDBInstance])
++                # print("haha", (self.rds.extensionOptions[self.rds.importDBInstance]))
+                 # parameterList.append(self.rds.extensionOptions[self.rds.importDBInstance])
+                 self.appendList(parameterList, self.rds.extensionOptions[self.rds.importDBInstance])
+ 
+@@ -89,8 +89,8 @@
+                         importInstance:['count','filename']}
+ 
+ if __name__ == '__main__':
+-    # print type(rds.extensionOperations)
+-    # print type(rds.extensionOptions)
+-    # print rds.extensionOptions['ll']
++    # print(type(rds.extensionOperations))
++    # print(type(rds.extensionOptions))
++    # print(rds.extensionOptions['ll'])
+     configure = commandConfigure()
+-    print configure.showExtensionOperationHelp("ecs", "ExportInstance")
++    print(configure.showExtensionOperationHelp("ecs", "ExportInstance"))
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/configure.py b/bundled/aliyun/aliyun-cli/aliyuncli/configure.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/configure.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/configure.py	2018-10-08 12:17:59.282322043 +0200
+@@ -577,7 +577,7 @@
+                 operation = operations[i].strip()
+                 self._getKeyFromSection(profilename,operation)
+         else:
+-            print 'The correct usage:aliyuncli configure get key --profile profilename'
++            print('The correct usage:aliyuncli configure get key --profile profilename')
+             return
+ 
+     def _getKeyFromSection(self,profilename,key):
+@@ -591,7 +591,7 @@
+         elif key in _WRITE_TO_CONFIG_FILE :
+             self._getKeyFromFile(config_filename,sectionName,key)
+         else:
+-            print key,'=','None'
++            print(key,'=','None')
+     def _getKeyFromFile(self,filename,section,key):
+         if  os.path.isfile(filename):
+             with open(filename, 'r') as f:
+@@ -600,9 +600,9 @@
+                 start =  self._configWriter.hasSectionName(section,contents)[1]
+                 end = self._configWriter._getSectionEnd(start,contents)
+                 value = self._configWriter._getValueInSlice(start,end,key,contents)
+-                print key,'=',value
++                print(key,'=',value)
+         else:
+-            print key,'=None'
++            print(key,'=None')
+ 
+ 
+ 
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/handleEndPoint.py b/bundled/aliyun/aliyun-cli/aliyuncli/handleEndPoint.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/handleEndPoint.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/handleEndPoint.py	2018-10-08 12:18:25.178844179 +0200
+@@ -2,7 +2,7 @@
+ 
+ def handleEndPoint(cmd,operation,keyValues):
+     if not hasNecessaryArgs(keyValues):
+-        print 'RegionId/EndPoint is absence'
++        print('RegionId/EndPoint is absence')
+         return
+     if cmd is not None:
+         cmd = cmd.capitalize()
+@@ -25,7 +25,7 @@
+         from aliyunsdkcore.profile.region_provider import modify_point
+         modify_point(cmd,regionId,endPoint)
+     except Exception as e:
+-        print e
++        print(e)
+         pass
+ 
+ 
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/oasadp/oasHandler.py b/bundled/aliyun/aliyun-cli/aliyuncli/oasadp/oasHandler.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/oasadp/oasHandler.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/oasadp/oasHandler.py	2018-10-08 12:18:45.458469966 +0200
+@@ -111,14 +111,14 @@
+     if os.path.isfile(cfgfile):
+         ans = raw_input('File existed. Do you wish to overwrite it?(y/n)')
+         if ans.lower() != 'y':
+-            print 'Answer is No. Quit now'
++            print('Answer is No. Quit now')
+             return
+     with open(cfgfile, 'w+') as f:
+         config.write(f)
+-    print 'Your configuration is saved to %s.' % cfgfile
++    print('Your configuration is saved to %s.' % cfgfile)
+ 
+ def cmd_help(args):
+-    print HELP
++    print(HELP)
+ 
+ def add_config(parser):
+     parser.add_argument('--host', type=str, help='service host')
+@@ -161,7 +161,7 @@
+     return CMD_LIST.keys()
+ def handleOas(pars=None):
+     if  pars is None:
+-        print HELP
++        print(HELP)
+         sys.exit(0)
+     parser = ArgumentParser(prog="aliyuncli oas",formatter_class=ArgumentDefaultsHelpFormatter)
+ 
+diff -uNr a/bundled/aliyun/aliyun-cli/aliyuncli/paramOptimize.py b/bundled/aliyun/aliyun-cli/aliyuncli/paramOptimize.py
+--- a/bundled/aliyun/aliyun-cli/aliyuncli/paramOptimize.py	2018-01-24 04:08:33.000000000 +0100
++++ b/bundled/aliyun/aliyun-cli/aliyuncli/paramOptimize.py	2018-10-08 12:18:59.713206928 +0200
+@@ -61,7 +61,7 @@
+             data = f.read()
+             return data
+     except (OSError, IOError) as e:
+-        print e
++        print(e)
+ def _getParamFromUrl(prefix,value,mode):
+ 
+     req = urllib2.Request(value)
+@@ -74,7 +74,7 @@
+             errorMsg='Get the wrong content'
+             errorClass.printInFormat(response.getcode(), errorMsg)
+     except Exception as e:
+-        print e
++        print(e)
+ 
+ PrefixMap = {'file://': _getParamFromFile,
+              'fileb://': _getParamFromFile
+@@ -86,4 +86,4 @@
+              'fileb://': {'mode': 'rb'},
+              #'http://': {},
+              #'https://': {}
+-            }
+\ No newline at end of file
++            }
+diff -uNr a/bundled/aliyun/colorama/demos/demo07.py b/bundled/aliyun/colorama/demos/demo07.py
+--- a/bundled/aliyun/colorama/demos/demo07.py	2015-01-06 11:41:47.000000000 +0100
++++ b/bundled/aliyun/colorama/demos/demo07.py	2018-10-08 12:20:25.598622106 +0200
+@@ -16,10 +16,10 @@
+     3a4
+     """
+     colorama.init()
+-    print "aaa"
+-    print "aaa"
+-    print "aaa"
+-    print forward() + up(2) + "b" + up() + back(2) + "1" + forward() + "2" + back(3) + down(2) + "3" + forward() + "4"
++    print("aaa")
++    print("aaa")
++    print("aaa")
++    print(forward() + up(2) + "b" + up() + back(2) + "1" + forward() + "2" + back(3) + down(2) + "3" + forward() + "4")
+ 
+ 
+ if __name__ == '__main__':
+diff -uNr a/bundled/aliyun/pycryptodome/Doc/conf.py b/bundled/aliyun/pycryptodome/Doc/conf.py
+--- a/bundled/aliyun/pycryptodome/Doc/conf.py	2018-07-10 21:32:46.000000000 +0200
++++ b/bundled/aliyun/pycryptodome/Doc/conf.py	2018-10-08 12:08:11.122188094 +0200
+@@ -15,7 +15,7 @@
+ 
+ # Modules to document with autodoc are in another directory
+ sys.path.insert(0, os.path.abspath('../lib'))
+-print sys.path
++print(sys.path)
+ 
+ # Mock existance of native modules
+ from Crypto.Util import _raw_api
+diff -uNr a/bundled/aliyun/pycryptodome/lib/Crypto/Math/Primality.py b/bundled/aliyun/pycryptodome/lib/Crypto/Math/Primality.py
+--- a/bundled/aliyun/pycryptodome/lib/Crypto/Math/Primality.py	2018-07-10 21:32:46.000000000 +0200
++++ b/bundled/aliyun/pycryptodome/lib/Crypto/Math/Primality.py	2018-10-08 12:08:11.123188075 +0200
+@@ -302,7 +302,7 @@
+     randfunc = kwargs.pop("randfunc", None)
+     prime_filter = kwargs.pop("prime_filter", lambda x: True)
+     if kwargs:
+-        print "Unknown parameters:", kwargs.keys()
++        print("Unknown parameters:", kwargs.keys())
+ 
+     if exact_bits is None:
+         raise ValueError("Missing exact_bits parameter")
+@@ -341,7 +341,7 @@
+     exact_bits = kwargs.pop("exact_bits", None)
+     randfunc = kwargs.pop("randfunc", None)
+     if kwargs:
+-        print "Unknown parameters:", kwargs.keys()
++        print("Unknown parameters:", kwargs.keys())
+ 
+     if randfunc is None:
+         randfunc = Random.new().read
+diff -uNr a/bundled/aliyun/pycryptodome/lib/Crypto/PublicKey/ECC.py b/bundled/aliyun/pycryptodome/lib/Crypto/PublicKey/ECC.py
+--- a/bundled/aliyun/pycryptodome/lib/Crypto/PublicKey/ECC.py	2018-07-10 21:32:46.000000000 +0200
++++ b/bundled/aliyun/pycryptodome/lib/Crypto/PublicKey/ECC.py	2018-10-08 12:08:11.124188057 +0200
+@@ -912,4 +912,4 @@
+     count = 30
+     for x in xrange(count):
+         _ = point * d
+-    print (time.time() - start) / count * 1000, "ms"
++    print((time.time() - start) / count * 1000, "ms")
+diff -uNr a/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/Cipher/test_AES.py b/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/Cipher/test_AES.py
+--- a/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/Cipher/test_AES.py	2018-07-10 21:32:46.000000000 +0200
++++ b/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/Cipher/test_AES.py	2018-10-08 12:08:11.124188057 +0200
+@@ -1276,7 +1276,7 @@
+         tests += make_block_tests(AES, "AESNI", test_data, {'use_aesni': True})
+         tests += [ TestMultipleBlocks(True) ]
+     else:
+-        print "Skipping AESNI tests"
++        print("Skipping AESNI tests")
+     return tests
+ 
+ if __name__ == '__main__':
+diff -uNr a/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/Cipher/test_GCM.py b/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/Cipher/test_GCM.py
+--- a/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/Cipher/test_GCM.py	2018-07-10 21:32:46.000000000 +0200
++++ b/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/Cipher/test_GCM.py	2018-10-08 12:08:11.125188038 +0200
+@@ -894,7 +894,7 @@
+         if config.get('slow_tests'):
+             tests += list_test_cases(NISTTestVectorsGCM_no_clmul)
+     else:
+-        print "Skipping test of PCLMULDQD in AES GCM"
++        print("Skipping test of PCLMULDQD in AES GCM")
+ 
+     return tests
+ 
+diff -uNr a/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/Cipher/test_pkcs1_15.py b/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/Cipher/test_pkcs1_15.py
+--- a/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/Cipher/test_pkcs1_15.py	2018-07-10 21:32:46.000000000 +0200
++++ b/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/Cipher/test_pkcs1_15.py	2018-10-08 12:08:11.125188038 +0200
+@@ -39,7 +39,7 @@
+     """Convert a text string with bytes in hex form to a byte string"""
+     clean = b(rws(t))
+     if len(clean)%2 == 1:
+-        print clean
++        print(clean)
+         raise ValueError("Even number of characters expected")
+     return a2b_hex(clean)
+ 
+diff -uNr a/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/__main__.py b/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/__main__.py
+--- a/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/__main__.py	2018-07-10 21:32:46.000000000 +0200
++++ b/bundled/aliyun/pycryptodome/lib/Crypto/SelfTest/__main__.py	2018-10-08 12:08:11.126188020 +0200
+@@ -25,11 +25,11 @@
+ 
+ slow_tests = not "--skip-slow-tests" in sys.argv
+ if not slow_tests:
+-    print "Skipping slow tests"
++    print("Skipping slow tests")
+ 
+ wycheproof_warnings = "--wycheproof-warnings" in sys.argv
+ if wycheproof_warnings:
+-    print "Printing Wycheproof warnings"
++    print("Printing Wycheproof warnings")
+ 
+ config = {'slow_tests' : slow_tests, 'wycheproof_warnings' : wycheproof_warnings }
+ SelfTest.run(stream=sys.stdout, verbosity=1, config=config)
+diff -uNr a/bundled/aliyun/pycryptodome/lib/Crypto/Util/RFC1751.py b/bundled/aliyun/pycryptodome/lib/Crypto/Util/RFC1751.py
+--- a/bundled/aliyun/pycryptodome/lib/Crypto/Util/RFC1751.py	2018-07-10 21:32:46.000000000 +0200
++++ b/bundled/aliyun/pycryptodome/lib/Crypto/Util/RFC1751.py	2018-10-08 12:08:11.126188020 +0200
+@@ -369,13 +369,13 @@
+            ]
+ 
+     for key, words in data:
+-        print 'Trying key', key
++        print('Trying key', key)
+         key=binascii.a2b_hex(key)
+         w2=key_to_english(key)
+         if w2!=words:
+-            print 'key_to_english fails on key', repr(key), ', producing', str(w2)
++            print('key_to_english fails on key', repr(key), ', producing', str(w2))
+         k2=english_to_key(words)
+         if k2!=key:
+-            print 'english_to_key fails on key', repr(key), ', producing', repr(k2)
++            print('english_to_key fails on key', repr(key), ', producing', repr(k2))
