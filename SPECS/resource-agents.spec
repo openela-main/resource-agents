@@ -69,7 +69,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.9.0
-Release:	48%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
+Release:	40%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.1
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 %if 0%{?fedora} || 0%{?centos_version} || 0%{?rhel}
@@ -136,19 +136,8 @@ Patch44:	bz2157873-2-Filesystem-CTDB-validate-all-improvements.patch
 Patch45:	bz2157873-3-pgsqlms-validate-all-OCF_CHECK_LEVEL-10.patch
 Patch46:	bz2157873-4-exportfs-pgsql-validate-all-fixes.patch
 Patch47:	bz2157873-5-pgsqlms-alidate-all-OCF_CHECK_LEVEL-10.patch
-Patch48:	bz2040110-IPaddr2-IPsrcaddr-1-support-policy-based-routing.patch
-Patch49:	bz2149970-lvmlockd-add-use_lvmlockd-if-missing.patch
-Patch50:	bz2154727-ethmonitor-dont-log-iface-doesnt-exist-monitor.patch
-Patch51:	bz2039692-mysql-1-replication-fixes.patch
-Patch52:	bz2181019-azure-events-1-fix-no-transition-summary.patch
-Patch53:	bz2181019-azure-events-2-improve-logic.patch
-Patch54:	bz2183152-Filesystem-fail-efs-utils-not-installed.patch
-Patch55:	bz2039692-mysql-2-fix-demoted-score-bounce.patch
-Patch56:	bz2040110-IPaddr2-IPsrcaddr-2-fix-table-parameter.patch
-Patch57:	bz2189243-Filesystem-1-improve-stop-action.patch
-Patch58:	bz2189243-Filesystem-2-fix-incorrect-parameter-types.patch
-Patch59:	bz2189243-Filesystem-3-fix-signal_delay-default-value.patch
-Patch60:	bz2040110-IPaddr2-IPsrcaddr-3-dont-use-table-parameter.patch
+Patch48:	bz2182761-azure-events-1-fix-no-transition-summary.patch
+Patch49:	bz2182761-azure-events-2-improve-logic.patch
 
 # bundle patches
 Patch1000:	7-gcp-bundled.patch
@@ -378,17 +367,6 @@ exit 1
 %patch47 -p1
 %patch48 -p1
 %patch49 -p1
-%patch50 -p1
-%patch51 -p1
-%patch52 -p1
-%patch53 -p1
-%patch54 -p1
-%patch55 -p1
-%patch56 -p1
-%patch57 -p1
-%patch58 -p1
-%patch59 -p1
-%patch60 -p1
 
 chmod 755 heartbeat/nova-compute-wait
 chmod 755 heartbeat/NovaEvacuate
@@ -964,35 +942,10 @@ ccs_update_schema > /dev/null 2>&1 ||:
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
-* Thu Oct  5 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-48
-- IPaddr2/IPsrcaddr: support policy-based routing
-
-  Resolves: rhbz#2040110
-
-* Thu Jul 20 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-47
-- Filesystem: improve stop-action and allow setting term/kill signals
-  and signal_delay for large filesystems
-
-  Resolves: rhbz#2189243
-
-* Wed Jun 14 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-43
-- mysql: fix replication issues
-
-  Resolves: rhbz#2039692
-
-* Mon May  1 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-42
+* Tue May  2 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-40.1
 - azure-events*: fix for no "Transition Summary" for Pacemaker 2.1+
-- Filesystem: fail if AWS efs-utils not installed when fstype=efs
 
-  Resolves: rhbz#2181019
-  Resolves: rhbz#2183152
-
-* Wed Mar 22 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-41
-- lvmlockd: add "use_lvmlockd = 1" if it's commented out or missing
-- ethmonitor: dont log "Interface does not exist" for monitor-action
-
-  Resolves: rhbz#2149970
-  Resolves: rhbz#2154727
+  Resolves: rhbz#2182761
 
 * Tue Jan 17 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-40
 - all agents: dont check notify/promotable settings during
