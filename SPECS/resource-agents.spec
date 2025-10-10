@@ -43,7 +43,7 @@
 %global colorama_dir		%{bundled_lib_dir}/aliyun/%{colorama}
 # python-pycryptodome bundle
 %global pycryptodome		pycryptodome
-%global pycryptodome_version	3.6.4
+%global pycryptodome_version	3.20.0
 %global pycryptodome_dir	%{bundled_lib_dir}/aliyun/%{pycryptodome}
 # python-aliyun-sdk-core bundle
 %global aliyunsdkcore		aliyun-python-sdk-core
@@ -61,6 +61,10 @@
 %global aliyuncli		aliyun-cli
 %global aliyuncli_version	2.1.10
 %global aliyuncli_dir		%{bundled_lib_dir}/aliyun/%{aliyuncli}
+## fix CVEs
+# urllib3 bundle
+%global urllib3 		urllib3
+%global urllib3_version 	1.26.18
 
 # determine the ras-set to process based on configure invokation
 %bcond_with rgmanager
@@ -69,7 +73,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.9.0
-Release:	40%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.1
+Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.17
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 %if 0%{?fedora} || 0%{?centos_version} || 0%{?rhel}
@@ -88,6 +92,7 @@ Source7:	%{aliyunsdkcore}-%{aliyunsdkcore_version}.tar.gz
 Source8:	%{aliyunsdkecs}-%{aliyunsdkecs_version}.tar.gz
 Source9:	%{aliyunsdkvpc}-%{aliyunsdkvpc_version}.tar.gz
 Source10:	%{aliyuncli}-%{aliyuncli_version}.tar.gz
+Source11:	%{urllib3}-%{urllib3_version}.tar.gz
 Patch0: 	nova-compute-wait-NovaEvacuate.patch
 Patch1: 	bz1872754-pgsqlms-new-ra.patch
 Patch2: 	bz1995178-storage-mon-fix-typo.patch
@@ -136,8 +141,39 @@ Patch44:	bz2157873-2-Filesystem-CTDB-validate-all-improvements.patch
 Patch45:	bz2157873-3-pgsqlms-validate-all-OCF_CHECK_LEVEL-10.patch
 Patch46:	bz2157873-4-exportfs-pgsql-validate-all-fixes.patch
 Patch47:	bz2157873-5-pgsqlms-alidate-all-OCF_CHECK_LEVEL-10.patch
-Patch48:	bz2182761-azure-events-1-fix-no-transition-summary.patch
-Patch49:	bz2182761-azure-events-2-improve-logic.patch
+Patch48:	bz2040110-IPaddr2-IPsrcaddr-1-support-policy-based-routing.patch
+Patch49:	bz2149970-lvmlockd-add-use_lvmlockd-if-missing.patch
+Patch50:	bz2154727-ethmonitor-dont-log-iface-doesnt-exist-monitor.patch
+Patch51:	bz2039692-mysql-1-replication-fixes.patch
+Patch52:	bz2181019-azure-events-1-fix-no-transition-summary.patch
+Patch53:	bz2181019-azure-events-2-improve-logic.patch
+Patch54:	bz2183152-Filesystem-fail-efs-utils-not-installed.patch
+Patch55:	bz2039692-mysql-2-fix-demoted-score-bounce.patch
+Patch56:	bz2040110-IPaddr2-IPsrcaddr-2-fix-table-parameter.patch
+Patch57:	bz2189243-Filesystem-1-improve-stop-action.patch
+Patch58:	bz2189243-Filesystem-2-fix-incorrect-parameter-types.patch
+Patch59:	bz2189243-Filesystem-3-fix-signal_delay-default-value.patch
+Patch60:	bz1904465-mysql-common-improve-error-message.patch
+Patch61:	RHEL-15302-1-exportfs-make-fsid-optional.patch
+Patch62:	RHEL-15302-2-ocft-exportfs-remove-fsid-required-test.patch
+Patch63:	RHEL-15305-1-findif.sh-fix-loopback-handling.patch
+Patch64:	RHEL-16248-aws-vpc-move-ip-aws-vpc-route53-awseip-awsvip-auth_type-role.patch
+Patch65:	RHEL-17083-findif-EOS-fix.patch
+Patch66:	RHEL-15305-2-findif.sh-dont-use-table-parameter.patch
+Patch67:	RHEL-34137-aws-agents-use-curl_retry.patch
+Patch68:	RHEL-32828-db2-fix-OCF_SUCESS-typo.patch
+Patch69:	RHEL-61138-nfsserver-also-stop-rpc-statd-for-nfsv4_only.patch
+Patch70:	RHEL-69297-1-Filesystem-dont-kill-unrelated-processes.patch
+Patch71:	RHEL-69297-2-Filesystem-update-bsd-logic.patch
+Patch72:	RHEL-72956-1-openstack-cinder-volume-wait-for-volume-to-be-available.patch
+Patch73:	RHEL-72956-2-openstack-cinder-volume-fix-detach-not-working-during-start-action.patch
+Patch74:	RHEL-79823-portblock-fix-version-detection.patch
+Patch75: 	RHEL-81960-1-aws-agents-reuse-imds-token-until-it-expires.patch
+Patch76: 	RHEL-81960-2-aws-agents-reuse-imds-token-improvements.patch
+Patch77: 	RHEL-85048-tomcat-fix-CATALINA_PID-not-set-and-parameter-defaults.patch
+Patch78:	RHEL-91257-Filesystem-add-support-for-aznfs.patch
+Patch79:	RHEL-102731-ocf-shellfuncs-remove-extra-sleep-from-curl_retry.patch
+Patch80:	RHEL-115783-RHEL-115781-db2-add-skip_basic_sql_health_check-and-monitor-parameters.patch
 
 # bundle patches
 Patch1000:	7-gcp-bundled.patch
@@ -150,6 +186,9 @@ Patch1006:	python3-syntax-fixes.patch
 Patch1007:	aliyuncli-python3-fixes.patch
 Patch1008:	bz1935422-python-pygments-fix-CVE-2021-20270.patch
 Patch1009:	bz1943464-python-pygments-fix-CVE-2021-27291.patch
+Patch1010:	RHEL-44923-aliyun-gcp-fix-bundled-urllib3-CVE-2024-37891.patch
+Patch1011:	RHEL-104761-aliyun-gcp-fix-bundled-requests-CVE-2024-47081.patch
+Patch1012:	RHEL-50360-setuptools-fix-CVE-2024-6345.patch
 
 Obsoletes:	heartbeat-resources <= %{version}
 Provides:	heartbeat-resources = %{version}
@@ -244,6 +283,8 @@ Provides:	bundled(python-aliyun-sdk-ecs) = %{aliyunsdkecs_version}
 Provides:	bundled(python-aliyun-sdk-vpc) = %{aliyunsdkvpc_version}
 # aliyuncli bundle
 Provides:	bundled(aliyuncli) = %{aliyuncli_version}
+# urllib3 bundle
+Provides:	bundled(python-urllib3) = %{urllib3_version}
 
 %description aliyun
 Alibaba Cloud (Aliyun) resource agents allows Alibaba Cloud
@@ -283,7 +324,7 @@ Provides:	bundled(python-pyparsing) = 2.1.10
 Provides:	bundled(python-requests) = 2.10.0
 Provides:	bundled(python-six) = 1.11.0
 Provides:	bundled(python-uritemplate) = 3.0.0
-Provides:	bundled(python-urllib3) = 1.15.1
+Provides:	bundled(python-urllib3) = %{urllib3_version}
 Provides:	bundled(python-websocket) = 0.47.0
 Provides:	bundled(python-yaml) = 3.12
 # python-pyroute2 bundle
@@ -317,56 +358,87 @@ databases to be managed in a cluster environment.
 exit 1
 %endif
 %setup -q -n %{upstream_prefix}-%{upstream_version}
-%patch0 -p1
-%patch1 -p1
-%patch2 -p1
-%patch3 -p1
-%patch4 -p1
-%patch5 -p1
-%patch6 -p1
-%patch7 -p1
-%patch8 -p1
-%patch9 -p1
-%patch10 -p1
-%patch11 -p1
-%patch12 -p1
-%patch13 -p1
-%patch14 -p1
-%patch15 -p1
-%patch16 -p1
-%patch17 -p1
-%patch18 -p1
-%patch19 -p1
-%patch20 -p1
-%patch21 -p1
-%patch22 -p1
-%patch23 -p1
-%patch24 -p1
-%patch25 -p1
-%patch26 -p1
-%patch27 -p1
-%patch28 -p1
-%patch29 -p1
-%patch30 -p1
-%patch31 -p1
-%patch32 -p1
-%patch33 -p1
-%patch34 -p1
-%patch35 -p1
-%patch36 -p1
-%patch37 -p1
-%patch38 -p1
-%patch39 -p1
-%patch40 -p1
-%patch41 -p1
-%patch42 -p1
-%patch43 -p1
-%patch44 -p1
-%patch45 -p1
-%patch46 -p1
-%patch47 -p1
-%patch48 -p1
-%patch49 -p1
+%patch -p1 -P 0
+%patch -p1 -P 1
+%patch -p1 -P 2
+%patch -p1 -P 3
+%patch -p1 -P 4
+%patch -p1 -P 5
+%patch -p1 -P 6
+%patch -p1 -P 7
+%patch -p1 -P 8
+%patch -p1 -P 9
+%patch -p1 -P 10
+%patch -p1 -P 11
+%patch -p1 -P 12
+%patch -p1 -P 13
+%patch -p1 -P 14
+%patch -p1 -P 15
+%patch -p1 -P 16
+%patch -p1 -P 17
+%patch -p1 -P 18
+%patch -p1 -P 19
+%patch -p1 -P 20
+%patch -p1 -P 21
+%patch -p1 -P 22
+%patch -p1 -P 23
+%patch -p1 -P 24
+%patch -p1 -P 25
+%patch -p1 -P 26
+%patch -p1 -P 27
+%patch -p1 -P 28
+%patch -p1 -P 29
+%patch -p1 -P 30
+%patch -p1 -P 31
+%patch -p1 -P 32
+%patch -p1 -P 33
+%patch -p1 -P 34
+%patch -p1 -P 35
+%patch -p1 -P 36
+%patch -p1 -P 37
+%patch -p1 -P 38
+%patch -p1 -P 39
+%patch -p1 -P 40
+%patch -p1 -P 41
+%patch -p1 -P 42
+%patch -p1 -P 43
+%patch -p1 -P 44
+%patch -p1 -P 45
+%patch -p1 -P 46
+%patch -p1 -P 47
+%patch -p1 -P 48
+%patch -p1 -P 49
+%patch -p1 -P 50
+%patch -p1 -P 51
+%patch -p1 -P 52
+%patch -p1 -P 53
+%patch -p1 -P 54
+%patch -p1 -P 55
+%patch -p1 -P 56
+%patch -p1 -P 57
+%patch -p1 -P 58
+%patch -p1 -P 59
+%patch -p1 -P 60
+%patch -p1 -P 61
+%patch -p1 -P 62
+%patch -p1 -P 63
+%patch -p1 -P 64
+%patch -p1 -P 65
+%patch -p1 -P 66
+%patch -p1 -P 67 -F1
+%patch -p1 -P 68
+%patch -p1 -P 69
+%patch -p1 -P 70
+%patch -p1 -P 71
+%patch -p1 -P 72
+%patch -p1 -P 73
+%patch -p1 -P 74
+%patch -p1 -P 75
+%patch -p1 -P 76
+%patch -p1 -P 77
+%patch -p1 -P 78 -F2
+%patch -p1 -P 79
+%patch -p1 -P 80
 
 chmod 755 heartbeat/nova-compute-wait
 chmod 755 heartbeat/NovaEvacuate
@@ -380,15 +452,15 @@ mkdir -p %{bundled_lib_dir}/aliyun
 %ifarch x86_64
 tar -xzf %SOURCE1 -C %{bundled_lib_dir}/gcp
 # gcp*: append bundled-directory to search path, gcloud-ra
-%patch1000 -p1
+%patch -p1 -P 1000
 # replace python-rsa with python-cryptography
-%patch1001 -p1
+%patch -p1 -P 1001
 # gcloud support info
-%patch1002 -p1
+%patch -p1 -P 1002
 # configure: skip bundled gcp lib checks
-%patch1003 -p1 -F1
+%patch -p1 -P 1003 -F1
 # gcloud remove python 2 detection
-%patch1004 -p1
+%patch -p1 -P 1004
 # rename gcloud
 mv %{googlecloudsdk_dir}/bin/gcloud %{googlecloudsdk_dir}/bin/gcloud-ra
 # keep googleapiclient
@@ -495,16 +567,16 @@ mv %{bundled_lib_dir}/aliyun/%{aliyuncli}-%{aliyuncli_version} %{aliyuncli_dir}
 cp %{aliyuncli_dir}/README.rst %{aliyuncli}_README.rst
 cp %{aliyuncli_dir}/LICENSE %{aliyuncli}_LICENSE
 # aliyun*: use bundled libraries
-%patch1005 -p1
+%patch -p1 -P 1005
 
 # aliyun Python 3 fixes
-%patch1006 -p1
-%patch1007 -p1
+%patch -p1 -P 1006
+%patch -p1 -P 1007
 
 # fix CVE's in python-pygments
 pushd %{googlecloudsdk_dir}/lib/third_party
-%patch1008 -p1 -F2
-%patch1009 -p1 -F2
+%patch -p1 -P 1008 -F2
+%patch -p1 -P 1009 -F2
 popd
 %endif
 
@@ -601,6 +673,9 @@ make install DESTDIR=%{buildroot}
 # google-cloud-sdk bundle
 %ifarch x86_64
 pushd %{googlecloudsdk_dir}
+# fix urllib3 CVEs
+rm -rf lib/third_party/urllib3
+%{__python3} -m pip install --target lib/third_party --no-index --find-links %{_sourcedir} urllib3
 mkdir -p %{buildroot}/usr/lib/%{name}/%{googlecloudsdk_dir}
 cp -a bin data lib %{buildroot}/usr/lib/%{name}/%{googlecloudsdk_dir}
 mkdir %{buildroot}/%{_bindir}
@@ -629,6 +704,9 @@ popd
 # python-aliyun-sdk-core bundle
 pushd %{aliyunsdkcore_dir}
 %{__python3} setup.py install -O1 --skip-build --root %{buildroot} --install-lib /usr/lib/%{name}/%{bundled_lib_dir}/aliyun
+# fix urllib3 CVEs
+rm -rf %{buildroot}/usr/lib/%{name}/%{bundled_lib_dir}/aliyun/aliyunsdkcore/vendored/requests/packages/urllib3
+%{__python3} -m pip install --target %{buildroot}/usr/lib/%{name}/%{bundled_lib_dir}/aliyun/aliyunsdkcore/vendored/requests/packages --no-index --find-links %{_sourcedir} urllib3
 popd
 
 # python-aliyun-sdk-ecs bundle
@@ -648,6 +726,15 @@ sed -i -e "/^import sys/asys.path.insert(0, '/usr/lib/%{name}/%{bundled_lib_dir}
 mv %{buildroot}/%{_bindir}/aliyuncli %{buildroot}/%{_bindir}/aliyuncli-ra
 # aliyun_completer / aliyun_zsh_complete.sh
 rm %{buildroot}/%{_bindir}/aliyun_*
+popd
+
+# regular patch doesnt work in build-section
+pushd %{buildroot}/usr/lib/%{name}/%{bundled_lib_dir}
+/usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=2 < %{PATCH1010}
+/usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1011}
+popd
+pushd %{buildroot}/usr/lib/%{name}/%{bundled_lib_dir}/gcp/google-cloud-sdk/lib/third_party
+/usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1012}
 popd
 %endif
 
@@ -942,10 +1029,145 @@ ccs_update_schema > /dev/null 2>&1 ||:
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
-* Tue May  2 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-40.1
-- azure-events*: fix for no "Transition Summary" for Pacemaker 2.1+
+* Thu Sep 18 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.17
+- db2: add "skip_basic_sql_health_check" parameter to avoid failing on
+  systems with high load
+- db2: add "monitor_retries", "monitor_sleep", and "monitor_retry_all_errors"
+  parameters to be able to avoid failing on first try
 
-  Resolves: rhbz#2182761
+  Resolves: RHEL-115783, RHEL-115781
+
+* Fri Aug 15 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.16
+- bundled requests: fix CVE-2024-47081
+
+  Resolves: RHEL-104761
+
+* Tue Jul 15 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.15
+- ocf-shellfuncs/AWS agents: dont sleep after the final try in
+  curl_retry()
+
+  Resolves: RHEL-102731
+
+* Wed May 14 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.13
+- Filesystem: add support for aznfs
+
+  Resolves: RHEL-91257
+
+* Fri Mar 28 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.12
+- tomcat: fix CATALINA_PID not set, and catalina_base and catalina_out
+  parameter defaults
+
+  Resolves: RHEL-85048
+
+* Tue Mar  4 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.11
+- AWS agents: reuse IMDS token until it expires
+
+  Resolves: RHEL-81960
+
+* Thu Feb 20 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.10
+- portblock: fix iptables version detection
+
+  Resolves: RHEL-79823
+
+* Fri Jan 10 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.8
+- openstack-cinder-volume: wait for volume to be available
+
+  Resolves: RHEL-72956
+
+* Wed Nov 27 2024 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.6
+- Filesystem: dont kill unrelated processes during stop-action
+
+  Resolves: RHEL-69297
+
+* Tue Oct  1 2024 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.5
+- nfsserver: also stop rpc-statd for nfsv4_only to avoid stop failing
+  in some cases
+
+  Resolves: RHEL-61138
+
+* Thu Jul 25 2024 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.4
+- bundled setuptools: fix CVE-2024-6345
+
+  Resolves: RHEL-50360
+
+* Tue Jul 23 2024 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.3
+- gcp-pd-move: fix TLS_VERSION_1 issue
+
+  Resolves: RHEL-50041
+
+* Wed Jun 26 2024 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.2
+- bundled urllib3: fix CVE-2024-37891
+
+  Resolves: RHEL-44923
+
+* Thu May 30 2024 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.1
+- AWS agents: retry failed metadata requests to avoid instantly
+  failing when there is a hiccup in the network or metadata service
+- db2: fix OCF_SUCESS typo
+
+  Resolves: RHEL-34137, RHEL-32828
+
+* Thu Feb  8 2024 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54
+- findif.sh: fix loopback IP handling
+
+  Resolves: RHEL-15305
+
+* Wed Jan 24 2024 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-53
+- bundled urllib3: fix CVE-2023-45803
+- bundled pycryptodome: fix CVE-2023-52323
+
+  Resolves: RHEL-22431, RHEL-20916
+
+* Tue Nov 21 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-52
+- findif: also check that netmaskbits != EOS
+
+  Resolves: RHEL-17083
+
+* Fri Nov 17 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-51
+- aws-vpc-move-ip/aws-vpc-route53/awseip/awsvip: add auth_type parameter
+  and AWS Policy based authentication type
+
+  Resolves: RHEL-16248
+
+* Thu Nov  2 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-49
+- exportfs: make "fsid" parameter optional
+
+  Resolves: RHEL-15302
+
+* Wed Sep  6 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-48
+- mysql-common: improve error message
+
+  Resolves: rhbz#1904465
+
+* Thu Jul 20 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-47
+- Filesystem: improve stop-action and allow setting term/kill signals
+  and signal_delay for large filesystems
+
+  Resolves: rhbz#2189243
+
+* Wed Jun 21 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-44
+- IPaddr2/IPsrcaddr: support policy-based routing
+
+  Resolves: rhbz#2040110
+
+* Wed Jun 14 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-43
+- mysql: fix replication issues
+
+  Resolves: rhbz#2039692
+
+* Mon May  1 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-42
+- azure-events*: fix for no "Transition Summary" for Pacemaker 2.1+
+- Filesystem: fail if AWS efs-utils not installed when fstype=efs
+
+  Resolves: rhbz#2181019
+  Resolves: rhbz#2183152
+
+* Wed Mar 22 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-41
+- lvmlockd: add "use_lvmlockd = 1" if it's commented out or missing
+- ethmonitor: dont log "Interface does not exist" for monitor-action
+
+  Resolves: rhbz#2149970
+  Resolves: rhbz#2154727
 
 * Tue Jan 17 2023 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-40
 - all agents: dont check notify/promotable settings during

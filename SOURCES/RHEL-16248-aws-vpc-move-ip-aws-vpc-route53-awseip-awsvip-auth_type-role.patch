@@ -1,0 +1,555 @@
+From f45f76600a7e02c860566db7d1350dc3b09449c2 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 6 Nov 2023 15:49:44 +0100
+Subject: [PATCH] aws-vpc-move-ip/aws-vpc-route53/awseip/awsvip: add auth_type
+ parameter and AWS Policy based authentication type
+
+---
+ heartbeat/aws-vpc-move-ip    | 43 +++++++++++++++++++----
+ heartbeat/aws-vpc-route53.in | 47 ++++++++++++++++++++-----
+ heartbeat/awseip             | 68 +++++++++++++++++++++++++++---------
+ heartbeat/awsvip             | 60 ++++++++++++++++++++++++-------
+ 4 files changed, 173 insertions(+), 45 deletions(-)
+
+diff --git a/heartbeat/aws-vpc-move-ip b/heartbeat/aws-vpc-move-ip
+index dee040300f..54806f6eaa 100755
+--- a/heartbeat/aws-vpc-move-ip
++++ b/heartbeat/aws-vpc-move-ip
+@@ -36,6 +36,7 @@
+ 
+ # Defaults
+ OCF_RESKEY_awscli_default="/usr/bin/aws"
++OCF_RESKEY_auth_type_default="key"
+ OCF_RESKEY_profile_default="default"
+ OCF_RESKEY_region_default=""
+ OCF_RESKEY_ip_default=""
+@@ -48,6 +49,7 @@ OCF_RESKEY_monapi_default="false"
+ OCF_RESKEY_lookup_type_default="InstanceId"
+ 
+ : ${OCF_RESKEY_awscli=${OCF_RESKEY_awscli_default}}
++: ${OCF_RESKEY_auth_type=${OCF_RESKEY_auth_type_default}}
+ : ${OCF_RESKEY_profile=${OCF_RESKEY_profile_default}}
+ : ${OCF_RESKEY_region=${OCF_RESKEY_region_default}}
+ : ${OCF_RESKEY_ip=${OCF_RESKEY_ip_default}}
+@@ -58,8 +60,6 @@ OCF_RESKEY_lookup_type_default="InstanceId"
+ : ${OCF_RESKEY_iflabel=${OCF_RESKEY_iflabel_default}}
+ : ${OCF_RESKEY_monapi=${OCF_RESKEY_monapi_default}}
+ : ${OCF_RESKEY_lookup_type=${OCF_RESKEY_lookup_type_default}}
+-
+-[ -n "$OCF_RESKEY_region" ] && region_opt="--region $OCF_RESKEY_region"
+ #######################################################################
+ 
+ 
+@@ -83,6 +83,10 @@ cat <<END
+ <longdesc lang="en">
+ Resource Agent to move IP addresses within a VPC of the Amazon Webservices EC2
+ by changing an entry in an specific routing table
++
++Credentials needs to be setup by running "aws configure", or by using AWS Policies.
++
++See https://aws.amazon.com/cli/ for more information about awscli.
+ </longdesc>
+ <shortdesc lang="en">Move IP within a VPC of the AWS EC2</shortdesc>
+ 
+@@ -95,6 +99,15 @@ Path to command line tools for AWS
+ <content type="string" default="${OCF_RESKEY_awscli_default}" />
+ </parameter>
+ 
++<parameter name="auth_type">
++<longdesc lang="en">
++Authentication type "key" for AccessKey and SecretAccessKey set via "aws configure",
++or "role" to use AWS Policies.
++</longdesc>
++<shortdesc lang="en">Authentication type</shortdesc>
++<content type="string" default="${OCF_RESKEY_auth_type_default}" />
++</parameter>
++
+ <parameter name="profile">
+ <longdesc lang="en">
+ Valid AWS CLI profile name (see ~/.aws/config and 'aws configure')
+@@ -198,7 +211,7 @@ END
+ execute_cmd_as_role(){
+ 	cmd=$1
+ 	role=$2
+-	output="$($OCF_RESKEY_awscli sts assume-role --role-arn $role --role-session-name AWSCLI-RouteTableUpdate --profile $OCF_RESKEY_profile $region_opt --output=text)"
++	output="$($AWSCLI_CMD sts assume-role --role-arn $role --role-session-name AWSCLI-RouteTableUpdate --output=text)"
+ 	export AWS_ACCESS_KEY_ID="$(echo $output | awk -F" " '$4=="CREDENTIALS" {print $5}')"
+ 	export AWS_SECRET_ACCESS_KEY="$(echo $output | awk -F" " '$4=="CREDENTIALS" {print $7}')"
+ 	export AWS_SESSION_TOKEN="$(echo $output | awk -F" " '$4=="CREDENTIALS" {print $8}')"
+@@ -220,11 +233,11 @@ ec2ip_set_address_param_compat(){
+ }
+ 
+ ec2ip_validate() {
+-	for cmd in $OCF_RESKEY_awscli ip curl; do
++	for cmd in "$OCF_RESKEY_awscli" ip curl; do
+ 		check_binary "$cmd"
+ 	done
+ 
+-	if [ -z "$OCF_RESKEY_profile" ]; then
++	if [ "x${OCF_RESKEY_auth_type}" = "xkey" ] && [ -z "$OCF_RESKEY_profile" ]; then
+ 		ocf_exit_reason "profile parameter not set"
+ 		return $OCF_ERR_CONFIGURED
+ 	fi
+@@ -262,7 +275,7 @@ ec2ip_monitor() {
+ 		for rtb in $(echo $OCF_RESKEY_routing_table | sed -e 's/,/ /g'); do
+ 			ocf_log info "monitor: check routing table (API call) - $rtb"
+ 			if [ -z "${OCF_RESKEY_routing_table_role}" ]; then
+-				cmd="$OCF_RESKEY_awscli --profile $OCF_RESKEY_profile $region_opt --output text ec2 describe-route-tables --route-table-ids $rtb --query RouteTables[*].Routes[?DestinationCidrBlock=='$OCF_RESKEY_ip/32'].$OCF_RESKEY_lookup_type"
++				cmd="$AWSCLI_CMD --output text ec2 describe-route-tables --route-table-ids $rtb --query RouteTables[*].Routes[?DestinationCidrBlock=='$OCF_RESKEY_ip/32'].$OCF_RESKEY_lookup_type"
+ 				ocf_log debug "executing command: $cmd"
+ 				ROUTE_TO_INSTANCE="$($cmd)"
+ 			else
+@@ -368,7 +381,7 @@ ec2ip_get_and_configure() {
+ 	EC2_NETWORK_INTERFACE_ID="$(ec2ip_get_instance_eni)"
+ 	for rtb in $(echo $OCF_RESKEY_routing_table | sed -e 's/,/ /g'); do
+ 		if [ -z "${OCF_RESKEY_routing_table_role}" ]; then
+-			cmd="$OCF_RESKEY_awscli --profile $OCF_RESKEY_profile $region_opt --output text ec2 replace-route --route-table-id $rtb --destination-cidr-block ${OCF_RESKEY_ip}/32 --network-interface-id $EC2_NETWORK_INTERFACE_ID"
++			cmd="$AWSCLI_CMD --output text ec2 replace-route --route-table-id $rtb --destination-cidr-block ${OCF_RESKEY_ip}/32 --network-interface-id $EC2_NETWORK_INTERFACE_ID"
+ 			ocf_log debug "executing command: $cmd"
+ 			$cmd
+ 		else
+@@ -475,6 +488,22 @@ if ! ocf_is_root; then
+ 	exit $OCF_ERR_PERM
+ fi
+ 
++AWSCLI_CMD="${OCF_RESKEY_awscli}"
++if [ "x${OCF_RESKEY_auth_type}" = "xkey" ]; then
++	AWSCLI_CMD="$AWSCLI_CMD --profile ${OCF_RESKEY_profile}"
++elif [ "x${OCF_RESKEY_auth_type}" = "xrole" ]; then
++	if [ -z "${OCF_RESKEY_region}" ]; then
++		ocf_exit_reason "region needs to be set when using role-based authentication"
++		exit $OCF_ERR_CONFIGURED
++	fi
++else
++	ocf_exit_reason "Incorrect auth_type: ${OCF_RESKEY_auth_type}"
++	exit $OCF_ERR_CONFIGURED
++fi
++if [ -n "${OCF_RESKEY_region}" ]; then
++	AWSCLI_CMD="$AWSCLI_CMD --region ${OCF_RESKEY_region}"
++fi
++
+ ec2ip_set_address_param_compat
+ 
+ ec2ip_validate
+diff --git a/heartbeat/aws-vpc-route53.in b/heartbeat/aws-vpc-route53.in
+index 22cbb35833..18ab157e8a 100644
+--- a/heartbeat/aws-vpc-route53.in
++++ b/heartbeat/aws-vpc-route53.in
+@@ -46,24 +46,22 @@
+ 
+ # Defaults
+ OCF_RESKEY_awscli_default="/usr/bin/aws"
++OCF_RESKEY_auth_type_default="key"
+ OCF_RESKEY_profile_default="default"
++OCF_RESKEY_region_default=""
+ OCF_RESKEY_hostedzoneid_default=""
+ OCF_RESKEY_fullname_default=""
+ OCF_RESKEY_ip_default="local"
+ OCF_RESKEY_ttl_default=10
+ 
+ : ${OCF_RESKEY_awscli=${OCF_RESKEY_awscli_default}}
++: ${OCF_RESKEY_auth_type=${OCF_RESKEY_auth_type_default}}
+ : ${OCF_RESKEY_profile=${OCF_RESKEY_profile_default}}
++: ${OCF_RESKEY_region=${OCF_RESKEY_region_default}}
+ : ${OCF_RESKEY_hostedzoneid:=${OCF_RESKEY_hostedzoneid_default}}
+ : ${OCF_RESKEY_fullname:=${OCF_RESKEY_fullname_default}}
+ : ${OCF_RESKEY_ip:=${OCF_RESKEY_ip_default}}
+ : ${OCF_RESKEY_ttl:=${OCF_RESKEY_ttl_default}}
+-#######################################################################
+-
+-
+-AWS_PROFILE_OPT="--profile $OCF_RESKEY_profile --cli-connect-timeout 10"
+-#######################################################################
+-
+ 
+ usage() {
+ 	cat <<-EOT
+@@ -123,6 +121,15 @@ Path to command line tools for AWS
+ <content type="string" default="${OCF_RESKEY_awscli_default}" />
+ </parameter>
+ 
++<parameter name="auth_type">
++<longdesc lang="en">
++Authentication type "key" for AccessKey and SecretAccessKey set via "aws configure",
++or "role" to use AWS Policies.
++</longdesc>
++<shortdesc lang="en">Authentication type</shortdesc>
++<content type="string" default="${OCF_RESKEY_auth_type_default}" />
++</parameter>
++
+ <parameter name="profile">
+ <longdesc lang="en">
+ The name of the AWS CLI profile of the root account. This
+@@ -196,7 +203,7 @@ r53_validate() {
+ 
+ 	# Check for required binaries
+ 	ocf_log debug "Checking for required binaries"
+-	for command in curl dig; do
++	for command in "${OCF_RESKEY_awscli}" curl dig; do
+ 		check_binary "$command"
+ 	done
+ 
+@@ -216,7 +223,10 @@ r53_validate() {
+ 	esac
+ 
+ 	# profile
+-	[[ -z "$OCF_RESKEY_profile" ]] && ocf_log error "AWS CLI profile not set $OCF_RESKEY_profile!" && exit $OCF_ERR_CONFIGURED
++	if [ "x${OCF_RESKEY_auth_type}" = "xkey" ] && [ -z "$OCF_RESKEY_profile" ]; then
++		ocf_exit_reason "profile parameter not set"
++		return $OCF_ERR_CONFIGURED
++	fi
+ 
+ 	# TTL
+ 	[[ -z "$OCF_RESKEY_ttl" ]] && ocf_log error "TTL not set $OCF_RESKEY_ttl!" && exit $OCF_ERR_CONFIGURED
+@@ -417,7 +427,6 @@ _update_record() {
+ }
+ 
+ ###############################################################################
+-
+ case $__OCF_ACTION in
+ 	usage|help)
+ 		usage
+@@ -427,6 +436,26 @@ case $__OCF_ACTION in
+ 		metadata
+ 		exit $OCF_SUCCESS
+ 		;;
++esac
++
++AWSCLI_CMD="${OCF_RESKEY_awscli}"
++if [ "x${OCF_RESKEY_auth_type}" = "xkey" ]; then
++	AWSCLI_CMD="$AWSCLI_CMD --profile ${OCF_RESKEY_profile}"
++elif [ "x${OCF_RESKEY_auth_type}" = "xrole" ]; then
++	if [ -z "${OCF_RESKEY_region}" ]; then
++		ocf_exit_reason "region needs to be set when using role-based authentication"
++		exit $OCF_ERR_CONFIGURED
++	fi
++else
++	ocf_exit_reason "Incorrect auth_type: ${OCF_RESKEY_auth_type}"
++	exit $OCF_ERR_CONFIGURED
++fi
++if [ -n "${OCF_RESKEY_region}" ]; then
++	AWSCLI_CMD="$AWSCLI_CMD --region ${OCF_RESKEY_region}"
++fi
++AWSCLI_CMD="$AWSCLI_CMD --cli-connect-timeout 10"
++
++case $__OCF_ACTION in
+ 	start)
+ 		r53_validate || exit $?
+ 		r53_start
+diff --git a/heartbeat/awseip b/heartbeat/awseip
+index dc48460c85..49b0ca6155 100755
+--- a/heartbeat/awseip
++++ b/heartbeat/awseip
+@@ -23,7 +23,8 @@
+ #
+ #  Prerequisites:
+ #
+-#  - preconfigured AWS CLI running environment (AccessKey, SecretAccessKey, etc.)
++#  - preconfigured AWS CLI running environment (AccessKey, SecretAccessKey, etc.) or
++#    (AWSRole) Setup up relevant AWS Policies to allow agent related functions to be executed.
+ #  - a reserved secondary private IP address for EC2 instances high availability
+ #  - IAM user role with the following permissions:
+ #    * DescribeInstances
+@@ -44,11 +45,15 @@
+ # Defaults
+ #
+ OCF_RESKEY_awscli_default="/usr/bin/aws"
++OCF_RESKEY_auth_type_default="key"
+ OCF_RESKEY_profile_default="default"
++OCF_RESKEY_region_default=""
+ OCF_RESKEY_api_delay_default="3"
+ 
+ : ${OCF_RESKEY_awscli=${OCF_RESKEY_awscli_default}}
++: ${OCF_RESKEY_auth_type=${OCF_RESKEY_auth_type_default}}
+ : ${OCF_RESKEY_profile=${OCF_RESKEY_profile_default}}
++: ${OCF_RESKEY_region=${OCF_RESKEY_region_default}}
+ : ${OCF_RESKEY_api_delay=${OCF_RESKEY_api_delay_default}}
+ 
+ meta_data() {
+@@ -63,7 +68,7 @@ Resource Agent for Amazon AWS Elastic IP Addresses.
+ 
+ It manages AWS Elastic IP Addresses with awscli.
+ 
+-Credentials needs to be setup by running "aws configure".
++Credentials needs to be setup by running "aws configure", or by using AWS Policies.
+ 
+ See https://aws.amazon.com/cli/ for more information about awscli.
+ </longdesc>
+@@ -79,6 +84,15 @@ command line tools for aws services
+ <content type="string" default="${OCF_RESKEY_awscli_default}" />
+ </parameter>
+ 
++<parameter name="auth_type">
++<longdesc lang="en">
++Authentication type "key" for AccessKey and SecretAccessKey set via "aws configure",
++or "role" to use AWS Policies.
++</longdesc>
++<shortdesc lang="en">Authentication type</shortdesc>
++<content type="string" default="${OCF_RESKEY_auth_type_default}" />
++</parameter>
++
+ <parameter name="profile">
+ <longdesc lang="en">
+ Valid AWS CLI profile name (see ~/.aws/config and 'aws configure')
+@@ -111,6 +125,14 @@ predefined private ip address for ec2 instance
+ <content type="string" default="" />
+ </parameter>
+ 
++<parameter name="region" required="0">
++<longdesc lang="en">
++Region for AWS resource (required for role-based authentication)
++</longdesc>
++<shortdesc lang="en">Region</shortdesc>
++<content type="string" default="${OCF_RESKEY_region_default}" />
++</parameter>
++
+ <parameter name="api_delay" unique="0">
+ <longdesc lang="en">
+ a short delay between API calls, to avoid sending API too quick
+@@ -157,13 +179,13 @@ awseip_start() {
+                 NETWORK_ID=$(curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/${MAC}/interface-id -H "X-aws-ec2-metadata-token: $TOKEN")
+             fi
+         done
+-        $AWSCLI --profile $OCF_RESKEY_profile ec2 associate-address  \
++        $AWSCLI_CMD ec2 associate-address  \
+             --network-interface-id ${NETWORK_ID} \
+             --allocation-id ${ALLOCATION_ID} \
+             --private-ip-address ${PRIVATE_IP_ADDRESS}
+         RET=$?
+     else
+-        $AWSCLI --profile $OCF_RESKEY_profile ec2 associate-address  \
++        $AWSCLI_CMD ec2 associate-address  \
+             --instance-id ${INSTANCE_ID} \
+             --allocation-id ${ALLOCATION_ID}
+         RET=$?
+@@ -183,7 +205,7 @@ awseip_start() {
+ awseip_stop() {
+     awseip_monitor || return $OCF_SUCCESS
+ 
+-    ASSOCIATION_ID=$($AWSCLI --profile $OCF_RESKEY_profile --output json ec2 describe-addresses \
++    ASSOCIATION_ID=$($AWSCLI_CMD --output json ec2 describe-addresses \
+                          --allocation-id ${ALLOCATION_ID} | grep -m 1 "AssociationId" | awk -F'"' '{print$4}')
+ 
+     if [ -z "${ASSOCIATION_ID}" ]; then
+@@ -191,9 +213,7 @@ awseip_stop() {
+         return $OCF_NOT_RUNNING
+     fi
+ 
+-    $AWSCLI --profile ${OCF_RESKEY_profile} \
+-        ec2 disassociate-address \
+-        --association-id ${ASSOCIATION_ID}
++    $AWSCLI_CMD ec2 disassociate-address --association-id ${ASSOCIATION_ID}
+     RET=$?
+ 
+     # delay to avoid sending request too fast
+@@ -208,7 +228,7 @@ awseip_stop() {
+ }
+ 
+ awseip_monitor() {
+-    $AWSCLI --profile $OCF_RESKEY_profile ec2 describe-instances --instance-id "${INSTANCE_ID}" | grep -q "${ELASTIC_IP}"
++    $AWSCLI_CMD ec2 describe-instances --instance-id "${INSTANCE_ID}" | grep -q "${ELASTIC_IP}"
+     RET=$?
+ 
+     if [ $RET -ne 0 ]; then
+@@ -218,9 +238,9 @@ awseip_monitor() {
+ }
+ 
+ awseip_validate() {
+-    check_binary ${AWSCLI}
++    check_binary "${OCF_RESKEY_awscli}"
+ 
+-    if [ -z "$OCF_RESKEY_profile" ]; then
++    if [ "x${OCF_RESKEY_auth_type}" = "xkey" ] && [ -z "$OCF_RESKEY_profile" ]; then
+         ocf_exit_reason "profile parameter not set"
+         return $OCF_ERR_CONFIGURED
+     fi
+@@ -238,9 +258,27 @@ case $__OCF_ACTION in
+         meta_data
+         exit $OCF_SUCCESS
+         ;;
+-esac 
++    usage|help)
++        awseip_usage
++        exit $OCF_SUCCESS
++        ;;
++esac
+ 
+-AWSCLI="${OCF_RESKEY_awscli}"
++AWSCLI_CMD="${OCF_RESKEY_awscli}"
++if [ "x${OCF_RESKEY_auth_type}" = "xkey" ]; then
++	AWSCLI_CMD="$AWSCLI_CMD --profile ${OCF_RESKEY_profile}"
++elif [ "x${OCF_RESKEY_auth_type}" = "xrole" ]; then
++	if [ -z "${OCF_RESKEY_region}" ]; then
++		ocf_exit_reason "region needs to be set when using role-based authentication"
++		exit $OCF_ERR_CONFIGURED
++	fi
++else
++	ocf_exit_reason "Incorrect auth_type: ${OCF_RESKEY_auth_type}"
++	exit $OCF_ERR_CONFIGURED
++fi
++if [ -n "${OCF_RESKEY_region}" ]; then
++	AWSCLI_CMD="$AWSCLI_CMD --region ${OCF_RESKEY_region}"
++fi
+ ELASTIC_IP="${OCF_RESKEY_elastic_ip}"
+ ALLOCATION_ID="${OCF_RESKEY_allocation_id}"
+ PRIVATE_IP_ADDRESS="${OCF_RESKEY_private_ip_address}"
+@@ -272,10 +310,6 @@ case $__OCF_ACTION in
+     validate|validate-all)
+         awseip_validate
+         ;;
+-    usage|help)
+-        awseip_usage
+-        exit $OCF_SUCCESS
+-        ;;
+     *)
+         awseip_usage
+         exit $OCF_ERR_UNIMPLEMENTED
+diff --git a/heartbeat/awsvip b/heartbeat/awsvip
+index 037278e296..bdb4d68dd0 100755
+--- a/heartbeat/awsvip
++++ b/heartbeat/awsvip
+@@ -23,7 +23,8 @@
+ #
+ #  Prerequisites:
+ #
+-#  - preconfigured AWS CLI running environment (AccessKey, SecretAccessKey, etc.)
++#  - preconfigured AWS CLI running environment (AccessKey, SecretAccessKey, etc.) or
++#    (AWSRole) Setup up relevant AWS Policies to allow agent related functions to be executed.
+ #  - a reserved secondary private IP address for EC2 instances high availablity
+ #  - IAM user role with the following permissions:
+ #    * DescribeInstances
+@@ -43,11 +44,15 @@
+ # Defaults
+ #
+ OCF_RESKEY_awscli_default="/usr/bin/aws"
++OCF_RESKEY_auth_type_default="key"
+ OCF_RESKEY_profile_default="default"
++OCF_RESKEY_region_default=""
+ OCF_RESKEY_api_delay_default="3"
+ 
+ : ${OCF_RESKEY_awscli=${OCF_RESKEY_awscli_default}}
++: ${OCF_RESKEY_auth_type=${OCF_RESKEY_auth_type_default}}
+ : ${OCF_RESKEY_profile=${OCF_RESKEY_profile_default}}
++: ${OCF_RESKEY_region=${OCF_RESKEY_region_default}}
+ : ${OCF_RESKEY_api_delay=${OCF_RESKEY_api_delay_default}}
+ 
+ meta_data() {
+@@ -62,7 +67,7 @@ Resource Agent for Amazon AWS Secondary Private IP Addresses.
+ 
+ It manages AWS Secondary Private IP Addresses with awscli.
+ 
+-Credentials needs to be setup by running "aws configure".
++Credentials needs to be setup by running "aws configure", or by using AWS Policies.
+ 
+ See https://aws.amazon.com/cli/ for more information about awscli.
+ </longdesc>
+@@ -78,6 +83,15 @@ command line tools for aws services
+ <content type="string" default="${OCF_RESKEY_awscli_default}" />
+ </parameter>
+ 
++<parameter name="auth_type">
++<longdesc lang="en">
++Authentication type "key" for AccessKey and SecretAccessKey set via "aws configure",
++or "role" to use AWS Policies.
++</longdesc>
++<shortdesc lang="en">Authentication type</shortdesc>
++<content type="string" default="${OCF_RESKEY_auth_type_default}" />
++</parameter>
++
+ <parameter name="profile">
+ <longdesc lang="en">
+ Valid AWS CLI profile name (see ~/.aws/config and 'aws configure')
+@@ -94,6 +108,14 @@ reserved secondary private ip for ec2 instance
+ <content type="string" default="" />
+ </parameter>
+ 
++<parameter name="region" required="0">
++<longdesc lang="en">
++Region for AWS resource (required for role-based authentication)
++</longdesc>
++<shortdesc lang="en">Region</shortdesc>
++<content type="string" default="${OCF_RESKEY_region_default}" />
++</parameter>
++
+ <parameter name="api_delay" unique="0">
+ <longdesc lang="en">
+ a short delay between API calls, to avoid sending API too quick
+@@ -131,7 +153,7 @@ END
+ awsvip_start() {
+     awsvip_monitor && return $OCF_SUCCESS
+ 
+-    $AWSCLI --profile $OCF_RESKEY_profile ec2 assign-private-ip-addresses \
++    $AWSCLI_CMD ec2 assign-private-ip-addresses \
+         --network-interface-id ${NETWORK_ID} \
+         --private-ip-addresses ${SECONDARY_PRIVATE_IP} \
+         --allow-reassignment
+@@ -151,7 +173,7 @@ awsvip_start() {
+ awsvip_stop() {
+     awsvip_monitor || return $OCF_SUCCESS
+ 
+-    $AWSCLI --profile $OCF_RESKEY_profile ec2 unassign-private-ip-addresses \
++    $AWSCLI_CMD ec2 unassign-private-ip-addresses \
+         --network-interface-id ${NETWORK_ID} \
+         --private-ip-addresses ${SECONDARY_PRIVATE_IP}
+     RET=$?
+@@ -168,7 +190,7 @@ awsvip_stop() {
+ }
+ 
+ awsvip_monitor() {
+-    $AWSCLI --profile ${OCF_RESKEY_profile} ec2 describe-instances \
++    $AWSCLI_CMD ec2 describe-instances \
+             --instance-id "${INSTANCE_ID}" \
+             --query 'Reservations[].Instances[].NetworkInterfaces[].PrivateIpAddresses[].PrivateIpAddress[]' \
+             --output text | \
+@@ -182,9 +204,9 @@ awsvip_monitor() {
+ }
+ 
+ awsvip_validate() {
+-    check_binary ${AWSCLI}
++    check_binary "${OCF_RESKEY_awscli}"
+ 
+-    if [ -z "$OCF_RESKEY_profile" ]; then
++    if [ "x${OCF_RESKEY_auth_type}" = "xkey" ] && [ -z "$OCF_RESKEY_profile" ]; then
+         ocf_exit_reason "profile parameter not set"
+         return $OCF_ERR_CONFIGURED
+     fi
+@@ -202,9 +224,27 @@ case $__OCF_ACTION in
+         meta_data
+         exit $OCF_SUCCESS
+         ;;
++    usage|help)
++        awsvip_usage
++        exit $OCF_SUCCESS
++        ;;
+ esac
+ 
+-AWSCLI="${OCF_RESKEY_awscli}"
++AWSCLI_CMD="${OCF_RESKEY_awscli}"
++if [ "x${OCF_RESKEY_auth_type}" = "xkey" ]; then
++	AWSCLI_CMD="$AWSCLI_CMD --profile ${OCF_RESKEY_profile}"
++elif [ "x${OCF_RESKEY_auth_type}" = "xrole" ]; then
++	if [ -z "${OCF_RESKEY_region}" ]; then
++		ocf_exit_reason "region needs to be set when using role-based authentication"
++		exit $OCF_ERR_CONFIGURED
++	fi
++else
++	ocf_exit_reason "Incorrect auth_type: ${OCF_RESKEY_auth_type}"
++	exit $OCF_ERR_CONFIGURED
++fi
++if [ -n "${OCF_RESKEY_region}" ]; then
++	AWSCLI_CMD="$AWSCLI_CMD --region ${OCF_RESKEY_region}"
++fi
+ SECONDARY_PRIVATE_IP="${OCF_RESKEY_secondary_private_ip}"
+ TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+ INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id -H "X-aws-ec2-metadata-token: $TOKEN")
+@@ -236,10 +276,6 @@ case $__OCF_ACTION in
+     validate|validate-all)
+         awsvip_validate
+         ;;
+-    usage|help)
+-        awsvip_usage
+-        exit $OCF_SUCCESS
+-        ;;
+     *)
+         awsvip_usage
+         exit $OCF_ERR_UNIMPLEMENTED

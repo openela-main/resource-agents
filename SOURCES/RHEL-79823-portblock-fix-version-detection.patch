@@ -1,0 +1,448 @@
+--- a/heartbeat/portblock	2025-02-20 14:54:18.047134471 +0100
++++ b/heartbeat/portblock	2025-02-20 14:09:44.546869740 +0100
+@@ -25,6 +25,7 @@
+ # Defaults
+ OCF_RESKEY_protocol_default=""
+ OCF_RESKEY_portno_default=""
++OCF_RESKEY_direction_default="in"
+ OCF_RESKEY_action_default=""
+ OCF_RESKEY_ip_default="0.0.0.0/0"
+ OCF_RESKEY_reset_local_on_unblock_stop_default="false"
+@@ -33,6 +34,7 @@
+ 
+ : ${OCF_RESKEY_protocol=${OCF_RESKEY_protocol_default}}
+ : ${OCF_RESKEY_portno=${OCF_RESKEY_portno_default}}
++: ${OCF_RESKEY_direction=${OCF_RESKEY_direction_default}}
+ : ${OCF_RESKEY_action=${OCF_RESKEY_action_default}}
+ : ${OCF_RESKEY_ip=${OCF_RESKEY_ip_default}}
+ : ${OCF_RESKEY_reset_local_on_unblock_stop=${OCF_RESKEY_reset_local_on_unblock_stop_default}}
+@@ -217,6 +219,18 @@
+ <shortdesc lang="en">Connection state file synchronization script</shortdesc>
+ <content type="string" default="${OCF_RESKEY_sync_script_default}" />
+ </parameter>
++
++<parameter name="direction" unique="0" required="0">
++<longdesc lang="en">
++Whether to block incoming or outgoing traffic. Can be either "in",
++"out", or "both".
++If "in" is used, the incoming ports are blocked on the INPUT chain.
++If "out" is used, the outgoing ports are blocked on the OUTPUT chain.
++If "both" is used, both the incoming and outgoing ports are blocked.
++</longdesc>
++<shortdesc lang="en">Whether to block incoming or outgoing traffic, or both</shortdesc>
++<content type="string" default="${OCF_RESKEY_direction_default}" />
++</parameter>
+ </parameters>
+ 
+ <actions>
+@@ -240,36 +254,73 @@
+ #	and disable us -- but we're still in some sense active...
+ #
+ 
+-#active_grep_pat {udp|tcp} portno,portno
++#active_grep_pat {udp|tcp} portno,portno ip {d|s}
++# d = look for destination ports
++# s = look for source ports
+ active_grep_pat()
+ {
+   w="[ 	][ 	]*"
+   any="0\\.0\\.0\\.0/0"
+-  echo "^DROP${w}${1}${w}--${w}${any}${w}${3}${w}multiport${w}dports${w}${2}\>"
++  src=$any dst=$3
++  if [ "$4" = "s" ]; then
++    local src=$3
++    local dst=$any
++  fi
++  # iptables 1.8.9 briefly broke the output format, returning the
++  # numeric protocol value instead of a string. Support both variants.
++  if [ "$1" = "tcp" ]; then
++    local prot="(tcp|6)"
++  else
++    local prot="(udp|17)"
++  fi
++  echo "^DROP${w}${prot}${w}--${w}${src}${w}${dst}${w}multiport${w}${4}ports${w}${2}$"
+ }
+ 
+-#chain_isactive  {udp|tcp} portno,portno ip
++#chain_isactive  {udp|tcp} portno,portno ip chain
+ chain_isactive()
+ {
+-  PAT=`active_grep_pat "$1" "$2" "$3"`
+-  $IPTABLES $wait -n -L INPUT | grep "$PAT" >/dev/null
++  [ "$4" = "OUTPUT" ] && ds="s" || ds="d"
++  PAT=$(active_grep_pat "$1" "$2" "$3" "$ds")
++  $IPTABLES $wait -n -L "$4" | grep -qE "$PAT"
++}
++
++# netstat -tn and ss -Htn, split on whitespace and colon,
++# look very similar:
++#  tcp    0  0  10.43.55.1  675  10.43.9.8  2049  ESTABLISHED
++#  ESTAB  0  0  10.43.55.1  675  10.43.9.8  2049
++# so we can write one awk script for both
++get_established_tcp_connections()
++{
++	local columns
++	if [ -z "$1" ] ; then
++		columns='$4,$5, $6,$7'
++	else
++		# swap local and remote for "tickle_local"
++		columns='$6,$7, $4,$5'
++	fi
++	$ss_or_netstat | awk -F '[:[:space:]]+' '
++		( $8 == "ESTABLISHED" || $1 == "ESTAB" ) && $4 == "'$OCF_RESKEY_ip'" \
++		{printf "%s:%s\t%s:%s\n", '"$columns"'}'
+ }
+ 
+ save_tcp_connections()
+ {
+ 	[ -z "$OCF_RESKEY_tickle_dir" ] && return
+ 	statefile=$OCF_RESKEY_tickle_dir/$OCF_RESKEY_ip
++	# If we have _no_ sync script, we probably have a shared
++	# (or replicated) directory, and need to fsync, or we might
++	# end up with the just truncated file after failover, exactly
++	# when we need it.
++	#
++	# If we _do_ have a sync script, it is not that important whether
++	# the local state file is fsync'ed or not, the sync script is
++	# responsible to "atomically" communicate the state to the peer(s).
+ 	if [ -z "$OCF_RESKEY_sync_script" ]; then
+-		netstat -tn |awk -F '[:[:space:]]+' '
+-			$8 == "ESTABLISHED" && $4 == "'$OCF_RESKEY_ip'" \
+-			{printf "%s:%s\t%s:%s\n", $4,$5, $6,$7}' |
+-			dd of="$statefile".new conv=fsync status=none &&
+-			mv "$statefile".new "$statefile"
++		get_established_tcp_connections |
++		dd of="$statefile".new conv=fsync status=none &&
++		mv "$statefile".new "$statefile"
+ 	else
+-		netstat -tn |awk -F '[:[:space:]]+' '
+-			$8 == "ESTABLISHED" && $4 == "'$OCF_RESKEY_ip'" \
+-			{printf "%s:%s\t%s:%s\n", $4,$5, $6,$7}' \
+-			> $statefile
++		get_established_tcp_connections > $statefile
+ 		$OCF_RESKEY_sync_script $statefile > /dev/null 2>&1 &
+ 	fi
+ }
+@@ -277,7 +328,6 @@
+ tickle_remote()
+ {
+ 	[ -z "$OCF_RESKEY_tickle_dir" ] && return
+-	echo 1 > /proc/sys/net/ipv4/tcp_tw_recycle
+ 	f=$OCF_RESKEY_tickle_dir/$OCF_RESKEY_ip
+ 	[ -r $f ] || return
+ 	$TICKLETCP -n 3 < $f
+@@ -289,11 +339,6 @@
+ 	f=$OCF_RESKEY_tickle_dir/$OCF_RESKEY_ip
+ 	[ -r $f ] || return
+ 
+-	checkcmd="netstat -tn"
+-	if ! have_binary "netstat"; then
+-		checkcmd="ss -Htn"
+-	fi
+-
+ 	# swap "local" and "remote" address,
+ 	# so we tickle ourselves.
+ 	# We set up a REJECT with tcp-reset before we do so, so we get rid of
+@@ -302,122 +347,152 @@
+ 	# the way if we switch-over and then switch-back in quick succession.
+ 	local i
+ 	awk '{ print $2, $1; }' $f | $TICKLETCP
+-	$checkcmd | grep -Fw $OCF_RESKEY_ip || return
++	$ss_or_netstat | grep -Fw $OCF_RESKEY_ip || return
+ 	for i in 0.1 0.5 1 2 4 ; do
+ 		sleep $i
+-		awk '{ print $2, $1; }' $f | $TICKLETCP
+-		$checkcmd | grep -Fw $OCF_RESKEY_ip || break
++		# now kill what is currently in the list,
++		# not what was recorded during last monitor
++		get_established_tcp_connections swap | $TICKLETCP
++		$ss_or_netstat | grep -Fw $OCF_RESKEY_ip || break
+ 	done
+ }
+ 
+ SayActive()
+ {
+-  echo "$CMD DROP rule for INPUT chain [$*]  is running (OK)"
++  ocf_log debug "$CMD DROP rule [$*]  is running (OK)"
+ }
+ 
+ SayConsideredActive()
+ {
+-  echo "$CMD DROP rule for INPUT chain [$*] considered to be running (OK)"
++  ocf_log debug "$CMD DROP rule [$*] considered to be running (OK)"
+ }
+ 
+ SayInactive()
+ {
+-  echo "$CMD DROP rule for INPUT chain [$*] is inactive"
++  ocf_log debug "$CMD DROP rule [$*] is inactive"
+ }
+ 
+-#IptablesStatus  {udp|tcp} portno,portno ip {block|unblock}
++#IptablesStatus  {udp|tcp} portno,portno ip {in|out|both} {block|unblock}
+ IptablesStatus() {
+-    local rc
+-    rc=$OCF_ERR_GENERIC
+-    activewords="$CMD $1 $2 is running (OK)"
+-    if chain_isactive "$1" "$2" "$3"; then
+-	case $4 in
+-	    block)	
+-		SayActive $*
+-		rc=$OCF_SUCCESS
+-		;;
+-	    *)
+- 		SayInactive $*
+-		rc=$OCF_NOT_RUNNING
+-		;;
+-	esac
+-    else
+-	case $4 in
+-	    block)
+-		if ha_pseudo_resource "${OCF_RESOURCE_INSTANCE}" status; then
+-		    SayConsideredActive $*
+-		    rc=$OCF_SUCCESS
+-		else
+-		    SayInactive $*
+-		    rc=$OCF_NOT_RUNNING
+-		fi
+-		;;
+-	    
+-	    *)
+-		if ha_pseudo_resource "${OCF_RESOURCE_INSTANCE}" status; then
+-			SayActive $*
+-			#This is only run on real monitor events.
+-			save_tcp_connections
+-			rc=$OCF_SUCCESS
+-		else
+-			SayInactive $*
+-			rc=$OCF_NOT_RUNNING
+-		fi
+-		;;
+-	esac
+-    fi      
+-    
+-    return $rc
++  local rc
++  rc=$OCF_ERR_GENERIC
++  is_active=0
++  if [ "$4" = "in" ] || [ "$4" = "both" ]; then
++    chain_isactive "$1" "$2" "$3" INPUT
++    is_active=$?
++  fi
++  if [ "$4" = "out" ] || [ "$4" = "both" ]; then
++    chain_isactive "$1" "$2" "$3" OUTPUT
++    r=$?
++    [ $r -gt $is_active ] && is_active=$r
++  fi
++  if [ $is_active -eq 0 ]; then
++    case $5 in
++      block)
++        SayActive $*
++        rc=$OCF_SUCCESS
++        ;;
++      *)
++        SayInactive $*
++        rc=$OCF_NOT_RUNNING
++        ;;
++    esac
++  else
++    case $5 in
++      block)
++        if ha_pseudo_resource "${OCF_RESOURCE_INSTANCE}" status; then
++          SayConsideredActive $*
++          rc=$OCF_SUCCESS
++        else
++          SayInactive $*
++          rc=$OCF_NOT_RUNNING
++        fi
++        ;;
++      *)
++        if ha_pseudo_resource "${OCF_RESOURCE_INSTANCE}" status; then
++          SayActive $*
++          #This is only run on real monitor events.
++          save_tcp_connections
++          rc=$OCF_SUCCESS
++        else
++          SayInactive $*
++          rc=$OCF_NOT_RUNNING
++        fi
++        ;;
++    esac
++  fi
++  return $rc
+ }
+ 
+-#IptablesBLOCK  {udp|tcp} portno,portno ip
+-IptablesBLOCK()
++#DoIptables  {-I|-D} {udp|tcp} portno,portno ip chain
++DoIptables()
+ {
+-  local rc=0
+-  local try_reset=false
+-  if	[ "$1/$4/$__OCF_ACTION" = tcp/unblock/stop ] &&
+-	ocf_is_true $reset_local_on_unblock_stop
+-  then
+-	try_reset=true
+-  fi
+-  if
+-    chain_isactive "$1" "$2" "$3"
+-  then
+-    : OK -- chain already active
++  op=$1 proto=$2 ports=$3 ip=$4 chain=$5
++  active=0; chain_isactive "$proto" "$ports" "$ip" "$chain" && active=1
++  want_active=0; [ "$op" = "-I" ] && want_active=1
++  ocf_log debug "active: $active want_active: $want_active"
++  if [ $active -eq $want_active ] ; then
++    : Chain already in desired state
+   else
+-    if $try_reset ; then
+-      $IPTABLES $wait -I OUTPUT -p "$1" -s "$3" -m multiport --sports "$2" -j REJECT --reject-with tcp-reset
+-      tickle_local
++    [ "$chain" = "OUTPUT" ] && ds="s" || ds="d"
++    $IPTABLES $wait "$op" "$chain" -p "$proto" -${ds} "$ip" -m multiport --${ds}ports "$ports" -j DROP
++  fi
++}
++
++#IptablesBLOCK  {udp|tcp} portno,portno ip {in|out|both} {block|unblock}
++IptablesBLOCK()
++{
++  local rc_in=0
++  local rc_out=0
++  if [ "$4" = "in" ] || [ "$4" = "both" ]; then
++    local try_reset=false
++    if	[ "$1/$5/$__OCF_ACTION" = tcp/unblock/stop ] &&
++    ocf_is_true $reset_local_on_unblock_stop
++    then
++      try_reset=true
+     fi
+-    $IPTABLES $wait -I INPUT -p "$1" -d "$3" -m multiport --dports "$2" -j DROP
+-    rc=$?
+-    if $try_reset ; then
+-      $IPTABLES $wait -D OUTPUT -p "$1" -s "$3" -m multiport --sports "$2" -j REJECT --reject-with tcp-reset
++    if
++      chain_isactive "$1" "$2" "$3" INPUT
++    then
++      : OK -- chain already active
++    else
++      if $try_reset ; then
++        $IPTABLES $wait -I OUTPUT -p "$1" -s "$3" -m multiport --sports "$2" -j REJECT --reject-with tcp-reset
++        tickle_local
++      fi
++      $IPTABLES $wait -I INPUT -p "$1" -d "$3" -m multiport --dports "$2" -j DROP
++      rc_in=$?
++      if $try_reset ; then
++        $IPTABLES $wait -D OUTPUT -p "$1" -s "$3" -m multiport --sports "$2" -j REJECT --reject-with tcp-reset
++      fi
+     fi
+   fi
++  if [ "$4" = "out" ] || [ "$4" = "both" ]; then
++    DoIptables -I "$1" "$2" "$3" OUTPUT
++    rc_out=$?
++  fi
+ 
+-  return $rc
++  [ $rc_in -gt $rc_out ] && return $rc_in || return $rc_out
+ }
+ 
+-#IptablesUNBLOCK  {udp|tcp} portno,portno ip
++#IptablesUNBLOCK  {udp|tcp} portno,portno ip {in|out|both}
+ IptablesUNBLOCK()
+ {
+-  if
+-    chain_isactive "$1" "$2" "$3"
+-  then
+-    $IPTABLES $wait -D INPUT -p "$1" -d "$3" -m multiport --dports "$2" -j DROP
+-  else
+-    : Chain Not active
++  if [ "$4" = "in" ] || [ "$4" = "both" ]; then
++    DoIptables -D "$1" "$2" "$3" INPUT
++  fi
++  if [ "$4" = "out" ] || [ "$4" = "both" ]; then
++    DoIptables -D "$1" "$2" "$3" OUTPUT
+   fi
+ 
+   return $?
+ }
+ 
+-#IptablesStart  {udp|tcp} portno,portno ip {block|unblock}
++#IptablesStart  {udp|tcp} portno,portno ip {in|out|both} {block|unblock}
+ IptablesStart()
+ {
+   ha_pseudo_resource "${OCF_RESOURCE_INSTANCE}" start
+-  case $4 in
++  case $5 in
+     block)	IptablesBLOCK "$@";;
+     unblock)
+ 		IptablesUNBLOCK "$@"
+@@ -432,11 +507,11 @@
+   return $?
+ }
+ 
+-#IptablesStop  {udp|tcp} portno,portno ip {block|unblock}
++#IptablesStop  {udp|tcp} portno,portno ip {in|out|both} {block|unblock}
+ IptablesStop()
+ {
+   ha_pseudo_resource "${OCF_RESOURCE_INSTANCE}" stop
+-  case $4 in
++  case $5 in
+     block)	IptablesUNBLOCK "$@";;
+     unblock)
+ 		save_tcp_connections
+@@ -454,7 +529,7 @@
+ CheckPort() {
+ #	Examples of valid port: "1080", "1", "0080"
+ #	Examples of invalid port: "1080bad", "0", "0000", ""
+-  echo $1 |egrep -qx '[0-9]+(:[0-9]+)?(,[0-9]+(:[0-9]+)?)*'
++  echo $1 | $EGREP -qx '[0-9]+(:[0-9]+)?(,[0-9]+(:[0-9]+)?)*'
+ }
+ 
+ IptablesValidateAll()
+@@ -543,7 +618,7 @@
+ fi 
+ 
+ # iptables v1.4.20+ is required to use -w (wait)
+-version=$(iptables -V | awk -F ' v' '{print $NF}')
++version=$(iptables -V | grep -oE '[0-9]+[\.0-9]+')
+ ocf_version_cmp "$version" "1.4.19.1"
+ if [ "$?" -eq "2" ]; then
+     wait="-w"
+@@ -553,21 +628,36 @@
+ 
+ protocol=$OCF_RESKEY_protocol
+ portno=$OCF_RESKEY_portno
++direction=$OCF_RESKEY_direction
+ action=$OCF_RESKEY_action
+ ip=$OCF_RESKEY_ip
+ reset_local_on_unblock_stop=$OCF_RESKEY_reset_local_on_unblock_stop
+ 
++
++# If "tickle" is enabled, we need to record the list of currently established
++# connections during monitor.  Use ss where available, and netstat otherwise.
++if [ -n "$OCF_RESKEY_tickle_dir" ] ; then
++	if have_binary ss ; then
++		ss_or_netstat="ss -Htn"
++	elif have_binary netstat ; then
++		ss_or_netstat="netstat -tn"
++	else
++		ocf_log err "Neither ss nor netstat found, but needed to record estblished connections."
++		exit $OCF_ERR_INSTALLED
++	fi
++fi
++
+ case $1 in
+   start)	
+-			IptablesStart $protocol $portno $ip $action 
++			IptablesStart $protocol $portno $ip $direction $action
+ 			;;
+ 
+   stop)		
+-			IptablesStop $protocol $portno $ip $action
++			IptablesStop $protocol $portno $ip $direction $action
+ 			;;
+ 
+   status|monitor)	
+-			IptablesStatus $protocol $portno $ip $action
++			IptablesStatus $protocol $portno $ip $direction $action
+ 			;;
+ 
+   validate-all)

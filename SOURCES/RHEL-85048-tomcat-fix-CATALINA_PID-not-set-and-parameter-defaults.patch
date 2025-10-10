@@ -1,0 +1,72 @@
+From f6a5f38405a93ab88e887aa657ee79593d1a4485 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 26 Mar 2025 09:48:06 +0100
+Subject: [PATCH 1/2] tomcat: fix CATALINA_PID not set issue
+
+---
+ heartbeat/tomcat | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/heartbeat/tomcat b/heartbeat/tomcat
+index fa2715140b..6d47980296 100755
+--- a/heartbeat/tomcat
++++ b/heartbeat/tomcat
+@@ -695,10 +695,12 @@ CATALINA_BASE="${OCF_RESKEY_catalina_base-${OCF_RESKEY_catalina_home}}"
+ CATALINA_OUT="${OCF_RESKEY_catalina_out}"
+ 
+ CATALINA_PID=$OCF_RESKEY_catalina_pid
+-if [ -z "$CATALINA_PID" ] && [ "$__OCF_ACTION" = "start" ]; then
+-	mkdir -p "${HA_RSCTMP}/${TOMCAT_NAME}_tomcatstate/"
+-	if [ "${RESOURCE_TOMCAT_USER}" != "root" ]; then
+-		chown ${RESOURCE_TOMCAT_USER} "${HA_RSCTMP}/${TOMCAT_NAME}_tomcatstate/"
++if [ -z "$CATALINA_PID" ]; then
++	if [ "$__OCF_ACTION" = "start" ]; then
++		mkdir -p "${HA_RSCTMP}/${TOMCAT_NAME}_tomcatstate/"
++		if [ "${RESOURCE_TOMCAT_USER}" != "root" ]; then
++			chown ${RESOURCE_TOMCAT_USER} "${HA_RSCTMP}/${TOMCAT_NAME}_tomcatstate/"
++		fi
+ 	fi
+ 	CATALINA_PID="${HA_RSCTMP}/${TOMCAT_NAME}_tomcatstate/catalina.pid"
+ fi
+
+From b0da375699ebfa544e6e4a13eae554af3e7d65c9 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Fri, 28 Mar 2025 10:50:17 +0100
+Subject: [PATCH 2/2] tomcat: fix catalina_base and catalina_out parameter
+ defaults
+
+---
+ heartbeat/tomcat | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/heartbeat/tomcat b/heartbeat/tomcat
+index 6d47980296..1e8f216384 100755
+--- a/heartbeat/tomcat
++++ b/heartbeat/tomcat
+@@ -650,7 +650,6 @@ OCF_RESKEY_statusurl_default="http://127.0.0.1:8080"
+ OCF_RESKEY_max_stop_time_default=""
+ OCF_RESKEY_java_home_default=""
+ OCF_RESKEY_java_opts_default=""
+-OCF_RESKEY_catalina_out_default="${OCF_RESKEY_catalina_base-${OCF_RESKEY_catalina_home}}/logs/catalina.out"
+ OCF_RESKEY_catalina_pid_default=""
+ OCF_RESKEY_tomcat_start_script_default="${TOMCAT_START_SCRIPT}"
+ OCF_RESKEY_tomcat_start_opts_default=""
+@@ -670,7 +669,6 @@ OCF_RESKEY_logging_manager_default=""
+ : ${OCF_RESKEY_max_stop_time=${OCF_RESKEY_max_stop_time_default}}
+ : ${OCF_RESKEY_java_home=${OCF_RESKEY_java_home_default}}
+ : ${OCF_RESKEY_java_opts=${OCF_RESKEY_java_opts_default}}
+-: ${OCF_RESKEY_catalina_out=${OCF_RESKEY_catalina_out_default}}
+ : ${OCF_RESKEY_catalina_pid=${OCF_RESKEY_catalina_pid_default}}
+ : ${OCF_RESKEY_tomcat_start_script=${OCF_RESKEY_tomcat_start_script_default}}
+ : ${OCF_RESKEY_tomcat_start_opts=${OCF_RESKEY_tomcat_start_opts_default}}
+@@ -691,7 +689,9 @@ RESOURCE_STATUSURL="${OCF_RESKEY_statusurl}"
+ JAVA_HOME="${OCF_RESKEY_java_home}"
+ JAVA_OPTS="${OCF_RESKEY_java_opts}"
+ CATALINA_HOME="${OCF_RESKEY_catalina_home}"
+-CATALINA_BASE="${OCF_RESKEY_catalina_base-${OCF_RESKEY_catalina_home}}"
++CATALINA_BASE="${OCF_RESKEY_catalina_base:-${OCF_RESKEY_catalina_home}}"
++OCF_RESKEY_catalina_out_default="${OCF_RESKEY_catalina_base:-${OCF_RESKEY_catalina_home}}/logs/catalina.out"
++: ${OCF_RESKEY_catalina_out=${OCF_RESKEY_catalina_out_default}}
+ CATALINA_OUT="${OCF_RESKEY_catalina_out}"
+ 
+ CATALINA_PID=$OCF_RESKEY_catalina_pid

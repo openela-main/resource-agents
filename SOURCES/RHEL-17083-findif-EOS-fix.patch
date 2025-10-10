@@ -1,0 +1,22 @@
+From b23ba4eaefb500199c4845751f4c5545c81f42f1 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 20 Nov 2023 16:37:37 +0100
+Subject: [PATCH 2/2] findif: also check that netmaskbits != EOS
+
+---
+ tools/findif.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/findif.c b/tools/findif.c
+index a25395fec..ab108a3c4 100644
+--- a/tools/findif.c
++++ b/tools/findif.c
+@@ -669,7 +669,7 @@ main(int argc, char ** argv) {
+ 		}
+ 	}
+ 
+-	if (netmaskbits) {
++	if (netmaskbits != NULL && *netmaskbits != EOS) {
+ 		best_netmask = netmask;
+ 	}else if (best_netmask == 0L) {
+ 		/*

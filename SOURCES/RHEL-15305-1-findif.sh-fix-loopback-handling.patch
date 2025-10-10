@@ -1,0 +1,45 @@
+From e4f84ae185b6943d1ff461d53c7f1b5295783086 Mon Sep 17 00:00:00 2001
+From: Valentin Vidic <vvidic@valentin-vidic.from.hr>
+Date: Wed, 1 Nov 2023 19:35:21 +0100
+Subject: [PATCH] findif.sh: fix loopback handling
+
+tools/ocft/IPaddr2 fails the loopback test because of the missing
+table local parameter:
+
+$ ip -o -f inet route list match 127.0.0.3 scope host
+
+$ ip -o -f inet route list match 127.0.0.3 table local scope host
+local 127.0.0.0/8 dev lo proto kernel src 127.0.0.1
+
+Also rename the function because it is called only in for the special
+loopback address case.
+---
+ heartbeat/findif.sh | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/heartbeat/findif.sh b/heartbeat/findif.sh
+index 5f1c19ec3..7c766e6e0 100644
+--- a/heartbeat/findif.sh
++++ b/heartbeat/findif.sh
+@@ -29,10 +29,10 @@ prefixcheck() {
+   fi
+   return 0
+ }
+-getnetworkinfo()
++getloopbackinfo()
+ {
+   local line netinfo
+-  ip -o -f inet route list match $OCF_RESKEY_ip table "${OCF_RESKEY_table:=main}" scope host | (while read line;
++  ip -o -f inet route list match $OCF_RESKEY_ip table local scope host | (while read line;
+   do
+     netinfo=`echo $line | awk '{print $2}'`
+     case $netinfo in
+@@ -222,7 +222,7 @@ findif()
+   if [ $# = 0 ] ; then
+     case $OCF_RESKEY_ip in
+     127.*)
+-      set -- `getnetworkinfo`
++      set -- `getloopbackinfo`
+       shift;;
+     esac
+   fi

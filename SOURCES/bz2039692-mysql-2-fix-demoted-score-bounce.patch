@@ -1,0 +1,32 @@
+From 34483f8029ea9ab25220cfee71d53adaf5aacaa0 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 14 Jun 2023 14:37:01 +0200
+Subject: [PATCH] mysql: fix promotion_score bouncing between ~3600 and 1 on
+ demoted nodes
+
+---
+ heartbeat/mysql | 11 -----------
+ 1 file changed, 11 deletions(-)
+
+diff --git a/heartbeat/mysql b/heartbeat/mysql
+index 29ed42731..1df2fc0f2 100755
+--- a/heartbeat/mysql
++++ b/heartbeat/mysql
+@@ -517,17 +517,6 @@ check_slave() {
+ 
+                 exit $OCF_ERR_INSTALLED
+             fi
+-        elif ocf_is_ms; then
+-            # Even if we're not set to evict lagging slaves, we can
+-            # still use the seconds behind master value to set our
+-            # master preference.
+-            local master_pref
+-            master_pref=$((${OCF_RESKEY_max_slave_lag}-${secs_behind}))
+-            if [ $master_pref -lt 0 ]; then
+-                # Sanitize a below-zero preference to just zero
+-                master_pref=0
+-            fi
+-            $CRM_MASTER -v $master_pref
+         fi
+ 
+         # is the slave ok to have a VIP on it

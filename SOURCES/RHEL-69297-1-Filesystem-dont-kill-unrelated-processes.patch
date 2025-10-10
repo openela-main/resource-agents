@@ -1,0 +1,22 @@
+From 4b09b3e467a7f8076bbf20f5b027efecf16303e7 Mon Sep 17 00:00:00 2001
+From: Gianluca Piccolo <gianluca.piccolo@wuerth-phoenix.com>
+Date: Thu, 6 Jun 2024 17:34:41 +0200
+Subject: [PATCH] Fix #1944
+
+---
+ heartbeat/Filesystem | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index a445349b9..59b6c1b51 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -664,7 +664,7 @@ get_pids()
+ 		if [ "X${HOSTOS}" = "XOpenBSD" ];then
+ 			fstat | grep $dir | awk '{print $3}'
+ 		else
+-			$FUSER -m $dir 2>/dev/null
++			$FUSER -Mm $dir 2>/dev/null
+ 		fi
+ 	elif [ "$FORCE_UNMOUNT" = "safe" ]; then
+ 		procs=$(find /proc/[0-9]*/ -type l -lname "${dir}/*" -or -lname "${dir}" 2>/dev/null | awk -F/ '{print $3}')

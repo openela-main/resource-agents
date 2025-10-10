@@ -1,0 +1,24 @@
+From d5fbb84496501c7da75cad992e027700823edf65 Mon Sep 17 00:00:00 2001
+From: adamaze <adamaze@gmail.com>
+Date: Mon, 30 Jun 2025 15:55:50 -0500
+Subject: [PATCH] Update ocf-shellfuncs.in
+
+---
+ heartbeat/ocf-shellfuncs.in | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/heartbeat/ocf-shellfuncs.in b/heartbeat/ocf-shellfuncs.in
+index cb4d5cacc..526be42b6 100644
+--- a/heartbeat/ocf-shellfuncs.in
++++ b/heartbeat/ocf-shellfuncs.in
+@@ -708,7 +708,9 @@ curl_retry()
+ 			[ $? -ne 0 ] && exit $OCF_ERR_GENERIC
+ 			args=$(echo "$args" | sed "s/$OLD_TOKEN/$TOKEN/")
+ 		fi
+-		sleep $sleep
++		if [ $try -lt $tries ]; then
++			sleep $sleep
++   		fi
+ 	done
+ 
+ 	if [ $rc -ne 0 ]; then
