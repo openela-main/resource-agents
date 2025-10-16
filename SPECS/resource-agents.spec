@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	71%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.6
+Release:	71%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.11
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -154,6 +154,11 @@ Patch101:	RHEL-88430-2-podman-etcd-remove-unused-actions-from-metadata.patch
 Patch102:	RHEL-88430-3-podman-etcd-fix-listen-peer-urls-binding.patch
 Patch103:	RHEL-92481-Filesystem-add-support-for-aznfs.patch
 Patch104:	RHEL-101705-Filesystem-fix-issue-with-Vormetric-mounts.patch
+Patch105:	RHEL-113108-podman-etcd-add-oom-parameter.patch
+Patch106:	RHEL-113813-podman-etcd-wrap-ipv6-address-in-brackets.patch
+Patch107:	RHEL-113810-podman-etcd-preserve-containers-for-debugging.patch
+Patch108:	RHEL-116208-podman-etcd-add-cluster-wide-force_new_cluster-attribute-check.patch
+Patch109:	RHEL-119502-podman-etcd-add-automatic-learner-member-promotion.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -382,6 +387,11 @@ exit 1
 %patch -p1 -P 102
 %patch -p1 -P 103
 %patch -p1 -P 104
+%patch -p1 -P 105
+%patch -p1 -P 106
+%patch -p1 -P 107
+%patch -p1 -P 108
+%patch -p1 -P 109
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -711,6 +721,24 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Wed Oct 15 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-71.11
+- podman-etcd: add automatic learner member promotion
+
+  Resolves: RHEL-119502
+
+* Mon Sep 22 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-71.8
+- podman-etcd: wrap ipv6 address in brackets
+- podman-etcd: preserve containers for debugging
+- podman-etcd: add cluster-wide force_new_cluster attribute check
+
+  Resolves: RHEL-113813, RHEL-113810, RHEL-116208
+
+* Mon Sep  8 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-71.7
+- podman-etcd: add oom parameter to be able to tune the Out-Of-Memory (OOM)
+  score for etcd containers
+
+  Resolves: RHEL-113108
+
 * Thu Jul  3 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-71.6
 - Filesystem: fix issue with Vormetric mounts
 
