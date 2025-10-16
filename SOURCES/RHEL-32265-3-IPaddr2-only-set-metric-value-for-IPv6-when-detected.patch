@@ -1,0 +1,22 @@
+From 4075aff88776e2811ebc83b735b2a70bcf46247f Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 24 Jun 2024 09:45:29 +0200
+Subject: [PATCH] IPaddr2: only set metric value for IPv6 when detected
+
+---
+ heartbeat/IPaddr2 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/IPaddr2 b/heartbeat/IPaddr2
+index 091bea418..3bc5abec1 100755
+--- a/heartbeat/IPaddr2
++++ b/heartbeat/IPaddr2
+@@ -690,7 +690,7 @@ add_interface () {
+ 	fi
+ 
+ 	extra_opts=""
+-	if [ "$FAMILY" = "inet6" ]; then
++	if [ "$FAMILY" = "inet6" ] && [ -n "$metric" ]; then
+ 		extra_opts="$extra_opts metric $metric"
+ 	fi
+ 	if [ "$FAMILY" = "inet6" ] && ocf_is_true "${OCF_RESKEY_nodad}"; then

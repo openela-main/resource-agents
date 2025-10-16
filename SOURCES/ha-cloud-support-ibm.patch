@@ -1,0 +1,19 @@
+--- a/heartbeat/powervs-subnet.in	2024-10-18 10:59:30.418142172 +0200
++++ b/heartbeat/powervs-subnet.in	2024-10-18 12:30:15.954883160 +0200
+@@ -33,9 +33,13 @@
+ import textwrap
+ import time
+ 
+-import requests
+-import requests.adapters
+-import urllib3.util
++try:
++    sys.path.insert(0, '/usr/lib/fence-agents/support/ibm')
++    import requests
++    import requests.adapters
++    import urllib3.util
++except ImportError:
++    pass
+ 
+ OCF_FUNCTIONS_DIR = os.environ.get(
+     "OCF_FUNCTIONS_DIR", "%s/lib/heartbeat" % os.environ.get("OCF_ROOT")

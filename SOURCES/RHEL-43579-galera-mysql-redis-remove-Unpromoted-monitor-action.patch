@@ -1,0 +1,61 @@
+From 481672f73d05666ab20a883cf8fc746cb1f3050f Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 20 Jun 2024 09:29:21 +0200
+Subject: [PATCH] galera/mariadb/mysql/redis: remove Unpromoted monitor-action,
+ as it's covered by the regular monitor-action
+
+---
+ heartbeat/galera.in  | 1 -
+ heartbeat/mariadb.in | 1 -
+ heartbeat/mysql      | 1 -
+ heartbeat/redis.in   | 1 -
+ 4 files changed, 4 deletions(-)
+
+diff --git a/heartbeat/galera.in b/heartbeat/galera.in
+index b518595cb0..b29d68bf73 100755
+--- a/heartbeat/galera.in
++++ b/heartbeat/galera.in
+@@ -299,7 +299,6 @@ Use it with caution! (and fencing)
+ <action name="status" timeout="60s" />
+ <action name="monitor" depth="0" timeout="30s" interval="20s" />
+ <action name="monitor" role="Promoted" depth="0" timeout="30s" interval="10s" />
+-<action name="monitor" role="Unpromoted" depth="0" timeout="30s" interval="30s" />
+ <action name="promote" timeout="300s" />
+ <action name="demote" timeout="120s" />
+ <action name="validate-all" timeout="5s" />
+diff --git a/heartbeat/mariadb.in b/heartbeat/mariadb.in
+index e0f1f3c9f1..1dca98ba68 100644
+--- a/heartbeat/mariadb.in
++++ b/heartbeat/mariadb.in
+@@ -255,7 +255,6 @@ The port on which the Promoted MariaDB instance is listening.
+ <action name="status" timeout="60s" />
+ <action name="monitor" depth="0" timeout="30s" interval="20s" />
+ <action name="monitor" role="Promoted" depth="0" timeout="30s" interval="10s" />
+-<action name="monitor" role="Unpromoted" depth="0" timeout="30s" interval="30s" />
+ <action name="promote" timeout="120s" />
+ <action name="demote" timeout="120s" />
+ <action name="notify" timeout="90s" />
+diff --git a/heartbeat/mysql b/heartbeat/mysql
+index 1df2fc0f28..6b00889ff4 100755
+--- a/heartbeat/mysql
++++ b/heartbeat/mysql
+@@ -322,7 +322,6 @@ whether a node is usable for clients to read from.</shortdesc>
+ <action name="status" timeout="60s" />
+ <action name="monitor" depth="0" timeout="30s" interval="20s" />
+ <action name="monitor" role="Promoted" depth="0" timeout="30s" interval="10s" />
+-<action name="monitor" role="Unpromoted" depth="0" timeout="30s" interval="30s" />
+ <action name="promote" timeout="120s" />
+ <action name="demote" timeout="120s" />
+ <action name="notify" timeout="90s" />
+diff --git a/heartbeat/redis.in b/heartbeat/redis.in
+index 6429477e11..1e541f13d5 100755
+--- a/heartbeat/redis.in
++++ b/heartbeat/redis.in
+@@ -221,7 +221,6 @@ is in use.
+ <action name="status" timeout="60s" />
+ <action name="monitor" depth="0" timeout="60s" interval="45s" />
+ <action name="monitor" role="Promoted" depth="0" timeout="60s" interval="20s" />
+-<action name="monitor" role="Unpromoted" depth="0" timeout="60s" interval="60s" />
+ <action name="promote" timeout="120s" />
+ <action name="demote" timeout="120s" />
+ <action name="notify" timeout="90s" />

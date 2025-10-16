@@ -1,0 +1,79 @@
+From b3eadb8523b599af800a7c772606aa0e90cf142f Mon Sep 17 00:00:00 2001
+From: Fujii Masao <fujii@postgresql.org>
+Date: Tue, 19 Jul 2022 17:03:02 +0900
+Subject: [PATCH 1/2] Make storage_mon -h exit just after printing help
+ messages.
+
+Previously, when -h or an invalid option was specified, storage_mon
+printed the help messages, proceeded processing and then could
+throw an error. This was not the behavior that, e.g., users who want
+to specify -h option to see the help messages are expecting. To fix
+this issue, this commit changes storage_mon so that it exits just
+after printing the help messages when -h or an invalid option is
+specified.
+---
+ tools/storage_mon.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index 7b65bb419..1303371f7 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -28,7 +28,7 @@ static void usage(char *name, FILE *f)
+ 	fprintf(f, "      --timeout <n>   max time to wait for a device test to come back. in seconds (default %d)\n", DEFAULT_TIMEOUT);
+ 	fprintf(f, "      --inject-errors-percent <n> Generate EIO errors <n>%% of the time (for testing only)\n");
+ 	fprintf(f, "      --verbose        emit extra output to stdout\n");
+-	fprintf(f, "      --help           print this messages\n");
++	fprintf(f, "      --help           print this messages, then exit\n");
+ }
+ 
+ /* Check one device */
+@@ -178,9 +178,11 @@ int main(int argc, char *argv[])
+ 				break;
+ 			case 'h':
+ 				usage(argv[0], stdout);
++				exit(0);
+ 				break;
+ 			default:
+ 				usage(argv[0], stderr);
++				exit(-1);
+ 				break;
+ 		}
+ 
+
+From e62795f02d25a772a239e0a4f9eb9d6470c134ee Mon Sep 17 00:00:00 2001
+From: Fujii Masao <fujii@postgresql.org>
+Date: Tue, 19 Jul 2022 17:56:32 +0900
+Subject: [PATCH 2/2] Fix typo in help message.
+
+---
+ tools/storage_mon.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index 1303371f7..3c82d5ee8 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -28,7 +28,7 @@ static void usage(char *name, FILE *f)
+ 	fprintf(f, "      --timeout <n>   max time to wait for a device test to come back. in seconds (default %d)\n", DEFAULT_TIMEOUT);
+ 	fprintf(f, "      --inject-errors-percent <n> Generate EIO errors <n>%% of the time (for testing only)\n");
+ 	fprintf(f, "      --verbose        emit extra output to stdout\n");
+-	fprintf(f, "      --help           print this messages, then exit\n");
++	fprintf(f, "      --help           print this message\n");
+ }
+ 
+ /* Check one device */
+@@ -178,11 +178,11 @@ int main(int argc, char *argv[])
+ 				break;
+ 			case 'h':
+ 				usage(argv[0], stdout);
+-				exit(0);
++				return 0;
+ 				break;
+ 			default:
+ 				usage(argv[0], stderr);
+-				exit(-1);
++				return -1;
+ 				break;
+ 		}
+ 

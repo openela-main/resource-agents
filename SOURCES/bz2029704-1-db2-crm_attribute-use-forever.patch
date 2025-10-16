@@ -1,0 +1,32 @@
+From 925180da2f41feddc5aac3c249563eb179b34029 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 22 Nov 2021 16:44:48 +0100
+Subject: [PATCH] db2: use -l forever instead of -t nodes -l reboot, as they
+ conflict with eachother
+
+---
+ heartbeat/db2 | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/heartbeat/db2 b/heartbeat/db2
+index 03146a957..fa2a45a5d 100755
+--- a/heartbeat/db2
++++ b/heartbeat/db2
+@@ -274,7 +274,7 @@ db2_fal_attrib() {
+         while read id node member
+         do
+             [ "$member" = member -a "$node" != "$me" ] || continue
+-            crm_attribute -t nodes -l reboot --node=$node -n $attr -v "$3"
++            crm_attribute -l forever --node=$node -n $attr -v "$3"
+             rc=$?
+             ocf_log info "DB2 instance $instance($db2node/$db: setting attrib for FAL to $FIRST_ACTIVE_LOG @ $node"
+             [ $rc != 0 ] && break
+@@ -282,7 +282,7 @@ db2_fal_attrib() {
+         ;;
+ 
+         get)
+-        crm_attribute -t nodes -l reboot -n $attr -G --quiet 2>&1
++        crm_attribute -l forever -n $attr -G --quiet 2>&1
+         rc=$?
+         if [ $rc != 0 ]
+         then

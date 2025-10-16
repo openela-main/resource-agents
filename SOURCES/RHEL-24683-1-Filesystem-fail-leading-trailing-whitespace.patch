@@ -1,0 +1,40 @@
+From 264e38e02cb4c04877e412bac254e42c7f6b2e1c Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Tue, 20 Feb 2024 12:34:42 +0100
+Subject: [PATCH] Filesystem: fail when leading or trailing whitespace is
+ present in device or directory parameters
+
+---
+ heartbeat/Filesystem | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index e1378f781..f88e3b552 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -995,6 +995,12 @@ if [ -n "${OCF_RESKEY_force_unmount}" ]; then
+ fi
+ 
+ DEVICE="$OCF_RESKEY_device"
++case "$DEVICE" in
++	[[:space:]]*|*[[:space:]])
++		ocf_exit_reason "device parameter does not accept leading or trailing whitespace characters"
++		exit $OCF_ERR_CONFIGURED
++		;;
++esac
+ FSTYPE=$OCF_RESKEY_fstype
+ if [ ! -z "$OCF_RESKEY_options" ]; then
+ 	options="-o $OCF_RESKEY_options"
+@@ -1032,6 +1038,12 @@ if [ -z "$OCF_RESKEY_directory" ]; then
+ else
+ 	MOUNTPOINT="$(echo "$OCF_RESKEY_directory" | sed 's/\/*$//')"
+ 	: ${MOUNTPOINT:=/}
++	case "$MOUNTPOINT" in
++		[[:space:]]*|*[[:space:]])
++			ocf_exit_reason "directory parameter does not accept leading or trailing whitespace characters"
++			exit $OCF_ERR_CONFIGURED
++			;;
++	esac
+ 	if [ -e "$MOUNTPOINT" ] ; then
+ 		CANONICALIZED_MOUNTPOINT="$(readlink -f "$MOUNTPOINT")"
+ 		if [ $? -ne 0 ]; then

@@ -1,0 +1,22 @@
+From c6338011cf9ea69324f44c8c31a4ca2478aab35a Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Tue, 7 Dec 2021 08:59:50 +0100
+Subject: [PATCH] podman: remove anonymous volumes
+
+---
+ heartbeat/podman | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/podman b/heartbeat/podman
+index fd901c968..2b73857f1 100755
+--- a/heartbeat/podman
++++ b/heartbeat/podman
+@@ -251,7 +251,7 @@ remove_container()
+ 		return 0
+ 	fi
+ 	ocf_log notice "Cleaning up inactive container, ${CONTAINER}."
+-	ocf_run podman rm $CONTAINER
++	ocf_run podman rm -v $CONTAINER
+ 	rc=$?
+ 	if [ $rc -ne 0 ]; then
+ 		# due to a podman bug (rhbz#1841485), sometimes a stopped

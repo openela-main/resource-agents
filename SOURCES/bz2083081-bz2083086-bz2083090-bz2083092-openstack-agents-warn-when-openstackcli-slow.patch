@@ -1,0 +1,282 @@
+From ebea4c3620261c529cad908c0e52064df84b0c61 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 11 Jul 2022 10:28:11 +0200
+Subject: [PATCH] openstack-agents: warn when openstackcli is slow
+
+---
+ heartbeat/openstack-cinder-volume | 19 +++++++++++--------
+ heartbeat/openstack-common.sh     | 22 ++++++++++++++++++++++
+ heartbeat/openstack-floating-ip   | 17 ++++++++++-------
+ heartbeat/openstack-info.in       | 20 ++++++++++----------
+ heartbeat/openstack-virtual-ip    | 20 ++++++++++----------
+ 5 files changed, 63 insertions(+), 35 deletions(-)
+
+diff --git a/heartbeat/openstack-cinder-volume b/heartbeat/openstack-cinder-volume
+index 19bf04faf..116442c41 100755
+--- a/heartbeat/openstack-cinder-volume
++++ b/heartbeat/openstack-cinder-volume
+@@ -113,11 +113,14 @@ _get_node_id() {
+ }
+ 
+ osvol_validate() {
++	local result
++
+ 	check_binary "$OCF_RESKEY_openstackcli"
+ 	
+ 	get_config
+ 
+-	if ! $OCF_RESKEY_openstackcli volume list|grep -q $OCF_RESKEY_volume_id ; then
++	result=$(run_openstackcli "volume list")
++	if ! echo "$result" | grep -q $OCF_RESKEY_volume_id; then
+ 		ocf_exit_reason "volume-id $OCF_RESKEY_volume_id not found"
+ 		return $OCF_ERR_CONFIGURED
+ 	fi
+@@ -156,17 +159,17 @@ osvol_monitor() {
+ 	# Is the volue attached?
+ 	# We use the API
+ 	#
+-	result=$($OCF_RESKEY_openstackcli volume show \
++	result=$(run_openstackcli "volume show \
+ 		--column status \
+ 		--column attachments \
+ 		--format value \
+-		$OCF_RESKEY_volume_id)
++		$OCF_RESKEY_volume_id")
+ 
+-	if echo "$result" | grep -q available ; then
++	if echo "$result" | grep -q available; then
+ 		ocf_log warn "$OCF_RESKEY_volume_id is not attached to any instance"
+ 		return $OCF_NOT_RUNNING
+ 	else
+-		export attached_server_id=$(echo $result|head -n1|
++		export attached_server_id=$(echo "$result"|head -n1|
+ 			grep -P -o "'server_id': '[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}'"|
+ 			grep -P -o "[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}")
+ 		ocf_log info "$OCF_RESKEY_volume_id is attached to instance $attached_server_id"
+@@ -199,7 +202,7 @@ osvol_stop() {
+ 	#
+ 	# Detach the volume
+ 	#
+-	if ! $OCF_RESKEY_openstackcli server remove volume $node_id $OCF_RESKEY_volume_id ; then
++	if ! run_openstackcli "server remove volume $node_id $OCF_RESKEY_volume_id"; then
+ 		ocf_log error "Couldn't remove volume $OCF_RESKEY_volume_id from instance $node_id"
+ 		return $OCF_ERR_GENERIC
+ 	fi
+@@ -225,7 +228,7 @@ osvol_start() {
+ 	# TODO: make it optional in case multi-attachment is allowed by Cinder
+ 	#
+ 	if [ ! -z $attached_server_id ] ; then
+-		if ! $OCF_RESKEY_openstackcli server remove volume $attached_server_id $OCF_RESKEY_volume_id ; then
++		if ! run_openstackcli "server remove volume $attached_server_id $OCF_RESKEY_volume_id"; then
+ 			ocf_log error "Couldn't remove volume $OCF_RESKEY_volume_id from instance $attached_server_id"
+ 			return $OCF_ERR_GENERIC
+ 		fi
+@@ -238,7 +241,7 @@ osvol_start() {
+ 	#
+ 	# Attach the volume
+ 	#
+-	$OCF_RESKEY_openstackcli server add volume $node_id $OCF_RESKEY_volume_id
++	run_openstackcli "server add volume $node_id $OCF_RESKEY_volume_id"
+ 	if [ $? != $OCF_SUCCESS ]; then
+ 		ocf_log error "Couldn't add volume $OCF_RESKEY_volume_id to instance $node_id"
+ 		return $OCF_ERR_GENERIC
+diff --git a/heartbeat/openstack-common.sh b/heartbeat/openstack-common.sh
+index 4763c90db..b6eec09c2 100644
+--- a/heartbeat/openstack-common.sh
++++ b/heartbeat/openstack-common.sh
+@@ -145,3 +145,25 @@ get_config() {
+ 		OCF_RESKEY_openstackcli="${OCF_RESKEY_openstackcli} --os-project-domain-name $OCF_RESKEY_project_domain_name"
+ 	fi
+ }
++
++run_openstackcli() {
++	local cmd="${OCF_RESKEY_openstackcli} $1"
++	local result
++	local rc
++	local start_time=$(date +%s)
++	local end_time
++	local elapsed_time
++
++	result=$($cmd)
++	rc=$?
++	end_time=$(date +%s)
++	elapsed_time=$(expr $end_time - $start_time)
++
++	if [ $elapsed_time -gt 20 ]; then
++		ocf_log warn "$cmd took ${elapsed_time}s to complete"
++	fi
++
++	echo "$result"
++
++	return $rc
++}
+diff --git a/heartbeat/openstack-floating-ip b/heartbeat/openstack-floating-ip
+index 6e2895654..7317f19a8 100755
+--- a/heartbeat/openstack-floating-ip
++++ b/heartbeat/openstack-floating-ip
+@@ -101,11 +101,14 @@ END
+ }
+ 
+ osflip_validate() {
++	local result
++
+ 	check_binary "$OCF_RESKEY_openstackcli"
+ 
+ 	get_config
+ 
+-	if ! $OCF_RESKEY_openstackcli floating ip list|grep -q $OCF_RESKEY_ip_id ; then
++	result=$(run_openstackcli "floating ip list")
++	if ! echo "$result" | grep -q $OCF_RESKEY_ip_id; then
+ 		ocf_exit_reason "ip-id $OCF_RESKEY_ip_id not found"
+ 		return $OCF_ERR_CONFIGURED
+ 	fi
+@@ -132,14 +135,14 @@ osflip_monitor() {
+ 		| awk '{gsub("[^ ]*:", "");print}')
+ 
+ 	# Is the IP active and attached?
+-	result=$($OCF_RESKEY_openstackcli floating ip show \
++	result=$(run_openstackcli "floating ip show \
+ 		--column port_id --column floating_ip_address \
+ 		--format yaml \
+-		$OCF_RESKEY_ip_id)
++		$OCF_RESKEY_ip_id")
+ 
+ 	for port in $node_port_ids ; do
+-		if echo $result | grep -q $port ; then
+-			floating_ip=$(echo $result | awk '/floating_ip_address/ {print $2}')
++		if echo "$result" | grep -q $port ; then
++			floating_ip=$(echo "$result" | awk '/floating_ip_address/ {print $2}')
+ 			${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -S status -n openstack_floating_ip -v $floating_ip
+ 
+ 			return $OCF_SUCCESS
+@@ -160,7 +163,7 @@ osflip_stop() {
+ 		return $OCF_SUCCESS
+ 	fi
+ 
+-	if ! $OCF_RESKEY_openstackcli floating ip unset --port $OCF_RESKEY_ip_id ; then
++	if ! run_openstackcli "floating ip unset --port $OCF_RESKEY_ip_id"; then
+ 		return $OCF_ERR_GENERIC
+ 	fi
+ 
+@@ -194,7 +197,7 @@ osflip_start() {
+ 
+ 	ocf_log info "Moving IP address $OCF_RESKEY_ip_id to port ID $node_port_id"
+ 
+-	$OCF_RESKEY_openstackcli floating ip set --port $node_port_id $OCF_RESKEY_ip_id
++	run_openstackcli "floating ip set --port $node_port_id $OCF_RESKEY_ip_id"
+ 	if [ $? != $OCF_SUCCESS ]; then
+ 		ocf_log error "$OCF_RESKEY_ip_id Cannot be set to port $node_port_id"
+ 		return $OCF_ERR_GENERIC
+diff --git a/heartbeat/openstack-info.in b/heartbeat/openstack-info.in
+index f3a59fc7a..6502f1df1 100755
+--- a/heartbeat/openstack-info.in
++++ b/heartbeat/openstack-info.in
+@@ -119,9 +119,7 @@ END
+ #######################################################################
+ 
+ OSInfoStats() {
+-	local result
+ 	local value
+-	local node
+ 	local node_id
+ 
+ 	get_config
+@@ -141,31 +139,33 @@ OSInfoStats() {
+ 	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -n openstack_id -v "$node_id"
+ 
+ 	# Nova data: flavor
+-	value=$($OCF_RESKEY_openstackcli server show \
++	value=$(run_openstackcli "server show \
+ 		--format value \
+ 		--column flavor \
+-		$node_id)
++		$node_id")
+ 
+ 	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -n openstack_flavor -v "$value"
+ 
+ 	# Nova data: availability zone
+-	value=$($OCF_RESKEY_openstackcli server show \
++	value=$(run_openstackcli "server show \
+ 		--format value \
+ 		--column OS-EXT-AZ:availability_zone \
+-		$node_id)
++		$node_id")
+ 
+ 	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -n openstack_az -v "$value"
+ 
+ 	# Network data: ports
+ 	value=""
+-	for port_id in $($OCF_RESKEY_openstackcli port list \
++	for port_id in $(run_openstackcli "port list \
+ 		--format value \
+ 		--column id \
+-		--server $node_id); do
+-		subnet_id=$($OCF_RESKEY_openstackcli port show \
++		--server $node_id"); do
++		subnet_result=$(run_openstackcli "port show \
+ 			--format json \
+ 			--column fixed_ips \
+-			${port_id} | grep -P '\"subnet_id\": \".*\",$' |
++			${port_id}")
++		subnet_id=$(echo "$subnet_result" |
++			grep -P '\"subnet_id\": \".*\",$' |
+ 			grep -P -o '[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}')
+ 		value="${value}${subnet_id}:${port_id},"
+ 	done
+diff --git a/heartbeat/openstack-virtual-ip b/heartbeat/openstack-virtual-ip
+index c654d980a..361357d55 100755
+--- a/heartbeat/openstack-virtual-ip
++++ b/heartbeat/openstack-virtual-ip
+@@ -132,11 +132,11 @@ osvip_monitor() {
+ 
+ 	node_port_id=$(osvip_port_id)
+ 
+-	result=$($OCF_RESKEY_openstackcli port show \
++	result=$(run_openstackcli "port show \
+ 		--format value \
+ 		--column allowed_address_pairs \
+-		${node_port_id})
+-	if echo $result | grep -q "$OCF_RESKEY_ip"; then
++		${node_port_id}")
++	if echo "$result" | grep -q "$OCF_RESKEY_ip"; then
+ 		${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -S status -n openstack_virtual_ip -v $OCF_RESKEY_ip
+ 
+ 		return $OCF_SUCCESS
+@@ -158,20 +158,20 @@ osvip_stop() {
+ 		return $OCF_SUCCESS
+ 	fi
+ 
+-	mac_address=$($OCF_RESKEY_openstackcli port show \
++	mac_address=$(run_openstackcli "port show \
+ 		--format value \
+ 		--column mac_address \
+-		$node_port_id)
+-	echo ${mac_address} | grep -q -P "^([0-9a-f]{2}:){5}[0-9a-f]{2}$"
++		$node_port_id")
++	echo "${mac_address}" | grep -q -P "^([0-9a-f]{2}:){5}[0-9a-f]{2}$"
+ 	if [ $? -ne 0 ]; then
+ 		ocf_log error "MAC address '${mac_address}' is not valid."
+ 		return $OCF_ERR_GENERIC
+ 	fi
+ 
+-	if ! $OCF_RESKEY_openstackcli port unset \
++	if ! run_openstackcli "port unset \
+ 		--allowed-address \
+ 		ip-address=$OCF_RESKEY_ip,mac-address=${mac_address} \
+-		$node_port_id; then
++		$node_port_id"; then
+ 		return $OCF_ERR_GENERIC
+ 	fi
+ 
+@@ -196,9 +196,9 @@ osvip_start() {
+ 
+ 	ocf_log info "Moving IP address $OCF_RESKEY_ip to port ID $node_port_id"
+ 
+-	$OCF_RESKEY_openstackcli port set \
++	run_openstackcli "port set \
+ 		--allowed-address ip-address=$OCF_RESKEY_ip \
+-		$node_port_id
++		$node_port_id"
+ 	if [ $? != $OCF_SUCCESS ]; then
+ 		ocf_log error "$OCF_RESKEY_ip Cannot be set to port $node_port_id"
+ 		return $OCF_ERR_GENERIC

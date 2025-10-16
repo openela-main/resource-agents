@@ -1,0 +1,543 @@
+From 3e469239e8c853725b28a9c6b509152aacc2c5cc Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 13 Jun 2022 11:24:05 +0200
+Subject: [PATCH 1/2] all agents: update to promotable terms
+
+---
+ heartbeat/SAPInstance        | 22 +++++++++++-----------
+ heartbeat/conntrackd.in      |  6 +++---
+ heartbeat/db2                | 12 ++++++------
+ heartbeat/dnsupdate.in       |  2 +-
+ heartbeat/galera.in          | 26 +++++++++++++-------------
+ heartbeat/iface-bridge       |  6 +++---
+ heartbeat/mariadb.in         | 30 +++++++++++++++---------------
+ heartbeat/mpathpersist.in    | 24 ++++++++++++------------
+ heartbeat/mysql              |  4 ++--
+ heartbeat/mysql-proxy        |  2 +-
+ heartbeat/pgsql              |  2 +-
+ heartbeat/redis.in           |  4 ++--
+ heartbeat/sg_persist.in      |  4 ++--
+ 14 files changed, 74 insertions(+), 74 deletions(-)
+
+diff --git a/heartbeat/SAPInstance b/heartbeat/SAPInstance
+index 016f59aff..e3fe788ae 100755
+--- a/heartbeat/SAPInstance
++++ b/heartbeat/SAPInstance
+@@ -25,8 +25,8 @@
+ #   OCF_RESKEY_AUTOMATIC_RECOVER    (optional, automatic startup recovery using cleanipc, default is false)
+ #   OCF_RESKEY_MONITOR_SERVICES     (optional, default is to monitor critical services only)
+ #   OCF_RESKEY_SHUTDOWN_METHOD      (optional, defaults to NORMAL, KILL: terminate the SAP instance with OS commands - faster, at your own risk)
+-#   OCF_RESKEY_ERS_InstanceName     (optional, InstanceName of the ERS instance in a Master/Slave configuration)
+-#   OCF_RESKEY_ERS_START_PROFILE    (optional, START_PROFILE of the ERS instance in a Master/Slave configuration)
++#   OCF_RESKEY_ERS_InstanceName     (optional, InstanceName of the ERS instance in a Promotable configuration)
++#   OCF_RESKEY_ERS_START_PROFILE    (optional, START_PROFILE of the ERS instance in a Promotable configuration)
+ #   OCF_RESKEY_PRE_START_USEREXIT	(optional, lists a script which can be executed before the resource is started)
+ #   OCF_RESKEY_POST_START_USEREXIT	(optional, lists a script which can be executed after the resource is started)
+ #   OCF_RESKEY_PRE_STOP_USEREXIT	(optional, lists a script which can be executed before the resource is stopped)
+@@ -92,11 +92,11 @@ sapinstance_usage() {
+ 
+ 	$0 manages a SAP Instance as an HA resource.
+ 
+-	The 'start' operation starts the instance or the ERS instance in a Master/Slave configuration
++	The 'start' operation starts the instance or the ERS instance in a Promotable configuration
+ 	The 'stop' operation stops the instance
+ 	The 'status' operation reports whether the instance is running
+ 	The 'monitor' operation reports whether the instance seems to be working
+-	The 'promote' operation starts the primary instance in a Master/Slave configuration
++	The 'promote' operation starts the primary instance in a Promotable configuration
+ 	The 'demote' operation stops the primary instance and starts the ERS instance
+ 	The 'reload' operation allows changed parameters (non-unique only) without restarting the service
+ 	The 'notify' operation always returns SUCCESS
+@@ -201,11 +201,11 @@ You may specify multiple services separated by a | (pipe) sign in this parameter
+   <content type="string" default="${OCF_RESKEY_SHUTDOWN_METHOD_default}"/>
+  </parameter>
+  <parameter name="ERS_InstanceName" unique="1" required="0">
+-  <longdesc lang="en">Only used in a Master/Slave resource configuration:
++  <longdesc lang="en">Only used in a Promotable resource configuration:
+ The full qualified SAP enqueue replication instance name. e.g. P01_ERS02_sapp01ers. Usually this is the name of the SAP instance profile.
+-The enqueue replication instance must be installed, before you want to configure a master-slave cluster resource.
++The enqueue replication instance must be installed, before you want to configure a promotable cluster resource.
+ 
+-The master-slave configuration in the cluster must use this properties:
++The promotable configuration in the cluster must use this properties:
+ clone_max = 2
+ clone_node_max = 1
+ master_node_max = 1
+@@ -215,7 +215,7 @@ master_max = 1
+   <content type="string" default="${OCF_RESKEY_ERS_InstanceName_default}"/>
+  </parameter>
+  <parameter name="ERS_START_PROFILE" unique="1" required="0">
+-  <longdesc lang="en">Only used in a Master/Slave resource configuration:
++  <longdesc lang="en">Only used in a Promotable resource configuration:
+ The parameter ERS_InstanceName must also be set in this configuration.
+ The name of the SAP START profile. Specify this parameter, if you have changed the name of the SAP START profile after the default SAP installation. As SAP release 7.10 does not have a START profile anymore, you need to specify the Instance Profile than.
+   </longdesc>
+@@ -243,7 +243,7 @@ The name of the SAP START profile. Specify this parameter, if you have changed t
+   <content type="string" default="${OCF_RESKEY_POST_STOP_USEREXIT_default}" />
+  </parameter>
+  <parameter name="IS_ERS" unique="0" required="0">
+-  <longdesc lang="en">Only used for ASCS/ERS SAP Netweaver installations without implementing a master/slave resource to
++  <longdesc lang="en">Only used for ASCS/ERS SAP Netweaver installations without implementing a promotable resource to
+     allow the ASCS to 'find' the ERS running on another cluster node after a resource failure. This parameter should be set
+     to true 'only' for the ERS instance for implementations following the SAP NetWeaver 7.40 HA certification (NW-HA-CLU-740). This includes also
+     systems for NetWeaver less than 7.40, if you like to implement the NW-HA-CLU-740 scenario.
+@@ -266,8 +266,8 @@ The name of the SAP START profile. Specify this parameter, if you have changed t
+ <action name="stop" timeout="240s" />
+ <action name="status" timeout="60s" />
+ <action name="monitor" depth="0" timeout="60s" interval="120s" />
+-<action name="monitor" depth="0" timeout="60s" interval="121s" role="Slave" />
+-<action name="monitor" depth="0" timeout="60s" interval="119s" role="Master" />
++<action name="monitor" depth="0" timeout="60s" interval="121s" role="Unpromoted" />
++<action name="monitor" depth="0" timeout="60s" interval="119s" role="Promoted" />
+ <action name="promote" timeout="320s" />
+ <action name="demote" timeout="320s" />
+ <action name="reload" timeout="320s" />
+diff --git a/heartbeat/conntrackd.in b/heartbeat/conntrackd.in
+index f115250d6..1c2ee955b 100644
+--- a/heartbeat/conntrackd.in
++++ b/heartbeat/conntrackd.in
+@@ -50,7 +50,7 @@ meta_data() {
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+-Master/Slave OCF Resource Agent for conntrackd
++Promotable OCF Resource Agent for conntrackd
+ </longdesc>
+ 
+ <shortdesc lang="en">This resource agent manages conntrackd</shortdesc>
+@@ -81,8 +81,8 @@ For example "/packages/conntrackd-0.9.14/etc/conntrackd/conntrackd.conf"</longde
+ <action name="demote"	timeout="30s" />
+ <action name="notify"	timeout="30s" />
+ <action name="stop"    timeout="30s" />
+-<action name="monitor" timeout="20s" interval="20s" role="Slave" />
+-<action name="monitor" timeout="20s" interval="10s" role="Master" />
++<action name="monitor" timeout="20s" interval="20s" role="Unpromoted" />
++<action name="monitor" timeout="20s" interval="10s" role="Promoted" />
+ <action name="meta-data"  timeout="5s" />
+ <action name="validate-all"  timeout="30s" />
+ </actions>
+diff --git a/heartbeat/db2 b/heartbeat/db2
+index 4a4b2f477..620b89583 100755
+--- a/heartbeat/db2
++++ b/heartbeat/db2
+@@ -3,7 +3,7 @@
+ # db2
+ #
+ # Resource agent that manages a DB2 LUW database in Standard role 
+-# or HADR configuration in master/slave configuration.
++# or HADR configuration in promotable configuration.
+ # Multi partition is supported as well.
+ #
+ # Copyright (c) 2011 Holger Teutsch <holger.teutsch@web.de>
+@@ -61,7 +61,7 @@ cat <<END
+ <resource-agent name="db2" version="1.0">
+ <version>1.0</version>
+ <longdesc lang="en">
+-Resource Agent that manages an IBM DB2 LUW databases in Standard role as primitive or in HADR roles in master/slave configuration. Multiple partitions are supported.
++Resource Agent that manages an IBM DB2 LUW databases in Standard role as primitive or in HADR roles in promotable configuration. Multiple partitions are supported.
+ 
+ Standard mode:
+ 
+@@ -71,8 +71,8 @@ Configure each partition as a separate primitive resource.
+ HADR mode:
+ 
+ A single database in HADR configuration is made highly available by automating takeover operations.
+-Configure a master / slave resource with notifications enabled and an
+-additional monitoring operation with role "Master".
++Configure a promotable resource with notifications enabled and an
++additional monitoring operation with role "Promoted".
+ 
+ In case of HADR be very deliberate in specifying intervals/timeouts. The detection of a failure including promote must complete within HADR_PEER_WINDOW.
+ 
+@@ -84,7 +84,7 @@ In addition to honoring requirements for crash recovery etc. for your specific d
+ 
+ For further information and examples consult http://www.linux-ha.org/wiki/db2_(resource_agent)
+ </longdesc>
+-<shortdesc lang="en">Resource Agent that manages an IBM DB2 LUW databases in Standard role as primitive or in HADR roles as master/slave configuration. Multiple partitions are supported.</shortdesc>
++<shortdesc lang="en">Resource Agent that manages an IBM DB2 LUW databases in Standard role as primitive or in HADR roles as promotable configuration. Multiple partitions are supported.</shortdesc>
+ 
+ <parameters>
+ <parameter name="instance" unique="1" required="1">
+@@ -125,7 +125,7 @@ The number of the partition (DBPARTITIONNUM) to be managed.
+ <action name="demote" timeout="120s"/>
+ <action name="notify" timeout="10s"/>
+ <action name="monitor" depth="0" timeout="60s" interval="20s"/>
+-<action name="monitor" depth="0" timeout="60s" role="Master" interval="22s"/>
++<action name="monitor" depth="0" timeout="60s" role="Promoted" interval="22s"/>
+ <action name="validate-all" timeout="5s"/>
+ <action name="meta-data" timeout="5s"/>
+ </actions>
+diff --git a/heartbeat/dnsupdate.in b/heartbeat/dnsupdate.in
+index 35b7c99bb..b54822cd8 100755
+--- a/heartbeat/dnsupdate.in
++++ b/heartbeat/dnsupdate.in
+@@ -119,7 +119,7 @@ the exact syntax.
+ <parameter name="server" unique="0" required="0">
+ <longdesc lang="en">
+ Which DNS server to send these updates for. When no
+-server is provided, this defaults to the master server
++server is provided, this defaults to the promoted server
+ for the correct zone.
+ </longdesc>
+ <shortdesc lang="en">DNS server to contact</shortdesc>
+diff --git a/heartbeat/galera.in b/heartbeat/galera.in
+index c363eb254..546b1a853 100755
+--- a/heartbeat/galera.in
++++ b/heartbeat/galera.in
+@@ -26,31 +26,31 @@
+ ##
+ # README.
+ # 
+-# This agent only supports being configured as a multistate Master
++# This agent only supports being configured as a multistate Promoted
+ # resource.
+ #
+-# Slave vs Master role:
++# Unpromoted vs Promoted role:
+ #
+-# During the 'Slave' role, galera instances are in read-only mode and
++# During the 'Unpromoted' role, galera instances are in read-only mode and
+ # will not attempt to connect to the cluster. This role exists only as
+ # a means to determine which galera instance is the most up-to-date. The
+ # most up-to-date node will be used to bootstrap a galera cluster that
+ # has no current members.
+ #
+-# The galera instances will only begin to be promoted to the Master role
++# The galera instances will only begin to be promoted to the Promoted role
+ # once all the nodes in the 'wsrep_cluster_address' connection address
+ # have entered read-only mode. At that point the node containing the
+-# database that is most current will be promoted to Master. Once the first
+-# Master instance bootstraps the galera cluster, the other nodes will be
+-# promoted to Master as well.
++# database that is most current will be promoted to Promoted. Once the first
++# Promoted instance bootstraps the galera cluster, the other nodes will be
++# promoted to Promoted as well.
+ #
+ # Example: Create a galera cluster using nodes rhel7-node1 rhel7-node2 rhel7-node3
+ #
+ # pcs resource create db galera enable_creation=true \
+-# wsrep_cluster_address="gcomm://rhel7-auto1,rhel7-auto2,rhel7-auto3" meta master-max=3 --master
++# wsrep_cluster_address="gcomm://rhel7-auto1,rhel7-auto2,rhel7-auto3" meta promoted-max=3 --promoted
+ #
+ # By setting the 'enable_creation' option, the database will be automatically 
+-# generated at startup. The meta attribute 'master-max=3' means that all 3
++# generated at startup. The meta attribute 'promoted-max=3' means that all 3
+ # nodes listed in the wsrep_cluster_address list will be allowed to connect
+ # to the galera cluster and perform replication.
+ #
+@@ -114,8 +114,8 @@ The 'start' operation starts the database.
+ The 'stop' operation stops the database.
+ The 'status' operation reports whether the database is running
+ The 'monitor' operation reports whether the database seems to be working
+-The 'promote' operation makes this mysql server run as master
+-The 'demote' operation makes this mysql server run as slave
++The 'promote' operation makes this mysql server run as promoted
++The 'demote' operation makes this mysql server run as unpromoted
+ The 'validate-all' operation reports whether the parameters are valid
+ 
+ UEND
+@@ -298,8 +298,8 @@ Use it with caution! (and fencing)
+ <action name="stop" timeout="120s" />
+ <action name="status" timeout="60s" />
+ <action name="monitor" depth="0" timeout="30s" interval="20s" />
+-<action name="monitor" role="Master" depth="0" timeout="30s" interval="10s" />
+-<action name="monitor" role="Slave" depth="0" timeout="30s" interval="30s" />
++<action name="monitor" role="Promoted" depth="0" timeout="30s" interval="10s" />
++<action name="monitor" role="Unpromoted" depth="0" timeout="30s" interval="30s" />
+ <action name="promote" timeout="300s" />
+ <action name="demote" timeout="120s" />
+ <action name="validate-all" timeout="5s" />
+diff --git a/heartbeat/iface-bridge b/heartbeat/iface-bridge
+index 75d5371dd..a4e50adb9 100755
+--- a/heartbeat/iface-bridge
++++ b/heartbeat/iface-bridge
+@@ -211,7 +211,7 @@ bridge_meta_data() {
+       <longdesc lang="en">
+         Set the port cost. This is a dimensionless metric.
+         A list of port/cost can be specified using the following
+-        format: slave cost slave cost.
++        format: unpromoted cost unpromoted cost.
+         Example: eth0 100 eth1 1000
+       </longdesc>
+       <shortdesc lang="en">
+@@ -228,7 +228,7 @@ bridge_meta_data() {
+         This metric is used in the designated port and root port
+         selection algorithms.
+         A list of port/priority can be specified using the following
+-        format: slave cost slave cost.
++        format: unpromoted cost unpromoted cost.
+         Example: eth0 10 eth1 60
+       </longdesc>
+       <shortdesc lang="en">
+@@ -262,7 +262,7 @@ bridge_meta_data() {
+         Enable or disable a port from the multicast router.
+         Kernel enables all port by default.
+         A list of port can be specified using the following
+-        format: slave 0|1 slave 0|1.
++        format: unpromoted 0|1 unpromoted 0|1.
+         Example: eth0 1 eth1 0
+       </longdesc>
+       <shortdesc lang="en">
+diff --git a/heartbeat/mariadb.in b/heartbeat/mariadb.in
+index 39ad191bb..5a39ccb66 100644
+--- a/heartbeat/mariadb.in
++++ b/heartbeat/mariadb.in
+@@ -3,7 +3,7 @@
+ #
+ # MariaDB
+ #
+-# Description:  Manages a MariaDB Master/Slave database as Linux-HA resource
++# Description:  Manages a MariaDB Promotable database as Linux-HA resource
+ #
+ # Authors:  Alan Robertson:               DB2 Script
+ #           Jakub Janczak:                rewrite as MySQL
+@@ -61,8 +61,8 @@ The 'start' operation starts the database.
+ The 'stop' operation stops the database.
+ The 'status' operation reports whether the database is running
+ The 'monitor' operation reports whether the database seems to be working
+-The 'promote' operation makes this mysql server run as master
+-The 'demote' operation makes this mysql server run as slave
++The 'promote' operation makes this mysql server run as promoted
++The 'demote' operation makes this mysql server run as unpromoted
+ The 'validate-all' operation reports whether the parameters are valid
+ 
+ UEND
+@@ -78,20 +78,20 @@ meta_data() {
+ <longdesc lang="en">
+ Resource script for MariaDB.
+ 
+-Manages a complete master/slave replication setup with GTID, for simpler
++Manages a complete promotable replication setup with GTID, for simpler
+ uses look at the mysql resource agent which supports older replication
+ forms which mysql and mariadb have in common.
+ 
+ The resource must be setup to use notifications. Set 'notify=true' in the metadata
+-attributes when defining a MariaDB master/slave instance.
++attributes when defining a MariaDB promotable instance.
+ 
+-The default behavior is to use uname -n values in the change master to command.
++The default behavior is to use uname -n values in the change promoted to command.
+ Other IPs can be specified manually by adding a node attribute
+ \${INSTANCE_ATTR_NAME}_mysql_master_IP giving the IP to use for replication.
+ For example, if the mariadb primitive you are using is p_mariadb, the
+ attribute to set will be p_mariadb_mysql_master_IP.
+ </longdesc>
+-<shortdesc lang="en">Manages a MariaDB master/slave instance</shortdesc>
++<shortdesc lang="en">Manages a MariaDB promotable instance</shortdesc>
+ <parameters>
+ 
+ <parameter name="binary" unique="0" required="0">
+@@ -154,7 +154,7 @@ The logfile to be used for mysqld.
+ <longdesc lang="en">
+ All node names of nodes that will execute mariadb.
+ Please separate each node name with a space.
+-This is required for the master selection to function.
++This is required for the promoted selection to function.
+ </longdesc>
+ <shortdesc lang="en">node list</shortdesc>
+ <content type="string" default="${OCF_RESKEY_node_list_default}" />
+@@ -220,11 +220,11 @@ Additional parameters which are passed to the mysqld on startup.
+ <parameter name="replication_user" unique="0" required="0">
+ <longdesc lang="en">
+ MariaDB replication user. This user is used for starting and stopping
+-MariaDB replication, for setting and resetting the master host, and for
++MariaDB replication, for setting and resetting the promoted host, and for
+ setting and unsetting read-only mode. Because of that, this user must
+ have SUPER, REPLICATION SLAVE, REPLICATION CLIENT, PROCESS and RELOAD
+ privileges on all nodes within the cluster. Mandatory if you define a
+-master-slave resource.
++promotable resource.
+ </longdesc>
+ <shortdesc lang="en">MariaDB replication user</shortdesc>
+ <content type="string" default="${OCF_RESKEY_replication_user_default}" />
+@@ -232,8 +232,8 @@ master-slave resource.
+ 
+ <parameter name="replication_passwd" unique="0" required="0">
+ <longdesc lang="en">
+-MariaDB replication password. Used for replication client and slave.
+-Mandatory if you define a master-slave resource.
++MariaDB replication password. Used for replication client and unpromoted.
++Mandatory if you define a promotable resource.
+ </longdesc>
+ <shortdesc lang="en">MariaDB replication user password</shortdesc>
+ <content type="string" default="${OCF_RESKEY_replication_passwd_default}" />
+@@ -241,7 +241,7 @@ Mandatory if you define a master-slave resource.
+ 
+ <parameter name="replication_port" unique="0" required="0">
+ <longdesc lang="en">
+-The port on which the Master MariaDB instance is listening.
++The port on which the Promoted MariaDB instance is listening.
+ </longdesc>
+ <shortdesc lang="en">MariaDB replication port</shortdesc>
+ <content type="string" default="${OCF_RESKEY_replication_port_default}" />
+@@ -254,8 +254,8 @@ The port on which the Master MariaDB instance is listening.
+ <action name="stop" timeout="120s" />
+ <action name="status" timeout="60s" />
+ <action name="monitor" depth="0" timeout="30s" interval="20s" />
+-<action name="monitor" role="Master" depth="0" timeout="30s" interval="10s" />
+-<action name="monitor" role="Slave" depth="0" timeout="30s" interval="30s" />
++<action name="monitor" role="Promoted" depth="0" timeout="30s" interval="10s" />
++<action name="monitor" role="Unpromoted" depth="0" timeout="30s" interval="30s" />
+ <action name="promote" timeout="120s" />
+ <action name="demote" timeout="120s" />
+ <action name="notify" timeout="90s" />
+diff --git a/heartbeat/mpathpersist.in b/heartbeat/mpathpersist.in
+index fcf1b3a4b..e47fef4bd 100644
+--- a/heartbeat/mpathpersist.in
++++ b/heartbeat/mpathpersist.in
+@@ -80,9 +80,9 @@ meta_data() {
+ <longdesc lang="en">
+ This resource agent manages SCSI persistent reservations on multipath devices.
+ "mpathpersist" from multipath-tools is used, please see its documentation.
+-Should be used as multistate (Master/Slave) resource
+-Slave registers its node id ("crm_node -i") as reservation key ( --param-sark ) on each device in the params "devs" list.
+-Master reserves all devices from params "devs" list with reservation "--prout-type" value from "reservation_type" parameter.
++Should be used as multistate (Promotable) resource
++Unpromoted registers its node id ("crm_node -i") as reservation key ( --param-sark ) on each device in the params "devs" list.
++Promoted reserves all devices from params "devs" list with reservation "--prout-type" value from "reservation_type" parameter.
+ Please see man sg_persist(8) and mpathpersist(8) for reservation_type details.
+ </longdesc>
+ <shortdesc lang="en">Manages SCSI persistent reservations on multipath devices</shortdesc>
+@@ -132,7 +132,7 @@ reservation type
+ master_score_base value
+ "master_score_base" value is used in "master_score" calculation:
+ master_score = master_score_base + master_score_dev_factor * working_devs
+-if set to bigger value in mpathpersist resource configuration on some node, this node will be "preferred" for master role. 
++if set to bigger value in mpathpersist resource configuration on some node, this node will be "preferred" for promoted role. 
+ </longdesc>
+ <shortdesc lang="en">base master_score value</shortdesc>
+ <content type="string" default="${OCF_RESKEY_master_score_base_default}" />
+@@ -140,9 +140,9 @@ if set to bigger value in mpathpersist resource configuration on some node, this
+ 
+ <parameter name="master_score_dev_factor" unique="0" required="0">
+ <longdesc lang="en">
+-Working device factor in master_score calculation
++Working device factor in promoted calculation
+ each "working" device provides additional value to "master_score", 
+-so the node that sees more devices will be preferred for the "Master"-role
++so the node that sees more devices will be preferred for the "Promoted"-role
+ Setting it to 0 will disable this behavior. 
+ </longdesc>
+ <shortdesc lang="en">working device factor in master_score calculation</shortdesc>
+@@ -151,10 +151,10 @@ Setting it to 0 will disable this behavior.
+ 
+ <parameter name="master_score_delay" unique="0" required="0">
+ <longdesc lang="en">
+-master/slave decreases/increases its master_score after delay of "master_score_delay" seconds
+-so if some device gets inaccessible, the slave decreases its master_score first and the resource will no be watched
+-and after this device reappears again the master increases its master_score first
+-this can work only if the master_score_delay is bigger then monitor interval on both master and slave
++promoted/unpromoted decreases/increases its master_score after delay of "master_score_delay" seconds
++so if some device gets inaccessible, the unpromoted decreases its promoted first and the resource will no be watched
++and after this device reappears again the promoted increases its master_score first
++this can work only if the master_score_delay is bigger then monitor interval on both promoted and unpromoted
+ Setting it to 0 will disable this behavior.
+ </longdesc>
+ <shortdesc lang="en">master_score decrease/increase delay time</shortdesc>
+@@ -168,8 +168,8 @@ Setting it to 0 will disable this behavior.
+ <action name="demote"   timeout="30s" />
+ <action name="notify"   timeout="30s" />
+ <action name="stop"    timeout="30s" />
+-<action name="monitor" depth="0"  timeout="20s" interval="29s" role="Slave" />
+-<action name="monitor" depth="0"  timeout="20s" interval="60s" role="Master" />
++<action name="monitor" depth="0"  timeout="20s" interval="29s" role="Unpromoted" />
++<action name="monitor" depth="0"  timeout="20s" interval="60s" role="Promoted" />
+ <action name="meta-data"  timeout="5s" />
+ <action name="validate-all"  timeout="30s" />
+ </actions>
+diff --git a/heartbeat/mysql b/heartbeat/mysql
+index 720de8c1a..aec44fe5e 100755
+--- a/heartbeat/mysql
++++ b/heartbeat/mysql
+@@ -321,8 +321,8 @@ whether a node is usable for clients to read from.</shortdesc>
+ <action name="stop" timeout="120s" />
+ <action name="status" timeout="60s" />
+ <action name="monitor" depth="0" timeout="30s" interval="20s" />
+-<action name="monitor" role="Master" depth="0" timeout="30s" interval="10s" />
+-<action name="monitor" role="Slave" depth="0" timeout="30s" interval="30s" />
++<action name="monitor" role="Promoted" depth="0" timeout="30s" interval="10s" />
++<action name="monitor" role="Unpromoted" depth="0" timeout="30s" interval="30s" />
+ <action name="promote" timeout="120s" />
+ <action name="demote" timeout="120s" />
+ <action name="notify" timeout="90s" />
+diff --git a/heartbeat/mysql-proxy b/heartbeat/mysql-proxy
+index e34396d9a..fdf2fa230 100755
+--- a/heartbeat/mysql-proxy
++++ b/heartbeat/mysql-proxy
+@@ -162,7 +162,7 @@ Address:port of the remote back-end servers (default: 127.0.0.1:3306).
+ 
+ <parameter name="proxy_read_only_backend_addresses" unique="0" required="0">
+ <longdesc lang="en">
+-Address:port of the remote (read only) slave-server (default: ).
++Address:port of the remote (read only) unpromoted-server (default: ).
+ </longdesc>
+ <shortdesc lang="en">MySql Proxy read only back-end servers</shortdesc>
+ <content type="string" default="${OCF_RESKEY_proxy_read_only_backend_addresses_default}" />
+diff --git a/heartbeat/pgsql b/heartbeat/pgsql
+index e3a39038f..94aceb324 100755
+--- a/heartbeat/pgsql
++++ b/heartbeat/pgsql
+@@ -458,7 +458,7 @@ wal receiver is not running in the master and the attribute shows status as
+ <action name="stop" timeout="120s" />
+ <action name="status" timeout="60s" />
+ <action name="monitor" depth="0" timeout="30s" interval="30s"/>
+-<action name="monitor" depth="0" timeout="30s" interval="29s" role="Master" />
++<action name="monitor" depth="0" timeout="30s" interval="29s" role="Promoted" />
+ <action name="promote" timeout="120s" />
+ <action name="demote" timeout="120s" />
+ <action name="notify"   timeout="90s" />
+diff --git a/heartbeat/redis.in b/heartbeat/redis.in
+index 7f886c7ea..6429477e1 100755
+--- a/heartbeat/redis.in
++++ b/heartbeat/redis.in
+@@ -220,8 +220,8 @@ is in use.
+ <action name="stop" timeout="120s" />
+ <action name="status" timeout="60s" />
+ <action name="monitor" depth="0" timeout="60s" interval="45s" />
+-<action name="monitor" role="Master" depth="0" timeout="60s" interval="20s" />
+-<action name="monitor" role="Slave" depth="0" timeout="60s" interval="60s" />
++<action name="monitor" role="Promoted" depth="0" timeout="60s" interval="20s" />
++<action name="monitor" role="Unpromoted" depth="0" timeout="60s" interval="60s" />
+ <action name="promote" timeout="120s" />
+ <action name="demote" timeout="120s" />
+ <action name="notify" timeout="90s" />
+diff --git a/heartbeat/sg_persist.in b/heartbeat/sg_persist.in
+index 678762f40..0497cc469 100644
+--- a/heartbeat/sg_persist.in
++++ b/heartbeat/sg_persist.in
+@@ -168,8 +168,8 @@ Setting it to 0 will disable this behavior.
+ <action name="demote"   timeout="30s" />
+ <action name="notify"   timeout="30s" />
+ <action name="stop"    timeout="30s" />
+-<action name="monitor" depth="0"  timeout="20s" interval="29s" role="Slave" />
+-<action name="monitor" depth="0"  timeout="20s" interval="60s" role="Master" />
++<action name="monitor" depth="0"  timeout="20s" interval="29s" role="Unpromoted" />
++<action name="monitor" depth="0"  timeout="20s" interval="60s" role="Promoted" />
+ <action name="meta-data"  timeout="5s" />
+ <action name="validate-all"  timeout="30s" />
+ </actions>
+
+From 14e5cb71e3749d311745f110f90cc1139f9cedaf Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 16 Jun 2022 15:54:39 +0200
+Subject: [PATCH 2/2] metadata: update to promoted roles
+
+---
+ heartbeat/metadata.rng | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/heartbeat/metadata.rng b/heartbeat/metadata.rng
+index 3dd735547..909efc284 100644
+--- a/heartbeat/metadata.rng
++++ b/heartbeat/metadata.rng
+@@ -85,8 +85,8 @@
+ 
+ <define name="role-values">
+ 	<choice>
+-		<value>Master</value>
+-		<value>Slave</value>
++		<value>Promoted</value>
++		<value>Unpromoted</value>
+ 	</choice>
+ </define>
+ 

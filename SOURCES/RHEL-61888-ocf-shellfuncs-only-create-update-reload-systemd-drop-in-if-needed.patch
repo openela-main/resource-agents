@@ -1,0 +1,48 @@
+From 82958dc115c47232ae0468b1ddf64e728ec325e4 Mon Sep 17 00:00:00 2001
+From: Georg Pfuetzenreuter <mail@georg-pfuetzenreuter.net>
+Date: Wed, 9 Oct 2024 00:16:44 +0200
+Subject: [PATCH] ocf-shellfuncs: systemd_drop_in only if needed
+
+Avoid dbus overload upon many simultaneous "daemon-reload" invocations
+(when a resource agent using systemd_drop_in() is called multiple times
+as part of parallel resource operations in Pacemaker) by skipping the
+file creation and reload if the expected data already exists.
+
+Whilst at it, align the indentation of the heredoc with the other parts
+of the function.
+
+Signed-off-by: Georg Pfuetzenreuter <mail@georg-pfuetzenreuter.net>
+---
+ heartbeat/ocf-shellfuncs.in | 19 +++++++++++--------
+ 1 file changed, 11 insertions(+), 8 deletions(-)
+
+diff --git a/heartbeat/ocf-shellfuncs.in b/heartbeat/ocf-shellfuncs.in
+index 9335cbf00..5c4bb3264 100644
+--- a/heartbeat/ocf-shellfuncs.in
++++ b/heartbeat/ocf-shellfuncs.in
+@@ -662,14 +662,17 @@ systemd_drop_in()
+ 	systemdrundir="/run/systemd/system/resource-agents-deps.target.d"
+ 	mkdir -p "$systemdrundir"
+ 	conf_file="$systemdrundir/$1.conf"
+-	cat >"$conf_file" <<EOF
+-[Unit]
+-$2=$3
+-EOF
+-	# The information is accessible through systemd API and systemd would
+-	# complain about improper permissions.
+-	chmod o+r "$conf_file"
+-	systemctl daemon-reload
++	conf_line="$2=$3"
++	if ! { [ -f "$conf_file" ] && grep -q "^$conf_line$" "$conf_file" ; } ; then
++		cat > "$conf_file" <<-EOF
++			[Unit]
++			$conf_line
++			EOF
++		# The information is accessible through systemd API and systemd would
++		# complain about improper permissions.
++		chmod o+r "$conf_file"
++		systemctl daemon-reload
++	fi
+ }
+ 
+ # usage: curl_retry RETRIES SLEEP ARGS URL

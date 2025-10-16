@@ -1,0 +1,54 @@
+From 81bb58b05d2ddabd17fe31af39f0e857e61db3c9 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Tue, 28 Mar 2023 16:53:45 +0200
+Subject: [PATCH] azure-events*: fix for no "Transition Summary" for Pacemaker
+ 2.1+
+
+---
+ heartbeat/azure-events-az.in | 8 ++++----
+ heartbeat/azure-events.in    | 6 +++---
+ 2 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/heartbeat/azure-events-az.in b/heartbeat/azure-events-az.in
+index 59d0953061..67c02c6422 100644
+--- a/heartbeat/azure-events-az.in
++++ b/heartbeat/azure-events-az.in
+@@ -311,10 +311,10 @@ class clusterHelper:
+ 		summary = clusterHelper._exec("crm_simulate", "-Ls")
+ 		if not summary:
+ 			ocf.logger.warning("transitionSummary: could not load transition summary")
+-			return False
++			return ""
+ 		if summary.find("Transition Summary:") < 0:
+-			ocf.logger.warning("transitionSummary: received unexpected transition summary: %s" % summary)
+-			return False
++			ocf.logger.debug("transitionSummary: no transactions: %s" % summary)
++			return ""
+ 		summary = summary.split("Transition Summary:")[1]
+ 		ret = summary.split("\n").pop(0)
+ 
+@@ -768,4 +768,4 @@ def main():
+ 	agent.run()
+ 
+ if __name__ == '__main__':
+-	main()
+\ No newline at end of file
++	main()
+diff --git a/heartbeat/azure-events.in b/heartbeat/azure-events.in
+index 66e129060a..5ad658df93 100644
+--- a/heartbeat/azure-events.in
++++ b/heartbeat/azure-events.in
+@@ -310,10 +310,10 @@ class clusterHelper:
+ 		summary = clusterHelper._exec("crm_simulate", "-Ls")
+ 		if not summary:
+ 			ocf.logger.warning("transitionSummary: could not load transition summary")
+-			return False
++			return ""
+ 		if summary.find("Transition Summary:") < 0:
+-			ocf.logger.warning("transitionSummary: received unexpected transition summary: %s" % summary)
+-			return False
++			ocf.logger.debug("transitionSummary: no transactions: %s" % summary)
++			return ""
+ 		summary = summary.split("Transition Summary:")[1]
+ 		ret = summary.split("\n").pop(0)
+ 

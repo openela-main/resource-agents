@@ -1,0 +1,68 @@
+From fcceb714085836de9db4493b527e94d85dd72626 Mon Sep 17 00:00:00 2001
+From: ut002970 <liuxingwei@uniontech.com>
+Date: Wed, 6 Sep 2023 15:27:05 +0800
+Subject: [PATCH 1/3] modify error message
+
+---
+ heartbeat/mysql-common.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/mysql-common.sh b/heartbeat/mysql-common.sh
+index 8104019b03..a93acc4c60 100755
+--- a/heartbeat/mysql-common.sh
++++ b/heartbeat/mysql-common.sh
+@@ -254,7 +254,7 @@ mysql_common_start()
+     while [ $start_wait = 1 ]; do
+         if ! ps $pid > /dev/null 2>&1; then
+             wait $pid
+-            ocf_exit_reason "MySQL server failed to start (pid=$pid) (rc=$?), please check your installation"
++            ocf_exit_reason "MySQL server failed to start (pid=$pid) (rc=$?), please check your installation, log message you can check $OCF_RESKEY_log"
+             return $OCF_ERR_GENERIC
+         fi
+         mysql_common_status info
+
+From 8f9b344cd5b3cb96ea0f94b7ab0306da2234ac00 Mon Sep 17 00:00:00 2001
+From: ut002970 <liuxingwei@uniontech.com>
+Date: Wed, 6 Sep 2023 15:56:24 +0800
+Subject: [PATCH 2/3] modify error message
+
+---
+ heartbeat/mysql-common.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/mysql-common.sh b/heartbeat/mysql-common.sh
+index a93acc4c60..d5b2286737 100755
+--- a/heartbeat/mysql-common.sh
++++ b/heartbeat/mysql-common.sh
+@@ -254,7 +254,7 @@ mysql_common_start()
+     while [ $start_wait = 1 ]; do
+         if ! ps $pid > /dev/null 2>&1; then
+             wait $pid
+-            ocf_exit_reason "MySQL server failed to start (pid=$pid) (rc=$?), please check your installation, log message you can check $OCF_RESKEY_log"
++            ocf_exit_reason "MySQL server failed to start (pid=$pid) (rc=$?), Check $OCF_RESKEY_log for details"
+             return $OCF_ERR_GENERIC
+         fi
+         mysql_common_status info
+
+From a292b3c552bf3f2beea5f73e0d171546c0a1273c Mon Sep 17 00:00:00 2001
+From: ut002970 <liuxingwei@uniontech.com>
+Date: Wed, 6 Sep 2023 16:10:48 +0800
+Subject: [PATCH 3/3] modify error message
+
+---
+ heartbeat/mysql-common.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/mysql-common.sh b/heartbeat/mysql-common.sh
+index d5b2286737..d6b4e3cdf4 100755
+--- a/heartbeat/mysql-common.sh
++++ b/heartbeat/mysql-common.sh
+@@ -254,7 +254,7 @@ mysql_common_start()
+     while [ $start_wait = 1 ]; do
+         if ! ps $pid > /dev/null 2>&1; then
+             wait $pid
+-            ocf_exit_reason "MySQL server failed to start (pid=$pid) (rc=$?), Check $OCF_RESKEY_log for details"
++            ocf_exit_reason "MySQL server failed to start (pid=$pid) (rc=$?). Check $OCF_RESKEY_log for details"
+             return $OCF_ERR_GENERIC
+         fi
+         mysql_common_status info

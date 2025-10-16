@@ -1,0 +1,75 @@
+From 0063164d72bbaca68f12a2f0a7dbae9ccb41fa39 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Tue, 26 Jul 2022 09:08:26 +0200
+Subject: [PATCH] ethmonitor/ovsmonitor/pgsql: remove ignored attrd_updater
+ "-q" parameter
+
+attrd_updater in 2.1.3 no longer ignores the -q parameter, which makes
+these agents break. It never did anything in attrd_updater, and is
+probably left-over from copy/paste crm_attribute code that got changed
+to attrd_updater.
+---
+ heartbeat/ethmonitor | 2 +-
+ heartbeat/ovsmonitor | 2 +-
+ heartbeat/pgsql      | 8 ++++----
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/heartbeat/ethmonitor b/heartbeat/ethmonitor
+index ba8574131..451738a0b 100755
+--- a/heartbeat/ethmonitor
++++ b/heartbeat/ethmonitor
+@@ -464,7 +464,7 @@ END
+ 
+ set_cib_value() {
+ 	local score=`expr $1 \* $OCF_RESKEY_multiplier`
+-	attrd_updater -n $ATTRNAME -v $score -q
++	attrd_updater -n $ATTRNAME -v $score
+ 	local rc=$?
+ 	case $rc in
+ 		0) ocf_log debug "attrd_updater: Updated $ATTRNAME = $score" ;;
+diff --git a/heartbeat/ovsmonitor b/heartbeat/ovsmonitor
+index 872ce86eb..6765da4b9 100755
+--- a/heartbeat/ovsmonitor
++++ b/heartbeat/ovsmonitor
+@@ -355,7 +355,7 @@ END
+ 
+ set_cib_value() {
+ 	local score=`expr $1 \* $OCF_RESKEY_multiplier`
+-	attrd_updater -n $ATTRNAME -v $score -q
++	attrd_updater -n $ATTRNAME -v $score
+ 	local rc=$?
+ 	case $rc in
+ 		0) ocf_log debug "attrd_updater: Updated $ATTRNAME = $score" ;;
+diff --git a/heartbeat/pgsql b/heartbeat/pgsql
+index 94aceb324..e93d66855 100755
+--- a/heartbeat/pgsql
++++ b/heartbeat/pgsql
+@@ -808,7 +808,7 @@ pgsql_real_stop() {
+     local stop_escalate
+ 
+     if ocf_is_true ${OCF_RESKEY_check_wal_receiver}; then
+-        attrd_updater -n "$PGSQL_WAL_RECEIVER_STATUS_ATTR" -D -q
++        attrd_updater -n "$PGSQL_WAL_RECEIVER_STATUS_ATTR" -D
+     fi
+ 
+     if ! pgsql_status
+@@ -937,16 +937,16 @@ pgsql_wal_receiver_status() {
+     receiver_parent_pids=`ps -ef | tr -s " " | grep "[w]al\s*receiver" | cut -d " " -f 3`
+ 
+     if echo "$receiver_parent_pids" | grep -q -w "$PID" ; then
+-        attrd_updater -n "$PGSQL_WAL_RECEIVER_STATUS_ATTR" -v "normal" -q
++        attrd_updater -n "$PGSQL_WAL_RECEIVER_STATUS_ATTR" -v "normal"
+         return 0
+     fi
+ 
+     if [ $pgsql_real_monitor_status -eq "$OCF_RUNNING_MASTER" ]; then
+-        attrd_updater -n "$PGSQL_WAL_RECEIVER_STATUS_ATTR" -v "normal (master)" -q
++        attrd_updater -n "$PGSQL_WAL_RECEIVER_STATUS_ATTR" -v "normal (master)"
+         return 0
+     fi
+ 
+-    attrd_updater -n "$PGSQL_WAL_RECEIVER_STATUS_ATTR" -v "ERROR" -q
++    attrd_updater -n "$PGSQL_WAL_RECEIVER_STATUS_ATTR" -v "ERROR"
+     ocf_log warn "wal receiver process is not running"
+     return 1
+ }

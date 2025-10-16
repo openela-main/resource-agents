@@ -1,0 +1,75 @@
+From 4357f0dbb8668ac4090cd7070c2ea195e5683326 Mon Sep 17 00:00:00 2001
+From: Damien Ciabrini <dciabrin@redhat.com>
+Date: Wed, 24 Jan 2024 13:27:26 +0100
+Subject: [PATCH] galera: allow joiner to report non-Primary during initial IST
+
+It seems that with recent galera versions, when a galera node
+joins a cluster, there is a small time window where the node is
+connected to the primary component of the galera cluster, but it
+might still be preparing its IST. During this time, it can report
+itself as being 'not ready' and in 'non-primary' state.
+
+Update the galera resource agent to allow the node to be in
+non-primary state, but only if running a "promote" operation. Any
+network partition during the promotion will be caught by the
+promote timeout.
+
+In reworking the promotion code, we move the check for primary
+partition into the "galera_monitor" function. The check works
+as before for regular "monitor" or "probe" operations.
+
+Related-Bug: rhbz#2255414
+---
+ heartbeat/galera.in | 25 +++++++++++++++++--------
+ 1 file changed, 17 insertions(+), 8 deletions(-)
+
+diff --git a/heartbeat/galera.in b/heartbeat/galera.in
+index 6aed3e4b6d..b518595cb0 100755
+--- a/heartbeat/galera.in
++++ b/heartbeat/galera.in
+@@ -822,6 +822,11 @@ galera_promote()
+         return $rc
+     fi
+ 
++    # At this point, the mysql pidfile is created on disk and the
++    # mysql server is reacheable via its UNIX socket. If we are a
++    # joiner, SST transfers (rsync) have finished, but an IST may
++    # still be requested or ongoing
++
+     galera_monitor
+     rc=$?
+     if [ $rc != $OCF_SUCCESS -a $rc != $OCF_RUNNING_MASTER ]; then
+@@ -835,12 +840,6 @@ galera_promote()
+         return $OCF_ERR_GENERIC
+     fi
+ 
+-    is_primary
+-    if [ $? -ne 0 ]; then
+-        ocf_exit_reason "Failure. Master instance started, but is not in Primary mode."
+-        return $OCF_ERR_GENERIC
+-    fi
+-
+     if ocf_is_true $bootstrap; then
+         promote_everyone
+         clear_bootstrap_node
+@@ -991,8 +990,18 @@ galera_monitor()
+         fi
+         rc=$OCF_RUNNING_MASTER
+     else
+-        ocf_exit_reason "local node <${NODENAME}> is started, but not in primary mode. Unknown state."
+-        rc=$OCF_ERR_GENERIC
++        # It seems that with recent galera (26.4+), a joiner that is
++        # connected to a Primary component and is preparing its IST
++        # request might still temporarily report its state as
++        # Non-Primary.  Do not fail in this case as the promote
++        # operation will loop until the IST finishes or the promote
++        # times out.
++        if [ "$__OCF_ACTION" = "promote" ] && ! ocf_is_true $(is_bootstrap); then
++                ocf_log info "local node <${NODENAME}> is receiving a State Transfer."
++        else
++            ocf_exit_reason "local node <${NODENAME}> is started, but not in primary mode. Unknown state."
++            rc=$OCF_ERR_GENERIC
++        fi
+     fi
+ 
+     return $rc

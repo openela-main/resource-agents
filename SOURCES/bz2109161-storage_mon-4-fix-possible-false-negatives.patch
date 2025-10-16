@@ -1,0 +1,417 @@
+From 0bb52cf9985bda47e13940761b3d8e2eaddf377c Mon Sep 17 00:00:00 2001
+From: Kazunori INOUE <kazunori_inoue@newson.co.jp>
+Date: Wed, 10 Aug 2022 17:35:54 +0900
+Subject: [PATCH 1/4] storage_mon: Use the O_DIRECT flag in open() to eliminate
+ cache effects
+
+---
+ tools/Makefile.am   |  1 +
+ tools/storage_mon.c | 82 +++++++++++++++++++++++++++++++++------------
+ 2 files changed, 61 insertions(+), 22 deletions(-)
+
+diff --git a/tools/Makefile.am b/tools/Makefile.am
+index 1309223b4..08323fee3 100644
+--- a/tools/Makefile.am
++++ b/tools/Makefile.am
+@@ -74,6 +74,7 @@ sfex_stat_LDADD		= $(GLIBLIB) -lplumb -lplumbgpl
+ findif_SOURCES		= findif.c
+ 
+ storage_mon_SOURCES	= storage_mon.c
++storage_mon_CFLAGS	= -D_GNU_SOURCE
+ 
+ if BUILD_TICKLE
+ halib_PROGRAMS		+= tickle_tcp
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index 930ead41c..ba87492fc 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -31,23 +31,27 @@ static void usage(char *name, FILE *f)
+ 	fprintf(f, "      --help           print this message\n");
+ }
+ 
+-/* Check one device */
+-static void *test_device(const char *device, int verbose, int inject_error_percent)
++static int open_device(const char *device, int verbose)
+ {
+-	uint64_t devsize;
+ 	int device_fd;
+ 	int res;
++	uint64_t devsize;
+ 	off_t seek_spot;
+-	char buffer[512];
+ 
+-	if (verbose) {
+-		printf("Testing device %s\n", device);
++#if defined(__linux__) || defined(__FreeBSD__)
++	device_fd = open(device, O_RDONLY|O_DIRECT);
++	if (device_fd >= 0) {
++		return device_fd;
++	} else if (errno != EINVAL) {
++		fprintf(stderr, "Failed to open %s: %s\n", device, strerror(errno));
++		return -1;
+ 	}
++#endif
+ 
+ 	device_fd = open(device, O_RDONLY);
+ 	if (device_fd < 0) {
+ 		fprintf(stderr, "Failed to open %s: %s\n", device, strerror(errno));
+-		exit(-1);
++		return -1;
+ 	}
+ #ifdef __FreeBSD__
+ 	res = ioctl(device_fd, DIOCGMEDIASIZE, &devsize);
+@@ -57,11 +61,12 @@ static void *test_device(const char *device, int verbose, int inject_error_perce
+ 	if (res != 0) {
+ 		fprintf(stderr, "Failed to stat %s: %s\n", device, strerror(errno));
+ 		close(device_fd);
+-		exit(-1);
++		return -1;
+ 	}
+ 	if (verbose) {
+ 		fprintf(stderr, "%s: size=%zu\n", device, devsize);
+ 	}
++
+ 	/* Don't fret about real randomness */
+ 	srand(time(NULL) + getpid());
+ 	/* Pick a random place on the device - sector aligned */
+@@ -70,35 +75,64 @@ static void *test_device(const char *device, int verbose, int inject_error_perce
+ 	if (res < 0) {
+ 		fprintf(stderr, "Failed to seek %s: %s\n", device, strerror(errno));
+ 		close(device_fd);
+-		exit(-1);
++		return -1;
+ 	}
+-
+ 	if (verbose) {
+ 		printf("%s: reading from pos %ld\n", device, seek_spot);
+ 	}
++	return device_fd;
++}
++
++/* Check one device */
++static void *test_device(const char *device, int verbose, int inject_error_percent)
++{
++	int device_fd;
++	int sec_size = 0;
++	int res;
++	void *buffer;
++
++	if (verbose) {
++		printf("Testing device %s\n", device);
++	}
++
++	device_fd = open_device(device, verbose);
++	if (device_fd < 0) {
++		exit(-1);
++	}
++
++	ioctl(device_fd, BLKSSZGET, &sec_size);
++	if (sec_size == 0) {
++		fprintf(stderr, "Failed to stat %s: %s\n", device, strerror(errno));
++		goto error;
++	}
+ 
+-	res = read(device_fd, buffer, sizeof(buffer));
++	if (posix_memalign(&buffer, sysconf(_SC_PAGESIZE), sec_size) != 0) {
++		fprintf(stderr, "Failed to allocate aligned memory: %s\n", strerror(errno));
++		goto error;
++	}
++
++	res = read(device_fd, buffer, sec_size);
++	free(buffer);
+ 	if (res < 0) {
+ 		fprintf(stderr, "Failed to read %s: %s\n", device, strerror(errno));
+-		close(device_fd);
+-		exit(-1);
++		goto error;
+ 	}
+-	if (res < (int)sizeof(buffer)) {
+-		fprintf(stderr, "Failed to read %ld bytes from %s, got %d\n", sizeof(buffer), device, res);
+-		close(device_fd);
+-		exit(-1);
++	if (res < sec_size) {
++		fprintf(stderr, "Failed to read %d bytes from %s, got %d\n", sec_size, device, res);
++		goto error;
+ 	}
+ 
+ 	/* Fake an error */
+-	if (inject_error_percent && ((rand() % 100) < inject_error_percent)) {
+-		fprintf(stderr, "People, please fasten your seatbelts, injecting errors!\n");
+-		close(device_fd);
+-		exit(-1);
++	if (inject_error_percent) {
++		srand(time(NULL) + getpid());
++		if ((rand() % 100) < inject_error_percent) {
++			fprintf(stderr, "People, please fasten your seatbelts, injecting errors!\n");
++			goto error;
++		}
+ 	}
+ 	res = close(device_fd);
+ 	if (res != 0) {
+ 		fprintf(stderr, "Failed to close %s: %s\n", device, strerror(errno));
+-		close(device_fd);
+ 		exit(-1);
+ 	}
+ 
+@@ -106,6 +140,10 @@ static void *test_device(const char *device, int verbose, int inject_error_perce
+ 		printf("%s: done\n", device);
+ 	}
+ 	exit(0);
++
++error:
++	close(device_fd);
++	exit(-1);
+ }
+ 
+ int main(int argc, char *argv[])
+
+From ce4e632f29ed6b86b82a959eac5844655baed153 Mon Sep 17 00:00:00 2001
+From: Kazunori INOUE <kazunori_inoue@newson.co.jp>
+Date: Mon, 15 Aug 2022 19:17:21 +0900
+Subject: [PATCH 2/4] storage_mon: fix build-related issues
+
+---
+ tools/storage_mon.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index ba87492fc..e34d1975a 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -38,7 +38,6 @@ static int open_device(const char *device, int verbose)
+ 	uint64_t devsize;
+ 	off_t seek_spot;
+ 
+-#if defined(__linux__) || defined(__FreeBSD__)
+ 	device_fd = open(device, O_RDONLY|O_DIRECT);
+ 	if (device_fd >= 0) {
+ 		return device_fd;
+@@ -46,7 +45,6 @@ static int open_device(const char *device, int verbose)
+ 		fprintf(stderr, "Failed to open %s: %s\n", device, strerror(errno));
+ 		return -1;
+ 	}
+-#endif
+ 
+ 	device_fd = open(device, O_RDONLY);
+ 	if (device_fd < 0) {
+@@ -100,7 +98,11 @@ static void *test_device(const char *device, int verbose, int inject_error_perce
+ 		exit(-1);
+ 	}
+ 
++#ifdef __FreeBSD__
++	ioctl(device_fd, DIOCGSECTORSIZE, &sec_size);
++#else
+ 	ioctl(device_fd, BLKSSZGET, &sec_size);
++#endif
+ 	if (sec_size == 0) {
+ 		fprintf(stderr, "Failed to stat %s: %s\n", device, strerror(errno));
+ 		goto error;
+
+From 7a0aaa0dfdebeab3fae9fe9ddc412c3d1f610273 Mon Sep 17 00:00:00 2001
+From: Kazunori INOUE <kazunori_inoue@newson.co.jp>
+Date: Wed, 24 Aug 2022 17:36:23 +0900
+Subject: [PATCH 3/4] storage_mon: do random lseek even with O_DIRECT, etc
+
+---
+ tools/storage_mon.c | 118 ++++++++++++++++++++++----------------------
+ 1 file changed, 58 insertions(+), 60 deletions(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index e34d1975a..0bdb48649 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -31,38 +31,43 @@ static void usage(char *name, FILE *f)
+ 	fprintf(f, "      --help           print this message\n");
+ }
+ 
+-static int open_device(const char *device, int verbose)
++/* Check one device */
++static void *test_device(const char *device, int verbose, int inject_error_percent)
+ {
++	uint64_t devsize;
++	int flags = O_RDONLY | O_DIRECT;
+ 	int device_fd;
+ 	int res;
+-	uint64_t devsize;
+ 	off_t seek_spot;
+ 
+-	device_fd = open(device, O_RDONLY|O_DIRECT);
+-	if (device_fd >= 0) {
+-		return device_fd;
+-	} else if (errno != EINVAL) {
+-		fprintf(stderr, "Failed to open %s: %s\n", device, strerror(errno));
+-		return -1;
++	if (verbose) {
++		printf("Testing device %s\n", device);
+ 	}
+ 
+-	device_fd = open(device, O_RDONLY);
++	device_fd = open(device, flags);
+ 	if (device_fd < 0) {
+-		fprintf(stderr, "Failed to open %s: %s\n", device, strerror(errno));
+-		return -1;
++		if (errno != EINVAL) {
++			fprintf(stderr, "Failed to open %s: %s\n", device, strerror(errno));
++			exit(-1);
++		}
++		flags &= ~O_DIRECT;
++		device_fd = open(device, flags);
++		if (device_fd < 0) {
++			fprintf(stderr, "Failed to open %s: %s\n", device, strerror(errno));
++			exit(-1);
++		}
+ 	}
+ #ifdef __FreeBSD__
+ 	res = ioctl(device_fd, DIOCGMEDIASIZE, &devsize);
+ #else
+ 	res = ioctl(device_fd, BLKGETSIZE64, &devsize);
+ #endif
+-	if (res != 0) {
++	if (res < 0) {
+ 		fprintf(stderr, "Failed to stat %s: %s\n", device, strerror(errno));
+-		close(device_fd);
+-		return -1;
++		goto error;
+ 	}
+ 	if (verbose) {
+-		fprintf(stderr, "%s: size=%zu\n", device, devsize);
++		printf("%s: opened %s O_DIRECT, size=%zu\n", device, (flags & O_DIRECT)?"with":"without", devsize);
+ 	}
+ 
+ 	/* Don't fret about real randomness */
+@@ -72,65 +77,58 @@ static int open_device(const char *device, int verbose)
+ 	res = lseek(device_fd, seek_spot, SEEK_SET);
+ 	if (res < 0) {
+ 		fprintf(stderr, "Failed to seek %s: %s\n", device, strerror(errno));
+-		close(device_fd);
+-		return -1;
++		goto error;
+ 	}
+ 	if (verbose) {
+ 		printf("%s: reading from pos %ld\n", device, seek_spot);
+ 	}
+-	return device_fd;
+-}
+-
+-/* Check one device */
+-static void *test_device(const char *device, int verbose, int inject_error_percent)
+-{
+-	int device_fd;
+-	int sec_size = 0;
+-	int res;
+-	void *buffer;
+-
+-	if (verbose) {
+-		printf("Testing device %s\n", device);
+-	}
+ 
+-	device_fd = open_device(device, verbose);
+-	if (device_fd < 0) {
+-		exit(-1);
+-	}
++	if (flags & O_DIRECT) {
++		int sec_size = 0;
++		void *buffer;
+ 
+ #ifdef __FreeBSD__
+-	ioctl(device_fd, DIOCGSECTORSIZE, &sec_size);
++		res = ioctl(device_fd, DIOCGSECTORSIZE, &sec_size);
+ #else
+-	ioctl(device_fd, BLKSSZGET, &sec_size);
++		res = ioctl(device_fd, BLKSSZGET, &sec_size);
+ #endif
+-	if (sec_size == 0) {
+-		fprintf(stderr, "Failed to stat %s: %s\n", device, strerror(errno));
+-		goto error;
+-	}
++		if (res < 0) {
++			fprintf(stderr, "Failed to stat %s: %s\n", device, strerror(errno));
++			goto error;
++		}
+ 
+-	if (posix_memalign(&buffer, sysconf(_SC_PAGESIZE), sec_size) != 0) {
+-		fprintf(stderr, "Failed to allocate aligned memory: %s\n", strerror(errno));
+-		goto error;
+-	}
++		if (posix_memalign(&buffer, sysconf(_SC_PAGESIZE), sec_size) != 0) {
++			fprintf(stderr, "Failed to allocate aligned memory: %s\n", strerror(errno));
++			goto error;
++		}
++		res = read(device_fd, buffer, sec_size);
++		free(buffer);
++		if (res < 0) {
++			fprintf(stderr, "Failed to read %s: %s\n", device, strerror(errno));
++			goto error;
++		}
++		if (res < sec_size) {
++			fprintf(stderr, "Failed to read %d bytes from %s, got %d\n", sec_size, device, res);
++			goto error;
++		}
++	} else {
++		char buffer[512];
+ 
+-	res = read(device_fd, buffer, sec_size);
+-	free(buffer);
+-	if (res < 0) {
+-		fprintf(stderr, "Failed to read %s: %s\n", device, strerror(errno));
+-		goto error;
+-	}
+-	if (res < sec_size) {
+-		fprintf(stderr, "Failed to read %d bytes from %s, got %d\n", sec_size, device, res);
+-		goto error;
++		res = read(device_fd, buffer, sizeof(buffer));
++		if (res < 0) {
++			fprintf(stderr, "Failed to read %s: %s\n", device, strerror(errno));
++			goto error;
++		}
++		if (res < (int)sizeof(buffer)) {
++			fprintf(stderr, "Failed to read %ld bytes from %s, got %d\n", sizeof(buffer), device, res);
++			goto error;
++		}
+ 	}
+ 
+ 	/* Fake an error */
+-	if (inject_error_percent) {
+-		srand(time(NULL) + getpid());
+-		if ((rand() % 100) < inject_error_percent) {
+-			fprintf(stderr, "People, please fasten your seatbelts, injecting errors!\n");
+-			goto error;
+-		}
++	if (inject_error_percent && ((rand() % 100) < inject_error_percent)) {
++		fprintf(stderr, "People, please fasten your seatbelts, injecting errors!\n");
++		goto error;
+ 	}
+ 	res = close(device_fd);
+ 	if (res != 0) {
+
+From db97e055a17526cec056c595844a9d8851e3ee19 Mon Sep 17 00:00:00 2001
+From: Kazunori INOUE <kazunori_inoue@newson.co.jp>
+Date: Thu, 25 Aug 2022 16:03:46 +0900
+Subject: [PATCH 4/4] storage_mon: improve error messages when ioctl() fails
+
+---
+ tools/storage_mon.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index 0bdb48649..f829c5081 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -63,7 +63,7 @@ static void *test_device(const char *device, int verbose, int inject_error_perce
+ 	res = ioctl(device_fd, BLKGETSIZE64, &devsize);
+ #endif
+ 	if (res < 0) {
+-		fprintf(stderr, "Failed to stat %s: %s\n", device, strerror(errno));
++		fprintf(stderr, "Failed to get device size for %s: %s\n", device, strerror(errno));
+ 		goto error;
+ 	}
+ 	if (verbose) {
+@@ -93,7 +93,7 @@ static void *test_device(const char *device, int verbose, int inject_error_perce
+ 		res = ioctl(device_fd, BLKSSZGET, &sec_size);
+ #endif
+ 		if (res < 0) {
+-			fprintf(stderr, "Failed to stat %s: %s\n", device, strerror(errno));
++			fprintf(stderr, "Failed to get block device sector size for %s: %s\n", device, strerror(errno));
+ 			goto error;
+ 		}
+ 

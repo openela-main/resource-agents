@@ -1,0 +1,49 @@
+From 5a65f66ff803ad7ed15af958cc1efdde4d53dcb7 Mon Sep 17 00:00:00 2001
+From: Reid Wahl <nrwahl@protonmail.com>
+Date: Thu, 17 Feb 2022 03:53:21 -0800
+Subject: [PATCH] IPsrcaddr: Better error message when no matching route found
+
+If OCF_RESKEY_destination is not explicitly set and `ip route list`
+can't find a route matching the specifications, the NETWORK variable
+doesn't get set. This causes a certain failure of the start operation,
+because there is no PREFIX argument to `ip route replace` (syntax
+error). It may also cause unexpected behavior for stop operations (but
+not in all cases). During a monitor, this event can only happen if
+something has changed outside the cluster's control, and so is cause
+for warning there.
+
+Exit OCF_ERR_ARGS for start, log debug for probe, log warning for all
+other ops.
+
+Resolves: RHBZ#1654862
+
+Signed-off-by: Reid Wahl <nrwahl@protonmail.com>
+---
+ heartbeat/IPsrcaddr | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/heartbeat/IPsrcaddr b/heartbeat/IPsrcaddr
+index fd7b6f68d..f0216722d 100755
+--- a/heartbeat/IPsrcaddr
++++ b/heartbeat/IPsrcaddr
+@@ -549,6 +549,20 @@ rc=$?
+ INTERFACE=`echo $findif_out | awk '{print $1}'`
+ if [ "$OCF_RESKEY_destination" = "0.0.0.0/0" ] ;then
+ 	NETWORK=`$IP2UTIL route list dev $INTERFACE scope link $PROTO match $ipaddress|grep -m 1 -o '^[^ ]*'`
++
++    if [ -z "$NETWORK" ]; then
++        err_str="command '$IP2UTIL route list dev $INTERFACE scope link $PROTO"
++        err_str="$err_str match $ipaddress' failed to find a matching route"
++
++        if [ "$__OCF_ACTION" = "start" ]; then
++            ocf_exit_reason "$err_str"
++            exit $OCF_ERR_ARGS
++        elif ! ocf_is_probe; then
++            ocf_log warn "$err_str"
++        else
++            ocf_log debug "$err_str"
++        fi
++    fi
+ else
+ 	NETWORK="$OCF_RESKEY_destination"
+ fi

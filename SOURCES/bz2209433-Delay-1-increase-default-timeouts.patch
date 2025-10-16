@@ -1,0 +1,27 @@
+From a913eb6a9a8732db7c56d2e0be937dbd0db9dc38 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Fri, 26 May 2023 12:45:13 +0200
+Subject: [PATCH] Delay: increase stop, status and monitor timeouts to 40s to
+ avoid failing with default values
+
+---
+ heartbeat/Delay | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/heartbeat/Delay b/heartbeat/Delay
+index 7ba6623f24..bc6c13559b 100755
+--- a/heartbeat/Delay
++++ b/heartbeat/Delay
+@@ -89,9 +89,9 @@ Defaults to "startdelay" if unspecified.
+ 
+ <actions>
+ <action name="start" timeout="30s" />
+-<action name="stop" timeout="30s" />
+-<action name="status" depth="0" timeout="30s" interval="10s" />
+-<action name="monitor" depth="0" timeout="30s" interval="10s" />
++<action name="stop" timeout="40s" />
++<action name="status" depth="0" timeout="40s" interval="10s" />
++<action name="monitor" depth="0" timeout="40s" interval="10s" />
+ <action name="meta-data" timeout="5s" />
+ <action name="validate-all" timeout="5s" />
+ </actions>

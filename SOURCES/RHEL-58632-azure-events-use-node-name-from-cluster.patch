@@ -1,0 +1,37 @@
+From c72dc2f2e502486d93aeec26abc12e720b14a0a7 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 10 Oct 2024 16:41:03 +0200
+Subject: [PATCH] azure-events*: use node name from cluster instead of hostname
+ to avoid failing if they're not the same
+
+---
+ heartbeat/azure-events-az.in | 2 +-
+ heartbeat/azure-events.in    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/heartbeat/azure-events-az.in b/heartbeat/azure-events-az.in
+index 6d31e5aba..0ed001037 100644
+--- a/heartbeat/azure-events-az.in
++++ b/heartbeat/azure-events-az.in
+@@ -441,7 +441,7 @@ class Node:
+ 		self.raOwner  = ra
+ 		self.azInfo   = azHelper.getInstanceInfo()
+ 		self.azName   = self.azInfo.name
+-		self.hostName = socket.gethostname()
++		self.hostName = clusterHelper._exec("crm_node", "-n")
+ 		self.setAttr("azName", self.azName)
+ 		clusterHelper.setAttr("hostName_%s" % self.azName, self.hostName)
+ 
+diff --git a/heartbeat/azure-events.in b/heartbeat/azure-events.in
+index 90acaba62..32f71ee26 100644
+--- a/heartbeat/azure-events.in
++++ b/heartbeat/azure-events.in
+@@ -411,7 +411,7 @@ class Node:
+ 		self.raOwner  = ra
+ 		self.azInfo   = azHelper.getInstanceInfo()
+ 		self.azName   = self.azInfo.name
+-		self.hostName = socket.gethostname()
++		self.hostName = clusterHelper._exec("crm_node", "-n")
+ 		self.setAttr("azName", self.azName)
+ 		clusterHelper.setAttr("hostName_%s" % self.azName, self.hostName)
+ 

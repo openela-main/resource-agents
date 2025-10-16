@@ -1,0 +1,770 @@
+diff --color -uNr a/heartbeat/Makefile.am b/heartbeat/Makefile.am
+--- a/heartbeat/Makefile.am	2022-03-15 16:14:29.355209012 +0100
++++ b/heartbeat/Makefile.am	2022-03-15 16:18:35.917048467 +0100
+@@ -217,6 +217,7 @@
+ 			  lvm-clvm.sh		\
+ 			  lvm-plain.sh		\
+ 			  lvm-tag.sh		\
++			  openstack-common.sh	\
+ 			  ora-common.sh		\
+ 			  mysql-common.sh	\
+ 			  nfsserver-redhat.sh	\
+diff --color -uNr a/heartbeat/openstack-cinder-volume b/heartbeat/openstack-cinder-volume
+--- a/heartbeat/openstack-cinder-volume	2022-03-15 16:14:29.370209063 +0100
++++ b/heartbeat/openstack-cinder-volume	2022-03-15 16:17:36.231840008 +0100
+@@ -34,11 +34,11 @@
+ : ${OCF_FUNCTIONS_DIR=${OCF_ROOT}/lib/heartbeat}
+ . ${OCF_FUNCTIONS_DIR}/ocf-shellfuncs
+ 
++. ${OCF_FUNCTIONS_DIR}/openstack-common.sh
++
+ # Defaults
+-OCF_RESKEY_openstackcli_default="/usr/bin/openstack"
+ OCF_RESKEY_volume_local_check_default="true"
+ 
+-: ${OCF_RESKEY_openstackcli=${OCF_RESKEY_openstackcli_default}}
+ : ${OCF_RESKEY_volume_local_check=${OCF_RESKEY_volume_local_check_default}}
+ 
+ #######################################################################
+@@ -68,14 +68,11 @@
+ <shortdesc lang="en">Attach a cinder volume</shortdesc>
+ 
+ <parameters>
+-<parameter name="openstackcli">
+-<longdesc lang="en">
+-Path to command line tools for openstack.
+-</longdesc>
+-<shortdesc lang="en">Path to Openstack CLI tool</shortdesc>
+-<content type="string" default="${OCF_RESKEY_openstackcli_default}" />
+-</parameter>
++END
+ 
++common_meta_data
++
++cat <<END
+ <parameter name="volume_local_check">
+ <longdesc lang="en">
+ This option allows the cluster to monitor the cinder volume presence without 
+@@ -85,28 +82,19 @@
+ <content type="boolean" default="${OCF_RESKEY_volume_local_check_default}" />
+ </parameter>
+ 
+-<parameter name="openrc" required="1">
+-<longdesc lang="en">
+-Valid Openstack credentials as openrc file from api_access/openrc.
+-</longdesc>
+-<shortdesc lang="en">openrc file</shortdesc>
+-<content type="string" />
+-</parameter>
+-
+ <parameter name="volume_id" required="1">
+ <longdesc lang="en">
+-Cinder volume identifier to use to attach the bloc storage.
++Cinder volume identifier to use to attach the block storage.
+ </longdesc>
+ <shortdesc lang="en">Volume ID</shortdesc>
+ <content type="string" />
+ </parameter>
+-
+ </parameters>
+ 
+ <actions>
+ <action name="start" timeout="180s" />
+ <action name="stop" timeout="180s" />
+-<action name="monitor" depth="0" timeout="30s" interval="60s" />
++<action name="monitor" depth="0" timeout="180s" interval="60s" />
+ <action name="validate-all" timeout="5s" />
+ <action name="meta-data" timeout="5s" />
+ </actions>
+@@ -127,17 +115,7 @@
+ osvol_validate() {
+ 	check_binary "$OCF_RESKEY_openstackcli"
+ 	
+-	if [ -z "$OCF_RESKEY_openrc" ]; then
+-		ocf_exit_reason "openrc parameter not set"
+-		return $OCF_ERR_CONFIGURED
+-	fi
+-
+-	if [ ! -f "$OCF_RESKEY_openrc" ] ; then
+-		ocf_exit_reason "openrc file not found"
+-		return $OCF_ERR_CONFIGURED
+-	fi
+-
+-	. $OCF_RESKEY_openrc
++	get_config
+ 
+ 	if ! $OCF_RESKEY_openstackcli volume list|grep -q $OCF_RESKEY_volume_id ; then
+ 		ocf_exit_reason "volume-id $OCF_RESKEY_volume_id not found"
+diff --color -uNr a/heartbeat/openstack-common.sh b/heartbeat/openstack-common.sh
+--- a/heartbeat/openstack-common.sh	1970-01-01 01:00:00.000000000 +0100
++++ b/heartbeat/openstack-common.sh	2022-03-15 16:17:36.232840011 +0100
+@@ -0,0 +1,147 @@
++OCF_RESKEY_openstackcli_default="/usr/bin/openstack"
++OCF_RESKEY_insecure_default="false"
++
++: ${OCF_RESKEY_openstackcli=${OCF_RESKEY_openstackcli_default}}
++: ${OCF_RESKEY_insecure=${OCF_RESKEY_insecure_default}}
++
++if ocf_is_true "${OCF_RESKEY_insecure}"; then
++	OCF_RESKEY_openstackcli="${OCF_RESKEY_openstackcli} --insecure"
++fi
++
++common_meta_data() {
++	cat <<END
++
++<parameter name="cloud" required="0">
++<longdesc lang="en">
++Openstack cloud (from ~/.config/openstack/clouds.yaml or /etc/openstack/clouds.yaml).
++</longdesc>
++<shortdesc lang="en">Cloud from clouds.yaml</shortdesc>
++<content type="string" />
++</parameter>
++
++<parameter name="openrc" required="0">
++<longdesc lang="en">
++Openstack credentials as openrc file from api_access/openrc.
++</longdesc>
++<shortdesc lang="en">openrc file</shortdesc>
++<content type="string" />
++</parameter>
++
++<parameter name="auth_url" required="0">
++<longdesc lang="en">
++Keystone Auth URL
++</longdesc>
++<shortdesc lang="en">Keystone Auth URL</shortdesc>
++<content type="string" />
++</parameter>
++
++<parameter name="username" required="0">
++<longdesc lang="en">
++Username.
++</longdesc>
++<shortdesc lang="en">Username</shortdesc>
++<content type="string" />
++</parameter>
++
++<parameter name="password" required="0">
++<longdesc lang="en">
++Password.
++</longdesc>
++<shortdesc lang="en">Password</shortdesc>
++<content type="string" />
++</parameter>
++
++<parameter name="project_name" required="0">
++<longdesc lang="en">
++Keystone Project.
++</longdesc>
++<shortdesc lang="en">Keystone Project</shortdesc>
++<content type="string" />
++</parameter>
++
++<parameter name="user_domain_name" required="0">
++<longdesc lang="en">
++Keystone User Domain Name.
++</longdesc>
++<shortdesc lang="en">Keystone User Domain Name</shortdesc>
++<content type="string" />
++</parameter>
++
++<parameter name="project_domain_name" required="0">
++<longdesc lang="en">
++Keystone Project Domain Name.
++</longdesc>
++<shortdesc lang="en">Keystone Project Domain Name</shortdesc>
++<content type="string" />
++</parameter>
++
++<parameter name="openstackcli">
++<longdesc lang="en">
++Path to command line tools for openstack.
++</longdesc>
++<shortdesc lang="en">Path to Openstack CLI tool</shortdesc>
++<content type="string" default="${OCF_RESKEY_openstackcli_default}" />
++</parameter>
++
++<parameter name="insecure">
++<longdesc lang="en">
++Allow insecure connections
++</longdesc>
++<shortdesc lang="en">Allow insecure connections</shortdesc>
++<content type="boolean" default="${OCF_RESKEY_insecure_default}" />
++</parameter>
++END
++}
++
++get_config() {
++	if [ -n "$OCF_RESKEY_cloud" ]; then
++		TILDE=$(echo ~)
++		clouds_yaml="$TILDE/.config/openstack/clouds.yaml"
++		if [ ! -f "$clouds_yaml" ]; then
++			clouds_yaml="/etc/openstack/clouds.yaml"
++		fi
++		if [ ! -f "$clouds_yaml" ]; then
++			ocf_exit_reason "~/.config/openstack/clouds.yaml and /etc/openstack/clouds.yaml does not exist"
++			exit $OCF_ERR_CONFIGURED
++		fi
++		OCF_RESKEY_openstackcli="${OCF_RESKEY_openstackcli} --os-cloud $OCF_RESKEY_cloud"
++	elif [ -n "$OCF_RESKEY_openrc" ]; then
++		if [ ! -f "$OCF_RESKEY_openrc" ]; then
++			ocf_exit_reason "$OCF_RESKEY_openrc does not exist"
++			exit $OCF_ERR_CONFIGURED
++		fi
++		. $OCF_RESKEY_openrc
++	else
++		if [ -z "$OCF_RESKEY_auth_url" ]; then
++			ocf_exit_reason "auth_url not set"
++			exit $OCF_ERR_CONFIGURED
++		fi
++		if [ -z "$OCF_RESKEY_username" ]; then
++			ocf_exit_reason "username not set"
++			exit $OCF_ERR_CONFIGURED
++		fi
++		if [ -z "$OCF_RESKEY_password" ]; then
++			ocf_exit_reason "password not set"
++			exit $OCF_ERR_CONFIGURED
++		fi
++		if [ -z "$OCF_RESKEY_project_name" ]; then
++			ocf_exit_reason "project_name not set"
++			exit $OCF_ERR_CONFIGURED
++		fi
++		if [ -z "$OCF_RESKEY_user_domain_name" ]; then
++			ocf_exit_reason "user_domain_name not set"
++			exit $OCF_ERR_CONFIGURED
++		fi
++		if [ -z "$OCF_RESKEY_project_domain_name" ]; then
++			ocf_exit_reason " not set"
++			exit $OCF_ERR_CONFIGURED
++		fi
++
++		OCF_RESKEY_openstackcli="${OCF_RESKEY_openstackcli} --os-auth-url $OCF_RESKEY_auth_url"
++		OCF_RESKEY_openstackcli="${OCF_RESKEY_openstackcli} --os-username $OCF_RESKEY_username"
++		OCF_RESKEY_openstackcli="${OCF_RESKEY_openstackcli} --os-password $OCF_RESKEY_password"
++		OCF_RESKEY_openstackcli="${OCF_RESKEY_openstackcli} --os-project-name $OCF_RESKEY_project_name"
++		OCF_RESKEY_openstackcli="${OCF_RESKEY_openstackcli} --os-user-domain-name $OCF_RESKEY_user_domain_name"
++		OCF_RESKEY_openstackcli="${OCF_RESKEY_openstackcli} --os-project-domain-name $OCF_RESKEY_project_domain_name"
++	fi
++}
+diff --color -uNr a/heartbeat/openstack-floating-ip b/heartbeat/openstack-floating-ip
+--- a/heartbeat/openstack-floating-ip	2022-03-15 16:14:29.370209063 +0100
++++ b/heartbeat/openstack-floating-ip	2022-03-15 16:17:36.233840014 +0100
+@@ -34,10 +34,9 @@
+ : ${OCF_FUNCTIONS_DIR=${OCF_ROOT}/lib/heartbeat}
+ . ${OCF_FUNCTIONS_DIR}/ocf-shellfuncs
+ 
+-# Defaults
+-OCF_RESKEY_openstackcli_default="/usr/bin/openstack"
++. ${OCF_FUNCTIONS_DIR}/openstack-common.sh
+ 
+-: ${OCF_RESKEY_openstackcli=${OCF_RESKEY_openstackcli_default}}
++# Defaults
+ 
+ #######################################################################
+ 
+@@ -67,22 +66,11 @@
+ <shortdesc lang="en">Move a floating IP</shortdesc>
+ 
+ <parameters>
+-<parameter name="openstackcli">
+-<longdesc lang="en">
+-Path to command line tools for openstack.
+-</longdesc>
+-<shortdesc lang="en">Path to Openstack CLI tool</shortdesc>
+-<content type="string" default="${OCF_RESKEY_openstackcli_default}" />
+-</parameter>
++END
+ 
+-<parameter name="openrc" required="1">
+-<longdesc lang="en">
+-Valid Openstack credentials as openrc file from api_access/openrc.
+-</longdesc>
+-<shortdesc lang="en">openrc file</shortdesc>
+-<content type="string" />
+-</parameter>
++common_meta_data
+ 
++cat <<END
+ <parameter name="ip_id" required="1">
+ <longdesc lang="en">
+ Floating IP Identifier.
+@@ -104,7 +92,7 @@
+ <actions>
+ <action name="start" timeout="180s" />
+ <action name="stop" timeout="180s" />
+-<action name="monitor" depth="0" timeout="30s" interval="60s" />
++<action name="monitor" depth="0" timeout="180s" interval="60s" />
+ <action name="validate-all" timeout="5s" />
+ <action name="meta-data" timeout="5s" />
+ </actions>
+@@ -115,17 +103,7 @@
+ osflip_validate() {
+ 	check_binary "$OCF_RESKEY_openstackcli"
+ 
+-	if [ -z "$OCF_RESKEY_openrc" ]; then
+-		ocf_exit_reason "openrc parameter not set"
+-		return $OCF_ERR_CONFIGURED
+-	fi
+-
+-	if [ ! -f "$OCF_RESKEY_openrc" ] ; then
+-		ocf_exit_reason "openrc file not found"
+-		return $OCF_ERR_CONFIGURED
+-	fi
+-
+-	. $OCF_RESKEY_openrc
++	get_config
+ 
+ 	if ! $OCF_RESKEY_openstackcli floating ip list|grep -q $OCF_RESKEY_ip_id ; then
+ 		ocf_exit_reason "ip-id $OCF_RESKEY_ip_id not found"
+diff --color -uNr a/heartbeat/openstack-info b/heartbeat/openstack-info
+--- a/heartbeat/openstack-info	1970-01-01 01:00:00.000000000 +0100
++++ b/heartbeat/openstack-info	2022-03-15 16:17:36.234840018 +0100
+@@ -0,0 +1,270 @@
++#!/bin/sh
++#
++#
++# OCF resource agent to set attributes from Openstack instance details.
++# It records (in the CIB) various attributes of a node
++#
++# Copyright (c) 2018 Mathieu Grzybek
++#          All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of version 2 of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful, but
++# WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++#
++# Further, this software is distributed without any warranty that it is
++# free of the rightful claim of any third person regarding infringement
++# or the like. Any license provided herein, whether implied or
++# otherwise, applies only to this software file. Patent licenses, if
++# any, provided herein do not apply to combinations of this program with
++# other software, or any other product whatsoever.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc., 59 Temple Place - Suite 330, Boston MA 02111-1307, USA.
++#
++#######################################################################
++# Initialization:
++
++: ${OCF_FUNCTIONS_DIR=${OCF_ROOT}/lib/heartbeat}
++. ${OCF_FUNCTIONS_DIR}/ocf-shellfuncs
++
++. ${OCF_FUNCTIONS_DIR}/openstack-common.sh
++
++# Defaults
++OCF_RESKEY_pidfile_default="$HA_RSCTMP/OSInfo-${OCF_RESOURCE_HOSTNAME}"
++OCF_RESKEY_delay_default="0"
++OCF_RESKEY_clone_default="0"
++OCF_RESKEY_curlcli_default="/usr/bin/curl"
++OCF_RESKEY_pythoncli_default="/usr/bin/python"
++
++: ${OCF_RESKEY_curlcli=${OCF_RESKEY_curlcli_default}}
++: ${OCF_RESKEY_pythoncli=${OCF_RESKEY_pythoncli_default}}
++: ${OCF_RESKEY_pidfile=${OCF_RESKEY_pidfile_default}}
++: ${OCF_RESKEY_delay=${OCF_RESKEY_delay_default}}
++: ${OCF_RESKEY_clone=${OCF_RESKEY_clone_default}}
++
++#######################################################################
++
++meta_data() {
++	cat <<END
++<?xml version="1.0"?>
++<!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
++<resource-agent name="openstack-info" version="1.0">
++<version>1.0</version>
++
++<longdesc lang="en">
++OCF resource agent to set attributes from Openstack instance details.
++It records (in the CIB) various attributes of a node.
++Sample output:
++	openstack_az      : nova
++	openstack_flavor  : c1.small
++	openstack_id      : 60ac4343-5828-49b1-8aac-7c69b1417f31
++	openstack_ports   : 7960d889-9750-4160-bf41-c69a41ad72d9:96530d18-57a3-4718-af32-30f2a74c22a2,b0e55a06-bd75-468d-8baa-22cfeb65799f:a55ae917-8016-4b1e-8ffa-04311b9dc7d6
++
++The layout of openstack_ports is a comma-separated list of tuples "subnet_id:port_id".
++</longdesc>
++<shortdesc lang="en">Records various node attributes in the CIB</shortdesc>
++
++<parameters>
++END
++
++common_meta_data
++
++	cat <<END
++<parameter name="pidfile" unique="0">
++<longdesc lang="en">PID file</longdesc>
++<shortdesc lang="en">PID file</shortdesc>
++<content type="string" default="${OCF_RESKEY_pidfile_default}" />
++</parameter>
++
++<parameter name="delay" unique="0">
++<longdesc lang="en">Interval to allow values to stabilize</longdesc>
++<shortdesc lang="en">Dampening Delay</shortdesc>
++<content type="string" default="${OCF_RESKEY_delay_default}" />
++</parameter>
++
++<parameter name="curlcli">
++<longdesc lang="en">
++Path to command line cURL binary.
++</longdesc>
++<shortdesc lang="en">Path to cURL binary</shortdesc>
++<content type="string" default="${OCF_RESKEY_curlcli_default}" />
++</parameter>
++
++<parameter name="pythoncli">
++<longdesc lang="en">
++Path to command line Python interpreter.
++</longdesc>
++<shortdesc lang="en">Path to Python interpreter</shortdesc>
++<content type="string" default="${OCF_RESKEY_pythoncli_default}" />
++</parameter>
++
++</parameters>
++
++<actions>
++<action name="start"  timeout="180s" />
++<action name="stop" timeout="180s" />
++<action name="monitor" timeout="30s" interval="60s"/>
++<action name="meta-data" timeout="5s" />
++<action name="validate-all" timeout="20s" />
++</actions>
++</resource-agent>
++END
++}
++
++#######################################################################
++
++OSInfoStats() {
++	local result
++	local value
++	local node
++	local node_id
++
++	get_config
++
++	# Nova data: server ID
++	node_id=$($OCF_RESKEY_curlcli \
++		-s http://169.254.169.254/openstack/latest/meta_data.json |
++		$OCF_RESKEY_pythoncli -m json.tool |
++		grep -P '\"uuid\": \".*\",$' |
++		grep -P -o '[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}')
++
++	if [ $? -ne 0 ] ; then
++		ocf_exit_reason "Cannot find server ID"
++		exit $OCF_ERR_GENERIC
++	fi
++
++	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -n openstack_id -v "$node_id"
++
++	# Nova data: flavor
++	value=$($OCF_RESKEY_openstackcli server show \
++		--format value \
++		--column flavor \
++		$node_id)
++
++	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -n openstack_flavor -v "$value"
++
++	# Nova data: availability zone
++	value=$($OCF_RESKEY_openstackcli server show \
++		--format value \
++		--column OS-EXT-AZ:availability_zone \
++		$node_id)
++
++	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -n openstack_az -v "$value"
++
++	# Network data: ports
++	value=""
++	for port_id in $($OCF_RESKEY_openstackcli port list \
++		--format value \
++		--column id \
++		--server $node_id); do
++		subnet_id=$($OCF_RESKEY_openstackcli port show \
++			--format json \
++			--column fixed_ips \
++			${port_id} | grep -P '\"subnet_id\": \".*\",$' |
++			grep -P -o '[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}')
++		value+="${subnet_id}:${port_id},"
++	done
++	value=$(echo ${value} | sed -e 's/,$//g')
++
++	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -n openstack_ports -v "$value"
++
++	if [ ! -z "$OS_REGION_NAME" ] ; then
++		${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -n openstack_region -v "$OS_REGION_NAME"
++	fi
++
++	if [ ! -z "$OS_TENANT_ID" ] ; then
++		${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -n openstack_tenant_id -v "$OS_TENANT_ID"
++
++		if [ ! -z "$OS_TENANT_NAME" ] ; then
++			${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -n openstack_tenant_name -v "$OS_TENANT_NAME"
++		fi
++	else
++		${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -n openstack_project_id -v "$OS_PROJECT_ID"
++
++		if [ ! -z "$OS_PROJECT_NAME" ] ; then
++			${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -n openstack_project_name -v "$OS_PROJECT_NAME"
++		fi
++	fi
++
++}
++
++OSInfo_usage() {
++	cat <<END
++usage: $0 {start|stop|monitor|validate-all|meta-data}
++
++Expects to have a fully populated OCF RA-compliant environment set.
++END
++}
++
++OSInfo_start() {
++	echo $OCF_RESKEY_clone > $OCF_RESKEY_pidfile
++	OSInfoStats
++	exit $OCF_SUCCESS
++}
++
++OSInfo_stop() {
++	rm -f $OCF_RESKEY_pidfile
++	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -D -n openstack_id
++	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -D -n openstack_flavor
++	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -D -n openstack_az
++	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -D -n openstack_ports
++	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -D -n openstack_region
++	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -D -n openstack_tenant_id
++	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -D -n openstack_tenant_name
++	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -D -n openstack_project_id
++	${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -D -n openstack_project_name
++	exit $OCF_SUCCESS
++}
++
++OSInfo_monitor() {
++	if [ -f "$OCF_RESKEY_pidfile" ] ; then
++		OSInfoStats
++		exit $OCF_RUNNING
++	fi
++	exit $OCF_NOT_RUNNING
++}
++
++OSInfo_validate() {
++	check_binary "$OCF_RESKEY_curlcli"
++	check_binary "$OCF_RESKEY_openstackcli"
++	check_binary "$OCF_RESKEY_pythoncli"
++
++	return $OCF_SUCCESS
++}
++
++if [ $# -ne 1 ]; then
++	OSInfo_usage
++	exit $OCF_ERR_ARGS
++fi
++
++if [ x != x${OCF_RESKEY_delay} ]; then
++	OCF_RESKEY_delay="-d ${OCF_RESKEY_delay}"
++fi
++
++case $__OCF_ACTION in
++meta-data)	meta_data
++		exit $OCF_SUCCESS
++		;;
++start)		OSInfo_validate || exit $?
++		OSInfo_start
++		;;
++stop)		OSInfo_stop
++		;;
++monitor)	OSInfo_monitor
++		;;
++validate-all)	OSInfo_validate
++		;;
++usage|help)	OSInfo_usage
++		exit $OCF_SUCCESS
++		;;
++*)		OSInfo_usage
++		exit $OCF_ERR_UNIMPLEMENTED
++		;;
++esac
++
++exit $?
+diff --color -uNr a/heartbeat/openstack-info.in b/heartbeat/openstack-info.in
+--- a/heartbeat/openstack-info.in	2022-03-15 16:14:29.370209063 +0100
++++ b/heartbeat/openstack-info.in	2022-03-15 16:17:36.234840018 +0100
+@@ -32,16 +32,16 @@
+ : ${OCF_FUNCTIONS_DIR=${OCF_ROOT}/lib/heartbeat}
+ . ${OCF_FUNCTIONS_DIR}/ocf-shellfuncs
+ 
++. ${OCF_FUNCTIONS_DIR}/openstack-common.sh
++
+ # Defaults
+ OCF_RESKEY_pidfile_default="$HA_RSCTMP/OSInfo-${OCF_RESOURCE_HOSTNAME}"
+ OCF_RESKEY_delay_default="0"
+ OCF_RESKEY_clone_default="0"
+ OCF_RESKEY_curlcli_default="/usr/bin/curl"
+-OCF_RESKEY_openstackcli_default="/usr/bin/openstack"
+ OCF_RESKEY_pythoncli_default="@PYTHON@"
+ 
+ : ${OCF_RESKEY_curlcli=${OCF_RESKEY_curlcli_default}}
+-: ${OCF_RESKEY_openstackcli=${OCF_RESKEY_openstackcli_default}}
+ : ${OCF_RESKEY_pythoncli=${OCF_RESKEY_pythoncli_default}}
+ : ${OCF_RESKEY_pidfile=${OCF_RESKEY_pidfile_default}}
+ : ${OCF_RESKEY_delay=${OCF_RESKEY_delay_default}}
+@@ -70,25 +70,23 @@
+ <shortdesc lang="en">Records various node attributes in the CIB</shortdesc>
+ 
+ <parameters>
++END
++
++common_meta_data
++
++	cat <<END
+ <parameter name="pidfile" unique="0">
+ <longdesc lang="en">PID file</longdesc>
+ <shortdesc lang="en">PID file</shortdesc>
+ <content type="string" default="${OCF_RESKEY_pidfile_default}" />
+ </parameter>
++
+ <parameter name="delay" unique="0">
+ <longdesc lang="en">Interval to allow values to stabilize</longdesc>
+ <shortdesc lang="en">Dampening Delay</shortdesc>
+ <content type="string" default="${OCF_RESKEY_delay_default}" />
+ </parameter>
+ 
+-<parameter name="openrc" required="1">
+-<longdesc lang="en">
+-Valid Openstack credentials as openrc file from api_access/openrc.
+-</longdesc>
+-<shortdesc lang="en">openrc file</shortdesc>
+-<content type="string" />
+-</parameter>
+-
+ <parameter name="curlcli">
+ <longdesc lang="en">
+ Path to command line cURL binary.
+@@ -97,14 +95,6 @@
+ <content type="string" default="${OCF_RESKEY_curlcli_default}" />
+ </parameter>
+ 
+-<parameter name="openstackcli">
+-<longdesc lang="en">
+-Path to command line tools for openstack.
+-</longdesc>
+-<shortdesc lang="en">Path to Openstack CLI tool</shortdesc>
+-<content type="string" default="${OCF_RESKEY_openstackcli_default}" />
+-</parameter>
+-
+ <parameter name="pythoncli">
+ <longdesc lang="en">
+ Path to command line Python interpreter.
+@@ -116,9 +106,9 @@
+ </parameters>
+ 
+ <actions>
+-<action name="start"  timeout="20s" />
+-<action name="stop" timeout="20s" />
+-<action name="monitor" timeout="20s" interval="60s"/>
++<action name="start"  timeout="180s" />
++<action name="stop" timeout="180s" />
++<action name="monitor" timeout="180s" interval="60s"/>
+ <action name="meta-data" timeout="5s" />
+ <action name="validate-all" timeout="20s" />
+ </actions>
+@@ -134,7 +124,7 @@
+ 	local node
+ 	local node_id
+ 
+-	. $OCF_RESKEY_openrc
++	get_config
+ 
+ 	# Nova data: server ID
+ 	node_id=$($OCF_RESKEY_curlcli \
+@@ -244,16 +234,6 @@
+ 	check_binary "$OCF_RESKEY_openstackcli"
+ 	check_binary "$OCF_RESKEY_pythoncli"
+ 
+-	if [ -z "$OCF_RESKEY_openrc" ]; then
+-		ocf_exit_reason "openrc parameter not set"
+-		return $OCF_ERR_CONFIGURED
+-	fi
+-
+-	if [ ! -f "$OCF_RESKEY_openrc" ] ; then
+-		ocf_exit_reason "openrc file not found"
+-		return $OCF_ERR_CONFIGURED
+-	fi
+-
+ 	return $OCF_SUCCESS
+ }
+ 
+diff --color -uNr a/heartbeat/openstack-virtual-ip b/heartbeat/openstack-virtual-ip
+--- a/heartbeat/openstack-virtual-ip	2022-03-15 16:14:29.370209063 +0100
++++ b/heartbeat/openstack-virtual-ip	2022-03-15 16:17:36.235840021 +0100
+@@ -34,10 +34,9 @@
+ : ${OCF_FUNCTIONS_DIR=${OCF_ROOT}/lib/heartbeat}
+ . ${OCF_FUNCTIONS_DIR}/ocf-shellfuncs
+ 
+-# Defaults
+-OCF_RESKEY_openstackcli_default="/usr/bin/openstack"
++. ${OCF_FUNCTIONS_DIR}/openstack-common.sh
+ 
+-: ${OCF_RESKEY_openstackcli=${OCF_RESKEY_openstackcli_default}}
++# Defaults
+ 
+ #######################################################################
+ 
+@@ -68,22 +67,11 @@
+ <shortdesc lang="en">Move a virtual IP</shortdesc>
+ 
+ <parameters>
+-<parameter name="openstackcli">
+-<longdesc lang="en">
+-Path to command line tools for openstack.
+-</longdesc>
+-<shortdesc lang="en">Path to Openstack CLI tool</shortdesc>
+-<content type="string" default="${OCF_RESKEY_openstackcli_default}" />
+-</parameter>
++END
+ 
+-<parameter name="openrc" required="1">
+-<longdesc lang="en">
+-Valid Openstack credentials as openrc file from api_access/openrc.
+-</longdesc>
+-<shortdesc lang="en">openrc file</shortdesc>
+-<content type="string" />
+-</parameter>
++common_meta_data
+ 
++cat <<END
+ <parameter name="ip" required="1">
+ <longdesc lang="en">
+ Virtual IP Address.
+@@ -105,7 +93,7 @@
+ <actions>
+ <action name="start" timeout="180s" />
+ <action name="stop" timeout="180s" />
+-<action name="monitor" depth="0" timeout="30s" interval="60s" />
++<action name="monitor" depth="0" timeout="180s" interval="60s" />
+ <action name="validate-all" timeout="5s" />
+ <action name="meta-data" timeout="5s" />
+ </actions>
+@@ -128,17 +116,7 @@
+ osvip_validate() {
+ 	check_binary "$OCF_RESKEY_openstackcli"
+ 
+-	if [ -z "$OCF_RESKEY_openrc" ]; then
+-		ocf_exit_reason "openrc parameter not set"
+-		return $OCF_ERR_CONFIGURED
+-	fi
+-
+-	if [ ! -f "$OCF_RESKEY_openrc" ] ; then
+-		ocf_exit_reason "openrc file not found"
+-		return $OCF_ERR_CONFIGURED
+-	fi
+-
+-	. $OCF_RESKEY_openrc
++	get_config
+ 
+ 	${HA_SBIN_DIR}/attrd_updater --query -n openstack_ports -N $(crm_node -n) > /dev/null 2>&1
+ 	if [ $? -ne 0 ] ; then

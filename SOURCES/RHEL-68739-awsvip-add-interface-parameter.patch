@@ -1,0 +1,184 @@
+From 392d40048a25d7cb73ec5b5e9f7a5862f7a3fd48 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 11 Nov 2024 12:22:27 +0100
+Subject: [PATCH 1/2] aws.sh: add get_interface_mac()
+
+---
+ heartbeat/aws.sh | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/heartbeat/aws.sh b/heartbeat/aws.sh
+index 64f2e13a7..ebb4eb1f4 100644
+--- a/heartbeat/aws.sh
++++ b/heartbeat/aws.sh
+@@ -69,3 +69,24 @@ get_instance_id() {
+     echo "$INSTANCE_ID"
+     return "$OCF_SUCCESS"
+ }
++
++get_interface_mac() {
++    local MAC_FILE MAC_ADDR rc
++    MAC_FILE="/sys/class/net/${OCF_RESKEY_interface}/address"
++    if [ -f "$MAC_FILE" ]; then
++        cmd="cat ${MAC_FILE}"
++    else
++        cmd="ip -br link show dev ${OCF_RESKEY_interface} | tr -s ' ' | cut -d' ' -f3"
++    fi
++    ocf_log debug "executing command: $cmd"
++    MAC_ADDR="$(eval $cmd)"
++    rc=$?
++    if [ $rc != 0 ]; then
++        ocf_log warn "command failed, rc: $rc"
++        return $OCF_ERR_GENERIC
++    fi
++    ocf_log debug "MAC address associated with interface ${OCF_RESKEY_interface}: ${MAC_ADDR}"
++
++    echo $MAC_ADDR
++    return $OCF_SUCCESS
++}
+
+From 87337ac4da931d5a53c83d53d4bab17ee123ba9f Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 11 Nov 2024 12:26:38 +0100
+Subject: [PATCH 2/2] awsvip: let user specify which interface to use, and make
+ the parameter optional in aws-vpc-move-ip
+
+---
+ heartbeat/aws-vpc-move-ip | 20 ++++----------------
+ heartbeat/aws.sh          |  4 +++-
+ heartbeat/awsvip          | 24 +++++++++++++++++-------
+ 3 files changed, 24 insertions(+), 24 deletions(-)
+
+diff --git a/heartbeat/aws-vpc-move-ip b/heartbeat/aws-vpc-move-ip
+index 09ae68b57..2afc0ba53 100755
+--- a/heartbeat/aws-vpc-move-ip
++++ b/heartbeat/aws-vpc-move-ip
+@@ -157,7 +157,7 @@ Role to use to query/update the route table
+ <content type="string" default="${OCF_RESKEY_routing_table_role_default}" />
+ </parameter>
+ 
+-<parameter name="interface" required="1">
++<parameter name="interface" required="0">
+ <longdesc lang="en">
+ Name of the network interface, i.e. eth0
+ </longdesc>
+@@ -321,7 +321,7 @@ ec2ip_monitor() {
+ 		ocf_log debug "monitor: Enhanced Monitoring disabled - omitting API call"
+ 	fi
+ 
+-	cmd="ip addr show to $OCF_RESKEY_ip up"
++	cmd="ip addr show dev $OCF_RESKEY_interface to $OCF_RESKEY_ip up"
+ 	ocf_log debug "executing command: $cmd"
+ 	RESULT=$($cmd | grep "$OCF_RESKEY_ip")
+ 	if [ -z "$RESULT" ]; then
+@@ -331,7 +331,7 @@ ec2ip_monitor() {
+ 			level="info"
+ 		fi
+ 
+-		ocf_log "$level" "IP $OCF_RESKEY_ip not assigned to running interface"
++		ocf_log "$level" "IP $OCF_RESKEY_ip not assigned to interface $OCF_RESKEY_interface"
+ 		return $OCF_NOT_RUNNING
+ 	fi
+ 
+@@ -369,19 +369,7 @@ ec2ip_drop() {
+ }
+ 
+ ec2ip_get_instance_eni() {
+-	MAC_FILE="/sys/class/net/${OCF_RESKEY_interface}/address"
+-	if [ -f $MAC_FILE ]; then
+-		cmd="cat ${MAC_FILE}"
+-	else
+-		cmd="ip -br link show dev ${OCF_RESKEY_interface} | tr -s ' ' | cut -d' ' -f3"
+-	fi
+-	ocf_log debug "executing command: $cmd"
+-	MAC_ADDR="$(eval $cmd)"
+-	rc=$?
+-	if [ $rc != 0 ]; then
+-		ocf_log warn "command failed, rc: $rc"
+-		return $OCF_ERR_GENERIC
+-	fi
++	MAC_ADDR=$(get_interface_mac)
+ 	ocf_log debug "MAC address associated with interface ${OCF_RESKEY_interface}: ${MAC_ADDR}"
+ 
+ 	cmd="curl_retry \"$OCF_RESKEY_curl_retries\" \"$OCF_RESKEY_curl_sleep\" \"--show-error -s -H 'X-aws-ec2-metadata-token: $TOKEN'\" \"http://169.254.169.254/latest/meta-data/network/interfaces/macs/${MAC_ADDR}/interface-id\""
+diff --git a/heartbeat/aws.sh b/heartbeat/aws.sh
+index ebb4eb1f4..216033afe 100644
+--- a/heartbeat/aws.sh
++++ b/heartbeat/aws.sh
+@@ -73,7 +73,9 @@ get_instance_id() {
+ get_interface_mac() {
+     local MAC_FILE MAC_ADDR rc
+     MAC_FILE="/sys/class/net/${OCF_RESKEY_interface}/address"
+-    if [ -f "$MAC_FILE" ]; then
++    if [ -z "$OCF_RESKEY_interface" ]; then
++        cmd="curl_retry \"$OCF_RESKEY_curl_retries\" \"$OCF_RESKEY_curl_sleep\" \"--show-error -s -H 'X-aws-ec2-metadata-token: $TOKEN'\" \"http://169.254.169.254/latest/meta-data/mac\""
++    elif [ -f "$MAC_FILE" ]; then
+         cmd="cat ${MAC_FILE}"
+     else
+         cmd="ip -br link show dev ${OCF_RESKEY_interface} | tr -s ' ' | cut -d' ' -f3"
+diff --git a/heartbeat/awsvip b/heartbeat/awsvip
+index 0856ac5e4..015180d5a 100755
+--- a/heartbeat/awsvip
++++ b/heartbeat/awsvip
+@@ -49,12 +49,14 @@ OCF_RESKEY_auth_type_default="key"
+ OCF_RESKEY_profile_default="default"
+ OCF_RESKEY_region_default=""
+ OCF_RESKEY_api_delay_default="3"
++OCF_RESKEY_interface_default=""
+ 
+ : ${OCF_RESKEY_awscli=${OCF_RESKEY_awscli_default}}
+ : ${OCF_RESKEY_auth_type=${OCF_RESKEY_auth_type_default}}
+ : ${OCF_RESKEY_profile=${OCF_RESKEY_profile_default}}
+ : ${OCF_RESKEY_region=${OCF_RESKEY_region_default}}
+ : ${OCF_RESKEY_api_delay=${OCF_RESKEY_api_delay_default}}
++: ${OCF_RESKEY_interface=${OCF_RESKEY_interface_default}}
+ 
+ meta_data() {
+     cat <<END
+@@ -125,6 +127,14 @@ a short delay between API calls, to avoid sending API too quick
+ <content type="integer" default="${OCF_RESKEY_api_delay_default}" />
+ </parameter>
+ 
++<parameter name="interface" required="0">
++<longdesc lang="en">
++Name of the network interface, i.e. eth0
++</longdesc>
++<shortdesc lang="en">network interface name</shortdesc>
++<content type="string" default="${OCF_RESKEY_interface_default}" />
++</parameter>
++
+ <parameter name="curl_retries" unique="0">
+ <longdesc lang="en">
+ curl retries before failing
+@@ -207,16 +217,16 @@ awsvip_stop() {
+ }
+ 
+ awsvip_monitor() {
+-    $AWSCLI_CMD ec2 describe-instances \
+-            --instance-id "${INSTANCE_ID}" \
+-            --query 'Reservations[].Instances[].NetworkInterfaces[].PrivateIpAddresses[].PrivateIpAddress[]' \
++    $AWSCLI_CMD ec2 describe-network-interfaces \
++            --network-interface-ids "${NETWORK_ID}" \
++            --query 'NetworkInterfaces[].PrivateIpAddresses[].PrivateIpAddress[]' \
+             --output text | \
+             grep -qE "(^|\s)${SECONDARY_PRIVATE_IP}(\s|$)"
+-    RET=$?
+-
+-    if [ $RET -ne 0 ]; then
++    if [ $? -ne 0 ]; then
++        [ "$__OCF_ACTION" = "monitor" ] && ! ocf_is_probe && ocf_log error "IP $SECONDARY_PRIVATE_IP not assigned to interface ${NETWORK_ID}"
+         return $OCF_NOT_RUNNING
+     fi
++
+     return $OCF_SUCCESS
+ }
+ 
+@@ -267,7 +277,7 @@ TOKEN=$(get_token)
+ [ $? -ne 0 ] && exit $OCF_ERR_GENERIC
+ INSTANCE_ID=$(get_instance_id)
+ [ $? -ne 0 ] && exit $OCF_ERR_GENERIC
+-MAC_ADDRESS=$(curl_retry "$OCF_RESKEY_curl_retries" "$OCF_RESKEY_curl_sleep" "--show-error -s -H 'X-aws-ec2-metadata-token: $TOKEN'" "http://169.254.169.254/latest/meta-data/mac")
++MAC_ADDRESS=$(get_interface_mac)
+ [ $? -ne 0 ] && exit $OCF_ERR_GENERIC
+ NETWORK_ID=$(curl_retry "$OCF_RESKEY_curl_retries" "$OCF_RESKEY_curl_sleep" "--show-error -s -H 'X-aws-ec2-metadata-token: $TOKEN'" "http://169.254.169.254/latest/meta-data/network/interfaces/macs/${MAC_ADDRESS}/interface-id")
+ [ $? -ne 0 ] && exit $OCF_ERR_GENERIC

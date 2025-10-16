@@ -1,0 +1,24 @@
+From 9127148e15fc200356df2571c7c9e5a716854c24 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 26 Jun 2025 09:39:31 +0200
+Subject: [PATCH] Filesystem: fix issue with Vormetric mounts
+
+---
+ heartbeat/Filesystem | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index d10e5a714..515a3919d 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -361,8 +361,8 @@ list_mounts() {
+ 		fi
+ 	done
+ 
+-	# Convert octal \040 to space characters
+-	printf "$mount_list"
++	# Convert octal \040 to space characters and ignore Vormetric mounts
++	printf "$mount_list" | grep -v "secfs2$"
+ }
+ 
+ determine_blockdevice() {

@@ -1,0 +1,102 @@
+From e651576c1b5c1ffbe0fd1b78f209be9a3f9764e7 Mon Sep 17 00:00:00 2001
+From: XingWei-Liu <liuxingwei@uniontech.com>
+Date: Thu, 10 Mar 2022 10:38:11 +0800
+Subject: [PATCH 1/4] change lvm_status return value from ocf_not_running to
+ ocf_err_generic
+
+---
+ heartbeat/LVM-activate | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/LVM-activate b/heartbeat/LVM-activate
+index aed672ea3..0aef76706 100755
+--- a/heartbeat/LVM-activate
++++ b/heartbeat/LVM-activate
+@@ -790,7 +790,7 @@ lvm_status() {
+ 	fi
+ 
+ 	if [ $dm_count -eq 0 ]; then
+-		return $OCF_NOT_RUNNING
++		return $OCF_ERR_GENERIC
+ 	fi
+ 
+ 	case "$OCF_CHECK_LEVEL" in
+
+From 540ae56436a4f9547bb17aa206fe0e8c7a7fea87 Mon Sep 17 00:00:00 2001
+From: XingWei-Liu <liuxingwei@uniontech.com>
+Date: Thu, 10 Mar 2022 16:44:25 +0800
+Subject: [PATCH 2/4] add if ocf_is_probe in monitor func
+
+---
+ heartbeat/LVM-activate | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/heartbeat/LVM-activate b/heartbeat/LVM-activate
+index 0aef76706..c86606637 100755
+--- a/heartbeat/LVM-activate
++++ b/heartbeat/LVM-activate
+@@ -790,7 +790,11 @@ lvm_status() {
+ 	fi
+ 
+ 	if [ $dm_count -eq 0 ]; then
+-		return $OCF_ERR_GENERIC
++		if ocf_is_probe ;then
++			return $OCF_NOT_RUNNING
++		else
++			return $OCF_ERR_GENERIC
++		fi
+ 	fi
+ 
+ 	case "$OCF_CHECK_LEVEL" in
+
+From ae3f35d4f671f3288034a257c6dd8eff9a83447a Mon Sep 17 00:00:00 2001
+From: XingWei-Liu <liuxingwei@uniontech.com>
+Date: Thu, 10 Mar 2022 16:50:04 +0800
+Subject: [PATCH 3/4] add if ocf_is_probe in monitor func
+
+---
+ heartbeat/LVM-activate | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/heartbeat/LVM-activate b/heartbeat/LVM-activate
+index c86606637..f345f73a9 100755
+--- a/heartbeat/LVM-activate
++++ b/heartbeat/LVM-activate
+@@ -791,9 +791,9 @@ lvm_status() {
+ 
+ 	if [ $dm_count -eq 0 ]; then
+ 		if ocf_is_probe ;then
+-			return $OCF_NOT_RUNNING
+-		else
+ 			return $OCF_ERR_GENERIC
++		else
++			return $OCF_NOT_RUNNING
+ 		fi
+ 	fi
+ 
+
+From 1072c0490ef936a1a7dfd8411da434dce1569457 Mon Sep 17 00:00:00 2001
+From: XingWei-Liu <liuxingwei@uniontech.com>
+Date: Thu, 10 Mar 2022 18:10:21 +0800
+Subject: [PATCH 4/4] reverse return value in monitor func
+
+---
+ heartbeat/LVM-activate | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/heartbeat/LVM-activate b/heartbeat/LVM-activate
+index f345f73a9..c86606637 100755
+--- a/heartbeat/LVM-activate
++++ b/heartbeat/LVM-activate
+@@ -791,9 +791,9 @@ lvm_status() {
+ 
+ 	if [ $dm_count -eq 0 ]; then
+ 		if ocf_is_probe ;then
+-			return $OCF_ERR_GENERIC
+-		else
+ 			return $OCF_NOT_RUNNING
++		else
++			return $OCF_ERR_GENERIC
+ 		fi
+ 	fi
+ 

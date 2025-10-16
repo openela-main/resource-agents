@@ -1,0 +1,24 @@
+From e7a748d35fe56f2be727ecae1885a2f1366f41bf Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 15 Mar 2023 13:03:07 +0100
+Subject: [PATCH] ethmonitor: dont log "Interface does not exist" for
+ monitor-action
+
+---
+ heartbeat/ethmonitor | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/heartbeat/ethmonitor b/heartbeat/ethmonitor
+index 451738a0b5..f9c9ef4bdd 100755
+--- a/heartbeat/ethmonitor
++++ b/heartbeat/ethmonitor
+@@ -271,6 +271,9 @@ if_init() {
+ 			validate-all)
+ 				ocf_exit_reason "Interface $NIC does not exist"
+ 				exit $OCF_ERR_CONFIGURED;;
++			monitor)
++				ocf_log debug "Interface $NIC does not exist"
++				;;
+ 			*)	
+ 				## It might be a bond interface which is temporarily not available, therefore we want to continue here
+ 				ocf_log warn "Interface $NIC does not exist"

@@ -1,0 +1,43 @@
+From 1d1481aa6d848efab4d398ad6e74d80b5b32549f Mon Sep 17 00:00:00 2001
+From: Valentin Vidic <vvidic@debian.org>
+Date: Wed, 1 Nov 2023 18:25:45 +0100
+Subject: [PATCH] exportfs: remove test for "fsid=" parameter
+
+fsid parameter is now considered optional.
+---
+ tools/ocft/exportfs          | 5 -----
+ tools/ocft/exportfs-multidir | 5 -----
+ 2 files changed, 10 deletions(-)
+
+diff --git a/tools/ocft/exportfs b/tools/ocft/exportfs
+index 285a4b8ea0..1ec3d4c364 100644
+--- a/tools/ocft/exportfs
++++ b/tools/ocft/exportfs
+@@ -28,11 +28,6 @@ CASE "check base env"
+ 	Include prepare
+ 	AgentRun start OCF_SUCCESS
+ 
+-CASE "check base env: no 'OCF_RESKEY_fsid'"
+-	Include prepare
+-	Env OCF_RESKEY_fsid=
+-	AgentRun start OCF_ERR_CONFIGURED
+-
+ CASE "check base env: invalid 'OCF_RESKEY_directory'"
+ 	Include prepare
+ 	Env OCF_RESKEY_directory=/no_such
+diff --git a/tools/ocft/exportfs-multidir b/tools/ocft/exportfs-multidir
+index 00e41f0859..ac6d5c7f6a 100644
+--- a/tools/ocft/exportfs-multidir
++++ b/tools/ocft/exportfs-multidir
+@@ -28,11 +28,6 @@ CASE "check base env"
+ 	Include prepare
+ 	AgentRun start OCF_SUCCESS
+ 
+-CASE "check base env: no 'OCF_RESKEY_fsid'"
+-	Include prepare
+-	Env OCF_RESKEY_fsid=
+-	AgentRun start OCF_ERR_CONFIGURED
+-
+ CASE "check base env: invalid 'OCF_RESKEY_directory'"
+ 	Include prepare
+ 	Env OCF_RESKEY_directory=/no_such

@@ -1,0 +1,36 @@
+From f23ae9c1e9ff9a44a053c7c2378975ac5b807478 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 29 Aug 2024 16:24:02 +0200
+Subject: [PATCH] IPsrcaddr: specify dev for default route, as e.g. fe80::
+ routes can be present on multiple interfaces
+
+---
+ heartbeat/IPsrcaddr | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/heartbeat/IPsrcaddr b/heartbeat/IPsrcaddr
+index 1c87d5b7f..58d89a280 100755
+--- a/heartbeat/IPsrcaddr
++++ b/heartbeat/IPsrcaddr
+@@ -278,8 +278,8 @@ srca_start() {
+ 			errorexit "command 'ip route replace $TABLE $NETWORK dev $INTERFACE $PROTO src $1 $METRIC $PREF' failed"
+ 
+ 		if [ "$OCF_RESKEY_destination" = "0.0.0.0/0" ] || [ "$OCF_RESKEY_destination" = "::/0" ]; then
+-			$CMDCHANGE $ROUTE_WO_SRC $PROTO src $1 || \
+-				errorexit "command '$CMDCHANGE $ROUTE_WO_SRC $PROTO src $1' failed"
++			$CMDCHANGE $ROUTE_WO_SRC dev $INTERFACE $PROTO src $1 || \
++				errorexit "command '$CMDCHANGE $ROUTE_WO_SRC dev $INTERFACE $PROTO src $1' failed"
+ 		fi
+ 		rc=$?
+ 	fi
+@@ -322,8 +322,8 @@ srca_stop() {
+ 		errorexit "command 'ip route replace $TABLE $NETWORK dev $INTERFACE $OPTS $METRIC $PREF' failed"
+ 
+ 	if [ "$OCF_RESKEY_destination" = "0.0.0.0/0" ] || [ "$OCF_RESKEY_destination" = "::/0" ]; then
+-		$CMDCHANGE $ROUTE_WO_SRC proto static || \
+-			errorexit "command '$CMDCHANGE $ROUTE_WO_SRC proto static' failed"
++		$CMDCHANGE $ROUTE_WO_SRC dev $INTERFACE proto static || \
++			errorexit "command '$CMDCHANGE $ROUTE_WO_SRC dev $INTERFACE proto static' failed"
+ 	fi
+ 
+ 	return $?

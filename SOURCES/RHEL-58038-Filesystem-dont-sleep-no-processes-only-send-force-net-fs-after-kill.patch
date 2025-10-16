@@ -1,0 +1,106 @@
+From d66a52cfb25f5436255ecc65a407c0166a720146 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Tue, 3 Sep 2024 12:55:28 +0200
+Subject: [PATCH 1/2] Filesystem: dont sleep during stop-action when there are
+ no processes to kill
+
+Thanks @SatomiOSAWA for the initial code.
+---
+ heartbeat/Filesystem | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index 3eb520e0c..f54969f20 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -685,12 +685,13 @@ signal_processes() {
+ 	pids=$(get_pids "$dir")
+ 	if [ -z "$pids" ]; then
+ 		ocf_log info "No processes on $dir were signalled. force_unmount is set to '$FORCE_UNMOUNT'"
+-		return
++		return 1
+ 	fi
+ 	for pid in $pids; do
+ 		ocf_log info "sending signal $sig to: $(ps -f $pid | tail -1)"
+ 		kill -s $sig $pid
+ 	done
++	return 0
+ }
+ try_umount() {
+ 	local SUB="$1"
+@@ -717,12 +718,13 @@ timeout_child() {
+ 	return $ret
+ }
+ fs_stop_loop() {
+-	local SUB="$1" signals="$2" sig
++	local SUB="$1" signals="$2" sig send_signal
+ 	while true; do
++		send_signal=false
+ 		for sig in $signals; do
+-			signal_processes "$SUB" $sig
++			signal_processes "$SUB" $sig && send_signal=true
+ 		done
+-		sleep $OCF_RESKEY_signal_delay
++		$send_signal && sleep $OCF_RESKEY_signal_delay
+ 		try_umount "$SUB" && return $OCF_SUCCESS
+ 	done
+ }
+
+From cb6aaffc260eea0f0fee6fab44393c6cf12b8a83 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 9 Sep 2024 10:58:12 +0200
+Subject: [PATCH 2/2] Filesystem: only use $umount_force after sending
+ kill_signals
+
+---
+ heartbeat/Filesystem | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index f54969f20..4dd962fd9 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -694,8 +694,8 @@ signal_processes() {
+ 	return 0
+ }
+ try_umount() {
+-	local SUB="$1"
+-	$UMOUNT $umount_force "$SUB"
++	local force_arg="$1" SUB="$2"
++	$UMOUNT $force_arg "$SUB"
+ 	list_mounts | grep "${TAB}${SUB}${TAB}" >/dev/null 2>&1 || {
+ 		ocf_log info "unmounted $SUB successfully"
+ 		return $OCF_SUCCESS
+@@ -718,14 +718,14 @@ timeout_child() {
+ 	return $ret
+ }
+ fs_stop_loop() {
+-	local SUB="$1" signals="$2" sig send_signal
++	local force_arg="$1" SUB="$2" signals="$3" sig send_signal
+ 	while true; do
+ 		send_signal=false
+ 		for sig in $signals; do
+ 			signal_processes "$SUB" $sig && send_signal=true
+ 		done
+ 		$send_signal && sleep $OCF_RESKEY_signal_delay
+-		try_umount "$SUB" && return $OCF_SUCCESS
++		try_umount "$force_arg" "$SUB" && return $OCF_SUCCESS
+ 	done
+ }
+ fs_stop() {
+@@ -733,13 +733,13 @@ fs_stop() {
+ 	grace_time=$((timeout/2))
+ 
+ 	# try gracefully terminating processes for up to half of the configured timeout
+-	fs_stop_loop "$SUB" "$OCF_RESKEY_term_signals" &
++	fs_stop_loop "" "$SUB" "$OCF_RESKEY_term_signals" &
+ 	timeout_child $! $grace_time
+ 	ret=$?
+ 	[ $ret -eq $OCF_SUCCESS ] && return $ret
+ 
+ 	# try killing them for the rest of the timeout
+-	fs_stop_loop "$SUB" "$OCF_RESKEY_kill_signals" &
++	fs_stop_loop "$umount_force" "$SUB" "$OCF_RESKEY_kill_signals" &
+ 	timeout_child $! $grace_time
+ 	ret=$?
+ 	[ $ret -eq $OCF_SUCCESS ] && return $ret

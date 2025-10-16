@@ -1,0 +1,72 @@
+From 64f434014bc198055478a139532c7cc133967c5d Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Fri, 8 Jul 2022 15:41:34 +0200
+Subject: [PATCH] openstack-agents: fixes
+
+- openstack-cinder-volume: dont do volume_local_check during start/stop-action
+- openstack-floating-ip/openstack-virtual-ip: dont fail in validate()
+  during probe-calls
+- openstack-floating-ip: fix awk only catching last id for node_port_ids
+---
+ heartbeat/openstack-cinder-volume | 2 +-
+ heartbeat/openstack-floating-ip   | 4 ++--
+ heartbeat/openstack-virtual-ip    | 4 ++--
+ 3 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/heartbeat/openstack-cinder-volume b/heartbeat/openstack-cinder-volume
+index cc12e58ae..19bf04faf 100755
+--- a/heartbeat/openstack-cinder-volume
++++ b/heartbeat/openstack-cinder-volume
+@@ -138,7 +138,7 @@ osvol_monitor() {
+ 
+ 	node_id=$(_get_node_id)
+ 
+-	if ocf_is_true $OCF_RESKEY_volume_local_check ; then
++	if [ "$__OCF_ACTION" = "monitor" ] && ocf_is_true $OCF_RESKEY_volume_local_check ; then
+ 		#
+ 		# Is the volue attached?
+ 		# We check the local devices
+diff --git a/heartbeat/openstack-floating-ip b/heartbeat/openstack-floating-ip
+index 8c135cc24..6e2895654 100755
+--- a/heartbeat/openstack-floating-ip
++++ b/heartbeat/openstack-floating-ip
+@@ -111,7 +111,7 @@ osflip_validate() {
+ 	fi
+ 
+ 	${HA_SBIN_DIR}/attrd_updater --query -n openstack_ports -N $(crm_node -n) > /dev/null 2>&1
+-	if [ $? -ne 0 ] ; then
++	if [ $? -ne 0 ] && ! ocf_is_probe; then
+ 		ocf_log warn "attr_updater failed to get openstack_ports attribute of node $OCF_RESOURCE_INSTANCE"
+ 		return $OCF_ERR_GENERIC
+ 	fi
+@@ -129,7 +129,7 @@ osflip_monitor() {
+ 	node_port_ids=$(${HA_SBIN_DIR}/attrd_updater --query -n openstack_ports -N $(crm_node -n) \
+ 		| awk -F= '{gsub("\"","");print $NF}' \
+ 		| tr ',' ' ' \
+-		| awk -F: '{print $NF}')
++		| awk '{gsub("[^ ]*:", "");print}')
+ 
+ 	# Is the IP active and attached?
+ 	result=$($OCF_RESKEY_openstackcli floating ip show \
+diff --git a/heartbeat/openstack-virtual-ip b/heartbeat/openstack-virtual-ip
+index a1084c420..c654d980a 100755
+--- a/heartbeat/openstack-virtual-ip
++++ b/heartbeat/openstack-virtual-ip
+@@ -119,7 +119,7 @@ osvip_validate() {
+ 	get_config
+ 
+ 	${HA_SBIN_DIR}/attrd_updater --query -n openstack_ports -N $(crm_node -n) > /dev/null 2>&1
+-	if [ $? -ne 0 ] ; then
++	if [ $? -ne 0 ] && ! ocf_is_probe; then
+ 		ocf_log warn "attr_updater failed to get openstack_ports attribute of node $OCF_RESOURCE_INSTANCE"
+ 		return $OCF_ERR_GENERIC
+ 	fi
+@@ -136,7 +136,7 @@ osvip_monitor() {
+ 		--format value \
+ 		--column allowed_address_pairs \
+ 		${node_port_id})
+-	if echo $result | grep -q $OCF_RESKEY_ip ; then
++	if echo $result | grep -q "$OCF_RESKEY_ip"; then
+ 		${HA_SBIN_DIR}/attrd_updater ${OCF_RESKEY_delay} -S status -n openstack_virtual_ip -v $OCF_RESKEY_ip
+ 
+ 		return $OCF_SUCCESS

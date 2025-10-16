@@ -1,0 +1,12 @@
+diff --color -uNr a/heartbeat/aliyun-vpc-move-ip b/heartbeat/aliyun-vpc-move-ip
+--- a/heartbeat/aliyun-vpc-move-ip	2021-08-19 09:37:57.000000000 +0200
++++ b/heartbeat/aliyun-vpc-move-ip	2021-08-25 13:38:26.786626079 +0200
+@@ -17,7 +17,7 @@
+ OCF_RESKEY_interface_default="eth0"
+ OCF_RESKEY_profile_default="default"
+ OCF_RESKEY_endpoint_default="vpc.aliyuncs.com"
+-OCF_RESKEY_aliyuncli_default="detect"
++OCF_RESKEY_aliyuncli_default="/usr/lib/fence-agents/support/aliyun/aliyun-cli/aliyun"
+ 
+ 
+ : ${OCF_RESKEY_address=${OCF_RESKEY_address_default}}

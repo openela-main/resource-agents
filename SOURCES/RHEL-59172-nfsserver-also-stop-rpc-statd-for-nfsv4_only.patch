@@ -1,0 +1,38 @@
+From 38eaf00bc81af7530c56eba282918762a47a9326 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 19 Sep 2024 13:01:53 +0200
+Subject: [PATCH] nfsserver: also stop rpc-statd for nfsv4_only to avoid stop
+ failing in some cases
+
+E.g. nfs_no_notify=true nfsv4_only=true nfs_shared_infodir=/nfsmq/nfsinfo would cause a "Failed to unmount a bind mount" error
+---
+ heartbeat/nfsserver | 16 +++++++---------
+ 1 file changed, 7 insertions(+), 9 deletions(-)
+
+diff --git a/heartbeat/nfsserver b/heartbeat/nfsserver
+index 5793d7a70..fd9268afc 100755
+--- a/heartbeat/nfsserver
++++ b/heartbeat/nfsserver
+@@ -947,15 +947,13 @@ nfsserver_stop ()
+ 			sleep 1
+ 		  done
+ 
+-		  if ! ocf_is_true "$OCF_RESKEY_nfsv4_only"; then
+-			nfs_exec stop rpc-statd > /dev/null 2>&1
+-			ocf_log info "Stop: rpc-statd"
+-			rpcinfo -t localhost 100024 > /dev/null 2>&1
+-			rc=$?
+-			if [ "$rc" -eq "0" ]; then
+-				ocf_exit_reason "Failed to stop rpc-statd"
+-				return $OCF_ERR_GENERIC
+-			fi
++		  nfs_exec stop rpc-statd > /dev/null 2>&1
++		  ocf_log info "Stop: rpc-statd"
++		  rpcinfo -t localhost 100024 > /dev/null 2>&1
++		  rc=$?
++		  if [ "$rc" -eq "0" ]; then
++		  	ocf_exit_reason "Failed to stop rpc-statd"
++		  	return $OCF_ERR_GENERIC
+ 		  fi
+ 
+ 		  nfs_exec stop nfs-idmapd > /dev/null 2>&1

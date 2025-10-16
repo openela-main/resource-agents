@@ -1,0 +1,23 @@
+From cb968378959b8aa334e98daf62a1b08ef6525fb4 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 22 Nov 2023 10:32:31 +0100
+Subject: [PATCH] storage_mon: use memset() to fix "uninitialized value"
+ covscan error, as qb_ipcc_recv() will always set a message (according to
+ honzaf)
+
+---
+ tools/storage_mon.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index cc415e97f..a9227ef90 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -655,6 +655,7 @@ storage_mon_client(void)
+ 	int32_t rc;
+ 
+ 
++	memset(&response, 0, sizeof(response));
+ 	snprintf(ipcs_name, SMON_MAX_IPCSNAME, "storage_mon_%s", attrname);
+ 	conn = qb_ipcc_connect(ipcs_name, 0);
+ 	if (conn == NULL) {

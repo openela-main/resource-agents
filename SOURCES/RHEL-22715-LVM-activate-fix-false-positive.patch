@@ -1,0 +1,46 @@
+From 65a066cf9066390db65c4875e21c4c391793b9ae Mon Sep 17 00:00:00 2001
+From: Arslan Ahmad <arslan.ahmad97@googlemail.com>
+Date: Tue, 16 Jan 2024 09:11:17 +0530
+Subject: [PATCH] Avoid false positive for VG activation
+
+When lvm.conf file has `volume_list` parameter configured and the
+cluster is managing the shared storage using `system_id_source`,
+then the activation of the LV fails to happen. However it is
+reported as a success.
+
+The fixes will avoid starting of `LVM-activate` resource when
+the cluster is configured with both `system_id_source` and
+`volume_list`.
+
+Signed-off-by: Arslan Ahmad <arslan.ahmad97@googlemail.com>
+---
+ heartbeat/LVM-activate | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/heartbeat/LVM-activate b/heartbeat/LVM-activate
+index f6f24a3b5..3858ed8dc 100755
+--- a/heartbeat/LVM-activate
++++ b/heartbeat/LVM-activate
+@@ -448,6 +448,10 @@ systemid_check()
+ {
+ 	# system_id_source is set in lvm.conf
+ 	source=$(lvmconfig 'global/system_id_source' 2>/dev/null | cut -d"=" -f2)
++
++	# Is volume_list set in lvm.conf
++	vol_list=$(lvmconfig 'activation/volume_list' 2>/dev/null | cut -d"=" -f2)
++
+ 	if [ "$source" = "" ] || [ "$source" = "none" ]; then
+ 		ocf_exit_reason "system_id_source in lvm.conf is not set correctly!"
+ 		exit $OCF_ERR_ARGS
+@@ -458,6 +462,11 @@ systemid_check()
+ 		exit $OCF_ERR_ARGS
+ 	fi
+ 
++	if [ -n "$source" ] && [ -n "$vol_list" ]; then
++		ocf_exit_reason "Both system_id_source & volume_list cannot be defined!"
++		exit $OCF_ERR_ARGS
++	fi
++
+ 	return $OCF_SUCCESS
+ }
+ 

@@ -1,0 +1,30 @@
+From fe8a807dae0398b811d1ee63ebd7202280b2b678 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Tue, 18 Jul 2023 14:51:00 +0200
+Subject: [PATCH] Delay: remove statement about defaulting to "startdelay"
+ value if not specified
+
+---
+ heartbeat/Delay | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/heartbeat/Delay b/heartbeat/Delay
+index bc6c13559..5aa8f4608 100755
+--- a/heartbeat/Delay
++++ b/heartbeat/Delay
+@@ -71,7 +71,6 @@ How long in seconds to delay on start operation.
+ <parameter name="stopdelay" unique="0"  required="0">
+ <longdesc lang="en">
+ How long in seconds to delay on stop operation.
+-Defaults to "startdelay" if unspecified.
+ </longdesc>
+ <shortdesc lang="en">Stop delay</shortdesc>
+ <content type="integer" default="${OCF_RESKEY_stopdelay_default}" />
+@@ -80,7 +79,6 @@ Defaults to "startdelay" if unspecified.
+ <parameter name="mondelay" unique="0"  required="0">
+ <longdesc lang="en">
+ How long in seconds to delay on monitor operation.
+-Defaults to "startdelay" if unspecified.
+ </longdesc>
+ <shortdesc lang="en">Monitor delay</shortdesc>
+ <content type="integer" default="${OCF_RESKEY_mondelay_default}" />

@@ -1,0 +1,26 @@
+From c9ba6ac66ee27a70c69e1156f17aa6beac277bc5 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Fri, 7 Jun 2024 14:23:28 +0200
+Subject: [PATCH] Filesystem: use fuser -c on FreeBSD, as -m and -M are used
+ for other functionality
+
+---
+ heartbeat/Filesystem | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index 59b6c1b51..88fe2e2eb 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -661,8 +661,10 @@ get_pids()
+ 	fi
+ 
+ 	if ocf_is_true  "$FORCE_UNMOUNT"; then
+-		if [ "X${HOSTOS}" = "XOpenBSD" ];then
++		if [ "X${HOSTOS}" = "XOpenBSD" ]; then
+ 			fstat | grep $dir | awk '{print $3}'
++		elif [ "X${HOSTOS}" = "XFreeBSD" ]; then
++			$FUSER -c $dir 2>/dev/null
+ 		else
+ 			$FUSER -Mm $dir 2>/dev/null
+ 		fi

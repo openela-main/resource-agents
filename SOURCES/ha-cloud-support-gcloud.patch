@@ -1,0 +1,33 @@
+diff --color -uNr a/heartbeat/gcp-pd-move.in b/heartbeat/gcp-pd-move.in
+--- a/heartbeat/gcp-pd-move.in	2021-08-19 09:37:57.000000000 +0200
++++ b/heartbeat/gcp-pd-move.in	2021-08-25 13:50:54.461732967 +0200
+@@ -32,6 +32,7 @@
+ from ocf import logger
+ 
+ try:
++  sys.path.insert(0, '/usr/lib/fence-agents/support/google')
+   import googleapiclient.discovery
+ except ImportError:
+   pass
+diff --color -uNr a/heartbeat/gcp-vpc-move-route.in b/heartbeat/gcp-vpc-move-route.in
+--- a/heartbeat/gcp-vpc-move-route.in	2021-08-19 09:37:57.000000000 +0200
++++ b/heartbeat/gcp-vpc-move-route.in	2021-08-25 13:51:17.489797999 +0200
+@@ -45,6 +45,7 @@
+ from ocf import *
+ 
+ try:
++  sys.path.insert(0, '/usr/lib/fence-agents/support/google')
+   import googleapiclient.discovery
+   import pyroute2
+   try:
+diff --color -uNr a/heartbeat/gcp-vpc-move-vip.in b/heartbeat/gcp-vpc-move-vip.in
+--- a/heartbeat/gcp-vpc-move-vip.in	2021-08-19 09:37:57.000000000 +0200
++++ b/heartbeat/gcp-vpc-move-vip.in	2021-08-25 13:51:35.012847487 +0200
+@@ -29,6 +29,7 @@
+ from ocf import *
+ 
+ try:
++  sys.path.insert(0, '/usr/lib/fence-agents/support/google')
+   import googleapiclient.discovery
+   try:
+     from google.oauth2.service_account import Credentials as ServiceAccountCredentials

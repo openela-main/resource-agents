@@ -1,0 +1,23 @@
+--- ClusterLabs-resource-agents-fd0720f7/heartbeat/pgsqlms	2023-01-16 10:54:30.897188238 +0100
++++ pgsqlms	2023-01-10 14:21:19.281286242 +0100
+@@ -1351,12 +1351,14 @@
+             return $OCF_ERR_ARGS;
+         }
+ 
+-        $guc = qx{ $POSTGRES -C primary_conninfo -D "$pgdata" $start_opts};
+-        unless ($guc =~ /\bapplication_name='?$nodename'?\b/) {
+-            ocf_exit_reason(
+-                q{Parameter "primary_conninfo" MUST contain 'application_name=%s'. }.
+-                q{It is currently set to '%s'}, $nodename, $guc );
+-            return $OCF_ERR_ARGS;
++        if ( $ocf_check_level == 10 ) {
++            $guc = qx{ $POSTGRES -C primary_conninfo -D "$pgdata" $start_opts};
++            unless ($guc =~ /\bapplication_name='?$nodename'?\b/) {
++                ocf_exit_reason(
++                    q{Parameter "primary_conninfo" MUST contain 'application_name=%s'. }.
++                    q{It is currently set to '%s'}, $nodename, $guc );
++                return $OCF_ERR_ARGS;
++            }
+         }
+     }
+     else {

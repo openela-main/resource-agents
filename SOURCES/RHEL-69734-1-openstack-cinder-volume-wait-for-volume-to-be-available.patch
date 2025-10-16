@@ -1,0 +1,63 @@
+From 71bc76dc4fa57726e80d0ddcc0bdcfe708af8763 Mon Sep 17 00:00:00 2001
+From: "Fabio M. Di Nitto" <fdinitto@redhat.com>
+Date: Thu, 5 Dec 2024 11:02:40 +0100
+Subject: [PATCH] openstack-cinder-volume: wait for volume to be available
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+monitor the vol till it´s attached to the host and avoid a race between
+openstack APIs receiving the request and completing the operation.
+
+Signed-off-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+---
+ heartbeat/openstack-cinder-volume | 29 ++++++++++++++++++-----------
+ 1 file changed, 18 insertions(+), 11 deletions(-)
+
+diff --git a/heartbeat/openstack-cinder-volume b/heartbeat/openstack-cinder-volume
+index 116442c41b..2b64d4d887 100755
+--- a/heartbeat/openstack-cinder-volume
++++ b/heartbeat/openstack-cinder-volume
+@@ -141,17 +141,19 @@ osvol_monitor() {
+ 
+ 	node_id=$(_get_node_id)
+ 
+-	if [ "$__OCF_ACTION" = "monitor" ] && ocf_is_true $OCF_RESKEY_volume_local_check ; then
+-		#
+-		# Is the volue attached?
+-		# We check the local devices
+-		#
+-		short_volume_id=$(echo $OCF_RESKEY_volume_id | awk '{print substr($0, 0, 20)}')
+-		if lsblk /dev/disk/by-id/virtio-$short_volume_id 1>/dev/null 2>&1; then
+-			return $OCF_SUCCESS
+-		else
+-			ocf_log warn "$OCF_RESKEY_volume_id is not attached to instance $node_id"
+-			return $OCF_NOT_RUNNING
++	if ocf_is_true $OCF_RESKEY_volume_local_check ; then
++		if [ "$__OCF_ACTION" = "monitor" ] || [ "$__OCF_ACTION" = "start" ] ; then
++			#
++			# Is the volue attached?
++			# We check the local devices
++			#
++			short_volume_id=$(echo $OCF_RESKEY_volume_id | awk '{print substr($0, 0, 20)}')
++			if lsblk /dev/disk/by-id/virtio-$short_volume_id 1>/dev/null 2>&1; then
++				return $OCF_SUCCESS
++			else
++				ocf_log warn "$OCF_RESKEY_volume_id is not attached to instance $node_id"
++				return $OCF_NOT_RUNNING
++			fi
+ 		fi
+ 	fi
+ 
+@@ -247,6 +249,11 @@ osvol_start() {
+ 		return $OCF_ERR_GENERIC
+ 	fi
+ 
++	while ! osvol_monitor; do
++		ocf_log info "Waiting for cinder volume $OCF_RESKEY_volume_id to appear on $node_id"
++		sleep 1
++	done
++
+ 	return $OCF_SUCCESS
+ }
+ 

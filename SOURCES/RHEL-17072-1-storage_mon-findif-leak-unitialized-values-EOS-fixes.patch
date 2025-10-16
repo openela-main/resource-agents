@@ -1,0 +1,71 @@
+From 54fa7a59c36697cd8df5b619fff0b50af00df76e Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 20 Nov 2023 16:35:52 +0100
+Subject: [PATCH 1/2] storage_mon: fix file handler out of scope leak and
+ uninitialized values
+
+---
+ tools/storage_mon.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index 1aae29e58..cc415e97f 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -382,9 +382,11 @@ static int write_pid_file(const char *pidfile)
+ 		syslog(LOG_ERR, "Failed to write '%s' to %s: %s", pid, pidfile, strerror(errno));
+ 		goto done;
+ 	}
+-	close(fd);
+ 	rc = 0;
+ done:
++	if (fd != -1) {
++		close(fd);
++	}
+ 	if (pid != NULL) {
+ 		free(pid);
+ 	}
+@@ -663,6 +665,7 @@ storage_mon_client(void)
+ 	snprintf(request.message, SMON_MAX_MSGSIZE, "%s", SMON_GET_RESULT_COMMAND);
+ 	request.hdr.id = 0;
+ 	request.hdr.size = sizeof(struct storage_mon_check_value_req);
++	response.hdr.id = 0;
+ 	rc = qb_ipcc_send(conn, &request, request.hdr.size);
+ 	if (rc < 0) {
+ 		syslog(LOG_ERR, "qb_ipcc_send error : %d\n", rc);
+@@ -683,7 +686,11 @@ storage_mon_client(void)
+ 	/* greater than 0	: monitoring error. 		*/
+ 	/* -1			: communication system error.	*/
+ 	/* -2                   : Not all checks completed for first device in daemon mode. */ 
+-	rc = atoi(response.message);
++	if (strnlen(response.message, 1)) {
++		rc = atoi(response.message);
++	} else {
++		rc = -1;
++	}
+ 
+ 	syslog(LOG_DEBUG, "daemon response[%d]: %s \n", response.hdr.id, response.message);
+ 
+
+From b23ba4eaefb500199c4845751f4c5545c81f42f1 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 20 Nov 2023 16:37:37 +0100
+Subject: [PATCH 2/2] findif: also check that netmaskbits != EOS
+
+---
+ tools/findif.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/findif.c b/tools/findif.c
+index a25395fec..ab108a3c4 100644
+--- a/tools/findif.c
++++ b/tools/findif.c
+@@ -669,7 +669,7 @@ main(int argc, char ** argv) {
+ 		}
+ 	}
+ 
+-	if (netmaskbits) {
++	if (netmaskbits != NULL && *netmaskbits != EOS) {
+ 		best_netmask = netmask;
+ 	}else if (best_netmask == 0L) {
+ 		/*

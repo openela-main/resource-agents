@@ -1,0 +1,31 @@
+From 6a3249aae260c081ccbcfd09444d5d85ebc4e3b3 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 28 Apr 2025 15:48:29 +0200
+Subject: [PATCH] podman-etcd: remove unused actions from metadata
+
+---
+ heartbeat/podman-etcd | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index 514dd2e5b..3a2323260 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -236,8 +236,6 @@ to stop the container before pacemaker.
+ <action name="start"        timeout="600s" />
+ <action name="stop"         timeout="90s" />
+ <action name="monitor"      timeout="25s" interval="30s" depth="0" />
+-<action name="promote"      timeout="300s" />
+-<action name="demote"       timeout="120s" />
+ <action name="meta-data"    timeout="5s" />
+ <action name="validate-all"   timeout="30s" />
+ </actions>
+@@ -251,7 +249,7 @@ REQUIRE_IMAGE_PULL=0
+ podman_usage()
+ {
+ 	cat <<END
+-usage: $0 {start|stop|monitor|promote|demote|validate-all|meta-data}
++usage: $0 {start|stop|monitor|validate-all|meta-data}
+ 
+ Expects to have a fully populated OCF RA-compliant environment set.
+ END

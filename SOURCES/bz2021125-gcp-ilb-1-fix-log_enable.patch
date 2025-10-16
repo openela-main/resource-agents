@@ -1,0 +1,29 @@
+From 9a7b47f1838e9d6e3c807e9db5312097adb5c499 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Fri, 5 Nov 2021 10:30:49 +0100
+Subject: [PATCH] gcp-ilb/Squid: fix issues detected by CI
+
+---
+ heartbeat/Squid.in | 2 +-
+ heartbeat/gcp-ilb  | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/heartbeat/gcp-ilb b/heartbeat/gcp-ilb
+index 28484b241..48dc3ac4e 100755
+--- a/heartbeat/gcp-ilb
++++ b/heartbeat/gcp-ilb
+@@ -53,12 +53,12 @@ pidfile="/var/run/$OCF_RESOURCE_INSTANCE.pid"
+ 
+ 
+ #Validate command for logging
+-if $OCF_RESKEY_log_enable = "true"; then
++if [ $OCF_RESKEY_log_enable = "true" ]; then
+     if  type $OCF_RESKEY_log_cmd > /dev/null 2>&1; then
+ 	logging_cmd="$OCF_RESKEY_log_cmd $OCF_RESKEY_log_params"
+ 	ocf_log debug "Logging command is: \'$logging_cmd\' "
+     else 
+-	$OCF_RESKEY_log_enable = "false"
++	OCF_RESKEY_log_enable="false"
+ 	ocf_log err "\'$logging_cmd\' is invalid. External logging disabled."
+ 		
+     fi;

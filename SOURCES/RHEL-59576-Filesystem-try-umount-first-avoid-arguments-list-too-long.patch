@@ -1,0 +1,100 @@
+From f02afd0fadb581ca0fc9798beaf28044cf211200 Mon Sep 17 00:00:00 2001
+From: Lars Ellenberg <lars.ellenberg@linbit.com>
+Date: Wed, 18 Sep 2024 11:53:52 +0200
+Subject: [PATCH 1/2] Filesystem: on stop, try umount directly, before scanning
+ for users
+
+48ed6e6d (Filesystem: improve stop-action and allow setting term/kill signals and signal_delay for large filesystems, 2023-07-04)
+changed the logic from
+"try umount; if that fails, find and kill users; repeat" to
+"try to find and kill users; then try umount; repeat"
+
+But even just walking /proc may take "a long time" on busy systems,
+and may still turn up with "no users found".
+
+It will take even longer for "force_umount=safe"
+(observed 8 to 10 seconds just for "get_pids() with "safe" to return nothing)
+than for "force_umount=yes" (still ~ 2 to 3 seconds),
+but it will take "a long time" in any case.
+(BTW, that may be longer than the hardcoded default of 6 seconds for "fast_stop",
+which is also the default on many systems now)
+
+If the dependencies are properly configured,
+there should be no users left,
+and the umount should just work.
+
+Revert back to "try umount first", and only then try to find "rogue" users.
+---
+ heartbeat/Filesystem | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index 4dd962fd9..99bddaf62 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -732,6 +732,11 @@ fs_stop() {
+ 	local SUB="$1" timeout=$2 grace_time ret
+ 	grace_time=$((timeout/2))
+ 
++	# Just walking /proc may take "a long time", even if we don't find any users of this FS.
++	# If dependencies are properly configured, umount should just work.
++	# Only if that fails, try to find and kill processes that still use it.
++	try_umount "" "$SUB" && return $OCF_SUCCESS
++
+ 	# try gracefully terminating processes for up to half of the configured timeout
+ 	fs_stop_loop "" "$SUB" "$OCF_RESKEY_term_signals" &
+ 	timeout_child $! $grace_time
+
+From b42d698f12aaeb871f4cc6a3c0327a27862b4376 Mon Sep 17 00:00:00 2001
+From: Lars Ellenberg <lars.ellenberg@linbit.com>
+Date: Wed, 18 Sep 2024 13:42:38 +0200
+Subject: [PATCH 2/2] Filesystem: stop/get_pids to be signaled
+
+The "safe" way to get process ids that may be using a particular filesystem
+currently uses shell globs ("find /proc/[0-9]*").
+With a million processes (and/or a less capable shell),
+that may result in "Argument list too long".
+
+Replace with find /proc -path "/proc/[0-9]*" instead.
+While at it, also fix the non-posix -or to be -o,
+and add explicit grouping parentheses \( \) and explicit -print.
+
+Add a comment to not include "interesting" characters in mount point names.
+---
+ heartbeat/Filesystem | 23 ++++++++++++++++++++---
+ 1 file changed, 20 insertions(+), 3 deletions(-)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index 99bddaf62..3405e2c26 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -669,9 +669,26 @@ get_pids()
+ 			$FUSER -Mm $dir 2>/dev/null
+ 		fi
+ 	elif [ "$FORCE_UNMOUNT" = "safe" ]; then
+-		procs=$(find /proc/[0-9]*/ -type l -lname "${dir}/*" -or -lname "${dir}" 2>/dev/null | awk -F/ '{print $3}')
+-		mmap_procs=$(grep " ${dir}/" /proc/[0-9]*/maps | awk -F/ '{print $3}')
+-		printf "${procs}\n${mmap_procs}" | sort | uniq
++		# Yes, in theory, ${dir} could contain "intersting" characters
++		# and would need to be quoted for glob (find) and regex (grep).
++		# Don't do that, then.
++
++		# Avoid /proc/[0-9]*, it may cause "Argument list too long".
++		# There are several ways to filter for /proc/<pid>
++		# -mindepth 1 -not -path "/proc/[0-9]*" -prune -o ...
++		# -path "/proc/[!0-9]*" -prune -o ...
++		# -path "/proc/[0-9]*" -a ...
++		# the latter seemd to be significantly faster for this one in my naive test.
++		procs=$(exec 2>/dev/null;
++			find /proc -path "/proc/[0-9]*" -type l \( -lname "${dir}/*" -o -lname "${dir}" \) -print |
++			awk -F/ '{print $3}' | uniq)
++
++		# This finds both /proc/<pid>/maps and /proc/<pid>/task/<tid>/maps;
++		# if you don't want the latter, add -maxdepth.
++		mmap_procs=$(exec 2>/dev/null;
++			find /proc -path "/proc/[0-9]*/maps" -print |
++			xargs -r grep -l " ${dir}/" | awk -F/ '{print $3}' | uniq)
++		printf "${procs}\n${mmap_procs}" | sort -u
+ 	fi
+ }
+ 

@@ -1,0 +1,56 @@
+From 0a197f1cd227e768837dff778a0c56fc1085d434 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 21 Feb 2022 13:54:04 +0100
+Subject: [PATCH] IPsrcaddr: fix indentation in better error message code
+
+---
+ heartbeat/IPsrcaddr | 30 +++++++++++++++---------------
+ 1 file changed, 15 insertions(+), 15 deletions(-)
+
+diff --git a/heartbeat/IPsrcaddr b/heartbeat/IPsrcaddr
+index f0216722d..c82adc0e9 100755
+--- a/heartbeat/IPsrcaddr
++++ b/heartbeat/IPsrcaddr
+@@ -542,27 +542,27 @@ fi
+ findif_out=`$FINDIF -C`
+ rc=$?
+ [ $rc -ne 0 ] && {
+-    ocf_exit_reason "[$FINDIF -C] failed"
+-    exit $rc
++	ocf_exit_reason "[$FINDIF -C] failed"
++	exit $rc
+ }
+ 
+ INTERFACE=`echo $findif_out | awk '{print $1}'`
+ if [ "$OCF_RESKEY_destination" = "0.0.0.0/0" ] ;then
+ 	NETWORK=`$IP2UTIL route list dev $INTERFACE scope link $PROTO match $ipaddress|grep -m 1 -o '^[^ ]*'`
+ 
+-    if [ -z "$NETWORK" ]; then
+-        err_str="command '$IP2UTIL route list dev $INTERFACE scope link $PROTO"
+-        err_str="$err_str match $ipaddress' failed to find a matching route"
+-
+-        if [ "$__OCF_ACTION" = "start" ]; then
+-            ocf_exit_reason "$err_str"
+-            exit $OCF_ERR_ARGS
+-        elif ! ocf_is_probe; then
+-            ocf_log warn "$err_str"
+-        else
+-            ocf_log debug "$err_str"
+-        fi
+-    fi
++	if [ -z "$NETWORK" ]; then
++		err_str="command '$IP2UTIL route list dev $INTERFACE scope link $PROTO"
++		err_str="$err_str match $ipaddress' failed to find a matching route"
++
++		if [ "$__OCF_ACTION" = "start" ]; then
++			ocf_exit_reason "$err_str"
++			exit $OCF_ERR_ARGS
++		elif ! ocf_is_probe; then
++			ocf_log warn "$err_str"
++		else
++			ocf_log debug "$err_str"
++		fi
++	fi
+ else
+ 	NETWORK="$OCF_RESKEY_destination"
+ fi

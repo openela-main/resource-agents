@@ -1,0 +1,44 @@
+From 26de0ad2f0f975166fe79ef72ab08e2c03519eea Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 28 Mar 2022 13:25:35 +0200
+Subject: [PATCH] Filesystem: fix logic for UUID/label devices with space
+ between parameter and UUID/label
+
+---
+ heartbeat/Filesystem | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index 1a90d6a42..72a1b8623 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -596,11 +596,11 @@ Filesystem_start()
+ 	flushbufs "$DEVICE"
+ 	# Mount the filesystem.
+ 	case "$FSTYPE" in
+-		none) $MOUNT $options "$DEVICE" "$MOUNTPOINT" &&
++		none) $MOUNT $options $device_opt "$DEVICE" "$MOUNTPOINT" &&
+ 			bind_mount
+ 			;;
+-		"") $MOUNT $options "$DEVICE" "$MOUNTPOINT" ;;
+-		*) $MOUNT -t "$FSTYPE" $options "$DEVICE" "$MOUNTPOINT" ;;
++		"") $MOUNT $options $device_opt "$DEVICE" "$MOUNTPOINT" ;;
++		*) $MOUNT -t "$FSTYPE" $options $device_opt "$DEVICE" "$MOUNTPOINT" ;;
+ 	esac
+ 
+ 	if [ $? -ne 0 ]; then
+@@ -902,7 +902,13 @@ set_blockdevice_var() {
+ 	fi
+ 
+ 	case "$DEVICE" in
+-	-*) # Oh... An option to mount instead...  Typically -U or -L
++	--*) # Typically --uuid or --label
++		device_opt=$(echo $DEVICE | sed -E "s/([[:blank:]]|=).*//")
++		DEVICE=$(echo $DEVICE | sed -E "s/$device_opt([[:blank:]]*|=)//")
++		;;
++	-*)  # Oh... An option to mount instead...  Typically -U or -L
++		device_opt=$(echo $DEVICE | cut -c1-2)
++		DEVICE=$(echo $DEVICE | sed "s/$device_opt[[:blank:]]*//")
+ 		;;
+ 	/dev/null) # Special case for BSC
+ 		blockdevice=yes

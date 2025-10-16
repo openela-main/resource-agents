@@ -1,0 +1,187 @@
+From 81f9e1a04dfd2274ccb906310b4f191485e342ab Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 11 Jan 2023 13:22:24 +0100
+Subject: [PATCH 1/2] exportfs: move testdir() to start-action to avoid failing
+ during resource creation (validate-all) and make it create the directory if
+ it doesnt exist
+
+---
+ heartbeat/exportfs | 27 +++++++++++++++------------
+ 1 file changed, 15 insertions(+), 12 deletions(-)
+
+diff --git a/heartbeat/exportfs b/heartbeat/exportfs
+index c10777fa9..2307a9e67 100755
+--- a/heartbeat/exportfs
++++ b/heartbeat/exportfs
+@@ -301,6 +301,16 @@ exportfs_monitor ()
+ 	fi
+ }
+ 
++testdir() {
++	if [ ! -d $1 ]; then
++		mkdir -p "$1"
++		if [ $? -ne 0 ]; then
++			ocf_exit_reason "Unable to create directory $1"
++			return 1
++		fi
++	fi
++	return 0
++}
+ export_one() {
+ 	local dir=$1
+ 	local opts sep
+@@ -331,6 +341,10 @@ export_one() {
+ }
+ exportfs_start ()
+ {
++	if ! forall testdir; then
++		return $OCF_ERR_INSTALLED
++	fi
++
+ 	if exportfs_monitor; then
+ 		ocf_log debug "already exported"
+ 		return $OCF_SUCCESS
+@@ -428,14 +442,6 @@ exportfs_stop ()
+ 	fi
+ }
+ 
+-testdir() {
+-	if [ ! -d $1 ]; then
+-		ocf_is_probe ||
+-			ocf_log err "$1 does not exist or is not a directory"
+-		return 1
+-	fi
+-	return 0
+-}
+ exportfs_validate_all ()
+ {
+ 	if echo "$OCF_RESKEY_fsid" | grep -q -F ','; then
+@@ -447,9 +453,6 @@ exportfs_validate_all ()
+ 		ocf_exit_reason "use integer fsid when exporting multiple directories"
+ 		return $OCF_ERR_CONFIGURED
+ 	fi
+-	if ! forall testdir; then
+-		return $OCF_ERR_INSTALLED
+-	fi
+ }
+ 
+ for dir in $OCF_RESKEY_directory; do
+@@ -466,7 +469,7 @@ for dir in $OCF_RESKEY_directory; do
+ 		fi
+ 	else
+ 		case "$__OCF_ACTION" in
+-			stop|monitor)
++			stop|monitor|validate-all)
+ 				canonicalized_dir="$dir"
+ 				ocf_log debug "$dir does not exist"
+ 				;;
+
+From 8ee41af82cda35149f8e0cfede6a8ddef3e221e1 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 11 Jan 2023 13:25:57 +0100
+Subject: [PATCH 2/2] pgsql: dont run promotable and file checks that could be
+ on shared storage during validate-all action
+
+---
+ heartbeat/pgsql | 53 +++++++++++++++++++++++++++++--------------------
+ 1 file changed, 32 insertions(+), 21 deletions(-)
+
+diff --git a/heartbeat/pgsql b/heartbeat/pgsql
+index aa8a13a84..532063ac5 100755
+--- a/heartbeat/pgsql
++++ b/heartbeat/pgsql
+@@ -1835,7 +1835,7 @@ check_config() {
+ 
+     if [ ! -f "$1" ]; then
+         if ocf_is_probe; then
+-           ocf_log info "Configuration file is $1 not readable during probe."
++           ocf_log info "Unable to read $1 during probe."
+            rc=1
+         else
+            ocf_exit_reason "Configuration file $1 doesn't exist"
+@@ -1846,8 +1846,7 @@ check_config() {
+     return $rc
+ }
+ 
+-# Validate most critical parameters
+-pgsql_validate_all() {
++validate_ocf_check_level_10() {
+     local version
+     local check_config_rc
+     local rep_mode_string
+@@ -1883,12 +1882,6 @@ pgsql_validate_all() {
+         fi
+     fi
+ 
+-    getent passwd $OCF_RESKEY_pgdba >/dev/null 2>&1
+-    if [ ! $? -eq 0 ]; then
+-        ocf_exit_reason "User $OCF_RESKEY_pgdba doesn't exist";
+-        return $OCF_ERR_INSTALLED;
+-    fi
+-
+     if ocf_is_probe; then
+         ocf_log info "Don't check $OCF_RESKEY_pgdata during probe"
+     else
+@@ -1898,18 +1891,6 @@ pgsql_validate_all() {
+         fi
+     fi
+ 
+-    if [ -n "$OCF_RESKEY_monitor_user" -a ! -n "$OCF_RESKEY_monitor_password" ]
+-    then
+-        ocf_exit_reason "monitor password can't be empty"
+-        return $OCF_ERR_CONFIGURED
+-    fi
+-
+-    if [ ! -n "$OCF_RESKEY_monitor_user" -a -n "$OCF_RESKEY_monitor_password" ]
+-    then
+-        ocf_exit_reason "monitor_user has to be set if monitor_password is set"
+-        return $OCF_ERR_CONFIGURED
+-    fi
+-
+     if is_replication || [ "$OCF_RESKEY_rep_mode" = "slave" ]; then
+         if [ `printf "$version\n9.1" | sort -n | head -1` != "9.1" ]; then
+             ocf_exit_reason "Replication mode needs PostgreSQL 9.1 or higher."
+@@ -2027,6 +2008,35 @@ pgsql_validate_all() {
+     return $OCF_SUCCESS
+ }
+ 
++# Validate most critical parameters
++pgsql_validate_all() {
++    local rc
++
++    getent passwd $OCF_RESKEY_pgdba >/dev/null 2>&1
++    if [ ! $? -eq 0 ]; then
++        ocf_exit_reason "User $OCF_RESKEY_pgdba doesn't exist";
++        return $OCF_ERR_INSTALLED;
++    fi
++
++    if [ -n "$OCF_RESKEY_monitor_user" ] && [ -z "$OCF_RESKEY_monitor_password" ]; then
++        ocf_exit_reason "monitor password can't be empty"
++        return $OCF_ERR_CONFIGURED
++    fi
++
++    if [ -z "$OCF_RESKEY_monitor_user" ] && [ -n "$OCF_RESKEY_monitor_password" ]; then
++        ocf_exit_reason "monitor_user has to be set if monitor_password is set"
++        return $OCF_ERR_CONFIGURED
++    fi
++
++    if [ "$OCF_CHECK_LEVEL" -eq 10 ]; then
++        validate_ocf_check_level_10
++	rc=$?
++	[ $rc -ne "$OCF_SUCCESS" ] && exit $rc
++    fi
++
++    return $OCF_SUCCESS
++}
++
+ 
+ #
+ # Check if we need to create a log file
+@@ -2163,6 +2173,7 @@ case "$1" in
+                 exit $OCF_SUCCESS;;
+ esac
+ 
++[ "$__OCF_ACTION" != "validate-all" ] && OCF_CHECK_LEVEL=10
+ pgsql_validate_all
+ rc=$?
+ 

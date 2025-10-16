@@ -1,0 +1,41 @@
+From 6d2ed7615614ede093f097189876d0f08553a43e Mon Sep 17 00:00:00 2001
+From: Reid Wahl <nrwahl@protonmail.com>
+Date: Mon, 14 Feb 2022 22:23:39 -0800
+Subject: [PATCH] IPsrcaddr: Add warning about DHCP
+
+If DHCP is enabled for the interface that serves OCF_RESKEY_ipaddress,
+then NetworkManager (and possibly dhclient in systems without NM;
+unsure) may later re-add a route that the IPsrcaddr resource replaced.
+This may cause the resource to fail or cause other unexpected behavior.
+
+So far this has been observed with a default route, albeit with an edge
+case of a configuration (OCF_RESKEY_ipaddress on a different subnet)
+that may not be totally valid. There are likely to be other situations
+as well where DHCP can cause conflicts with IPsrcaddr's manual updates
+via iproute. The safest option is to use only static configuration for
+the involved interface.
+
+Resolves: RHBZ#1654862
+
+Signed-off-by: Reid Wahl <nrwahl@protonmail.com>
+---
+ heartbeat/IPsrcaddr | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/heartbeat/IPsrcaddr b/heartbeat/IPsrcaddr
+index ec868409f..fd7b6f68d 100755
+--- a/heartbeat/IPsrcaddr
++++ b/heartbeat/IPsrcaddr
+@@ -99,6 +99,12 @@ meta_data() {
+ <longdesc lang="en">
+ Resource script for IPsrcaddr. It manages the preferred source address
+ modification. 
++
++Note: DHCP should not be enabled for the interface serving the preferred
++source address. Enabling DHCP may result in unexpected behavior, such as
++the automatic addition of duplicate or conflicting routes. This may
++cause the IPsrcaddr resource to fail, or it may produce undesired
++behavior while the resource continues to run.
+ </longdesc>
+ <shortdesc lang="en">Manages the preferred source address for outgoing IP packets</shortdesc>
+ 

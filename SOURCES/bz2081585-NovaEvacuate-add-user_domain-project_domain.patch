@@ -1,0 +1,61 @@
+From 340e12c0d457d244d375c2d805e78033c9dbdf78 Mon Sep 17 00:00:00 2001
+From: Takashi Kajinami <tkajinam@redhat.com>
+Date: Wed, 04 May 2022 23:13:35 +0900
+Subject: [PATCH] NovaCompute/Evacuate: Make user/project domain configurable
+
+... so that we can use a user or a project in a non-default keystone
+domain.
+
+Change-Id: I6e2175adca08fd97942cb83b8f8094e980b60c9d
+---
+
+diff --git a/heartbeat/NovaEvacuate b/heartbeat/NovaEvacuate
+index 596f520..4565766 100644
+--- a/heartbeat/NovaEvacuate
++++ b/heartbeat/NovaEvacuate
+@@ -63,13 +63,29 @@
+ 
+ <parameter name="tenant_name" unique="0" required="1">
+ <longdesc lang="en">
+-Tenant name for connecting to keystone in admin context.
++Tenant(Project) name for connecting to keystone in admin context.
+ Note that with Keystone V3 tenant names are only unique within a domain.
+ </longdesc>
+ <shortdesc lang="en">Tenant name</shortdesc>
+ <content type="string" default="" />
+ </parameter>
+ 
++<parameter name="user_domain" unique="0" required="0">
++<longdesc lang="en">
++Keystone domain the user belongs to
++</longdesc>
++<shortdesc lang="en">Keystone v3 User Domain</shortdesc>
++<content type="string" default="" />
++</parameter>
++
++<parameter name="project_domain" unique="0" required="0">
++<longdesc lang="en">
++Keystone domain the tenant(project) belongs to
++</longdesc>
++<shortdesc lang="en">Keystone v3 Project Domain</shortdesc>
++<content type="string" default="" />
++</parameter>
++
+ <parameter name="domain" unique="0" required="0">
+ <longdesc lang="en">
+ DNS domain in which hosts live, useful when the cluster uses short names and nova uses FQDN
+@@ -319,6 +335,14 @@
+ 
+     fence_options="${fence_options} -t ${OCF_RESKEY_tenant_name}"
+ 
++    if [ -n "${OCF_RESKEY_user_domain}" ]; then
++        fence_options="${fence_options} -u ${OCF_RESKEY_user_domain}"
++    fi
++
++    if [ -n "${OCF_RESKEY_project_domain}" ]; then
++        fence_options="${fence_options} -P ${OCF_RESKEY_project_domain}"
++    fi
++
+     if [ -n "${OCF_RESKEY_domain}" ]; then
+         fence_options="${fence_options} -d ${OCF_RESKEY_domain}"
+     fi

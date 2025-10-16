@@ -1,0 +1,32 @@
+From 75eaf06eea8957aa3941823955d1c8fa7933ab1d Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 23 Feb 2022 16:32:21 +0100
+Subject: [PATCH] db2: only warn when notify isnt set, and use
+ ocf_local_nodename() to get node name
+
+---
+ heartbeat/db2 | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/heartbeat/db2 b/heartbeat/db2
+index fa2a45a5d..ea24d33fc 100755
+--- a/heartbeat/db2
++++ b/heartbeat/db2
+@@ -267,7 +267,7 @@ db2_fal_attrib() {
+ 
+     case "$2" in
+         set)
+-        me=$(uname -n)
++        me=$(ocf_local_nodename)
+ 
+         # loop over all member nodes and set attribute
+         crm_node -l |
+@@ -284,7 +284,7 @@ db2_fal_attrib() {
+         get)
+         crm_attribute -l forever -n $attr -G --quiet 2>&1
+         rc=$?
+-        if [ $rc != 0 ]
++        if ! ocf_is_true "$OCF_RESKEY_CRM_meta_notify" && [ $rc != 0 ]
+         then
+             ocf_log warn "DB2 instance $instance($db2node/$db: can't retrieve attribute $attr, are you sure notifications are enabled ?"
+         fi

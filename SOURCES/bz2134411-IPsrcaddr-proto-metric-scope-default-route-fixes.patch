@@ -1,0 +1,147 @@
+From 237d55120a7c8d761f839c96651e722b3bb3bc88 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 12 Oct 2022 13:57:30 +0200
+Subject: [PATCH 1/4] IPsrcaddr: fix PROTO regex
+
+---
+ heartbeat/IPsrcaddr | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/IPsrcaddr b/heartbeat/IPsrcaddr
+index 7dbf65ff5..24406d296 100755
+--- a/heartbeat/IPsrcaddr
++++ b/heartbeat/IPsrcaddr
+@@ -188,7 +188,7 @@ IPADDR="\($OCTET\.\)\{3\}$OCTET"
+ SRCCLAUSE="src$WS$WS*\($IPADDR\)"
+ MATCHROUTE="\(.*${WS}\)\($SRCCLAUSE\)\($WS.*\|$\)"
+ METRICCLAUSE=".*\(metric$WS[^ ]\+\)"
+-PROTOCLAUSE=".*\(proto$WS[^ ]\+\)"
++PROTOCLAUSE=".*\(proto$WS[^ ]\+\).*"
+ FINDIF=findif
+ 
+ # findif needs that to be set
+
+From c70ba457851a401cb201cb87d23bdbc5f4fcd2b3 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 12 Oct 2022 14:00:30 +0200
+Subject: [PATCH 2/4] IPsrcaddr: detect metric for main table only, and allow
+ specifying metric if necessary
+
+---
+ heartbeat/IPsrcaddr | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/heartbeat/IPsrcaddr b/heartbeat/IPsrcaddr
+index 24406d296..4745eb8a7 100755
+--- a/heartbeat/IPsrcaddr
++++ b/heartbeat/IPsrcaddr
+@@ -59,12 +59,14 @@ OCF_RESKEY_ipaddress_default=""
+ OCF_RESKEY_cidr_netmask_default=""
+ OCF_RESKEY_destination_default="0.0.0.0/0"
+ OCF_RESKEY_proto_default=""
++OCF_RESKEY_metric_default=""
+ OCF_RESKEY_table_default=""
+ 
+ : ${OCF_RESKEY_ipaddress=${OCF_RESKEY_ipaddress_default}}
+ : ${OCF_RESKEY_cidr_netmask=${OCF_RESKEY_cidr_netmask_default}}
+ : ${OCF_RESKEY_destination=${OCF_RESKEY_destination_default}}
+ : ${OCF_RESKEY_proto=${OCF_RESKEY_proto_default}}
++: ${OCF_RESKEY_metric=${OCF_RESKEY_metric_default}}
+ : ${OCF_RESKEY_table=${OCF_RESKEY_table_default}}
+ #######################################################################
+ 
+@@ -143,6 +145,14 @@ Proto to match when finding network. E.g. "kernel".
+ <content type="string" default="${OCF_RESKEY_proto_default}" />
+ </parameter>
+ 
++<parameter name="metric">
++<longdesc lang="en">
++Metric. Only needed if incorrect metric value is used.
++</longdesc>
++<shortdesc lang="en">Metric</shortdesc>
++<content type="string" default="${OCF_RESKEY_metric_default}" />
++</parameter>
++
+ <parameter name="table">
+ <longdesc lang="en">
+ Table to modify. E.g. "local".
+@@ -548,8 +558,14 @@ rc=$?
+ 
+ INTERFACE=`echo $findif_out | awk '{print $1}'`
+ LISTROUTE=`$IP2UTIL route list dev $INTERFACE scope link $PROTO match $ipaddress`
+-METRIC=`echo $LISTROUTE | sed -n "s/$METRICCLAUSE/\1/p"`
+ [ -z "$PROTO" ] && PROTO=`echo $LISTROUTE | sed -n "s/$PROTOCLAUSE/\1/p"`
++if [ -n "$OCF_RESKEY_metric" ]; then
++	METRIC="metric $OCF_RESKEY_metric"
++elif [ -z "$TABLE" ] || [ "${TABLE#table }" = "main" ]; then
++	METRIC=`echo $LISTROUTE | sed -n "s/$METRICCLAUSE/\1/p"`
++else
++	METRIC=""
++fi
+ if [ "$OCF_RESKEY_destination" = "0.0.0.0/0" ] ;then
+ 	NETWORK=`echo $LISTROUTE | grep -m 1 -o '^[^ ]*'`
+ 
+
+From c514f12f7a19440f475938f2a4659e5e9667fa25 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 12 Oct 2022 14:01:26 +0200
+Subject: [PATCH 3/4] IPsrcaddr: use scope host when using non-main tables
+
+---
+ heartbeat/IPsrcaddr | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/heartbeat/IPsrcaddr b/heartbeat/IPsrcaddr
+index 4745eb8a7..926246008 100755
+--- a/heartbeat/IPsrcaddr
++++ b/heartbeat/IPsrcaddr
+@@ -279,8 +279,14 @@ srca_stop() {
+ 	  
+ 	[ $rc = 2 ] && errorexit "The address you specified to stop does not match the preferred source address"
+ 
++	if [ -z "$TABLE" ] || [ "${TABLE#table }" = "main" ]; then
++		SCOPE="link"
++	else
++		SCOPE="host"
++	fi
++
+ 	PRIMARY_IP="$($IP2UTIL -4 -o addr show dev $INTERFACE primary | awk '{split($4,a,"/");print a[1]}')"
+-	OPTS="proto kernel scope link src $PRIMARY_IP"
++	OPTS="proto kernel scope $SCOPE src $PRIMARY_IP"
+ 
+ 	$IP2UTIL route replace $TABLE $NETWORK dev $INTERFACE $OPTS $METRIC || \
+ 		errorexit "command 'ip route replace $TABLE $NETWORK dev $INTERFACE $OPTS $METRIC' failed"
+
+From 1f387ac8017b3eee23b41eadafd58ce21a29eb21 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 13 Oct 2022 13:11:28 +0200
+Subject: [PATCH 4/4] IPsrcaddr: fix monitor/status for default route not being
+ equal to src IP before start, and change route src correctly in stop-action
+
+---
+ heartbeat/IPsrcaddr | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/heartbeat/IPsrcaddr b/heartbeat/IPsrcaddr
+index 926246008..1bd41a930 100755
+--- a/heartbeat/IPsrcaddr
++++ b/heartbeat/IPsrcaddr
+@@ -229,6 +229,7 @@ srca_read() {
+ 
+ 	[ -z "$SRCIP" ] && return 1
+ 	[ $SRCIP = $1 ] && return 0
++	[ "$__OCF_ACTION" = "monitor" ] || [ "$__OCF_ACTION" = "status" ] && [ "${ROUTE%% *}" = "default" ] && return 1
+ 	return 2
+ }
+ 
+@@ -292,8 +293,8 @@ srca_stop() {
+ 		errorexit "command 'ip route replace $TABLE $NETWORK dev $INTERFACE $OPTS $METRIC' failed"
+ 
+ 	if [ "$OCF_RESKEY_destination" = "0.0.0.0/0" ] ;then
+-		$CMDCHANGE $ROUTE_WO_SRC || \
+-			errorexit "command '$CMDCHANGE $ROUTE_WO_SRC' failed"
++		$CMDCHANGE $ROUTE_WO_SRC src $PRIMARY_IP || \
++			errorexit "command '$CMDCHANGE $ROUTE_WO_SRC src $PRIMARY_IP' failed"
+ 	fi
+ 
+ 	return $?

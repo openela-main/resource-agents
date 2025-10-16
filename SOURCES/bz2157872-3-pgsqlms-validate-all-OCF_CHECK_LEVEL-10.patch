@@ -1,0 +1,68 @@
+--- a/heartbeat/pgsqlms	2023-01-04 14:42:36.093258702 +0100
++++ b/heartbeat/pgsqlms	2023-01-04 14:40:52.403994545 +0100
+@@ -66,6 +66,7 @@
+ my $maxlag       = $ENV{'OCF_RESKEY_maxlag'} || $maxlag_default;
+ my $recovery_tpl = $ENV{'OCF_RESKEY_recovery_template'}
+     || "$pgdata/recovery.conf.pcmk";
++my $ocf_check_level = $ENV{'OCF_CHECK_LEVEL'} || 0;
+ 
+ 
+ # PostgreSQL commands path
+@@ -1304,26 +1305,28 @@
+         return $OCF_ERR_INSTALLED;
+     }
+ 
+-    # check notify=true
+-    $ans = qx{ $CRM_RESOURCE --resource "$OCF_RESOURCE_INSTANCE" \\
+-                 --meta --get-parameter notify 2>/dev/null };
+-    chomp $ans;
+-    unless ( lc($ans) =~ /^true$|^on$|^yes$|^y$|^1$/ ) {
+-        ocf_exit_reason(
+-            'You must set meta parameter notify=true for your master resource'
+-        );
+-        return $OCF_ERR_INSTALLED;
+-    }
++    if ( $ocf_check_level == 10 ) {
++        # check notify=true
++        $ans = qx{ $CRM_RESOURCE --resource "$OCF_RESOURCE_INSTANCE" \\
++                     --meta --get-parameter notify 2>/dev/null };
++        chomp $ans;
++        unless ( lc($ans) =~ /^true$|^on$|^yes$|^y$|^1$/ ) {
++            ocf_exit_reason(
++                'You must set meta parameter notify=true for your "master" resource'
++            );
++            return $OCF_ERR_INSTALLED;
++        }
+ 
+-    # check master-max=1
+-    unless (
+-        defined $ENV{'OCF_RESKEY_CRM_meta_master_max'}
+-            and $ENV{'OCF_RESKEY_CRM_meta_master_max'} eq '1'
+-    ) {
+-        ocf_exit_reason(
+-            'You must set meta parameter master-max=1 for your master resource'
+-        );
+-        return $OCF_ERR_INSTALLED;
++        # check master-max=1
++        unless (
++            defined $ENV{'OCF_RESKEY_CRM_meta_master_max'}
++                and $ENV{'OCF_RESKEY_CRM_meta_master_max'} eq '1'
++        ) {
++            ocf_exit_reason(
++                'You must set meta parameter master-max=1 for your "master" resource'
++            );
++            return $OCF_ERR_INSTALLED;
++        }
+     }
+ 
+     if ( $PGVERNUM >= $PGVER_12 ) {
+@@ -2242,6 +2245,9 @@
+ # Set current node name.
+ $nodename = ocf_local_nodename();
+ 
++if ( $__OCF_ACTION ne 'validate-all' ) {
++    $ocf_check_level = 10;
++}
+ $exit_code = pgsql_validate_all();
+ 
+ exit $exit_code if $exit_code != $OCF_SUCCESS or $__OCF_ACTION eq 'validate-all';

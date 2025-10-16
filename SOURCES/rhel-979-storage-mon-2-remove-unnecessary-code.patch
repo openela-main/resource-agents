@@ -1,0 +1,36 @@
+From c3c1f1a3005f6a6d3d03d6bf0f0ac7605838146f Mon Sep 17 00:00:00 2001
+From: Hideo Yamauchi <renayama19661014@ybb.ne.jp>
+Date: Tue, 26 Sep 2023 14:02:39 +0900
+Subject: [PATCH] Low: storage-mon: Remove unnecessary code and fix typos.
+
+---
+ tools/storage_mon.c | 9 ++-------
+ 1 file changed, 2 insertions(+), 7 deletions(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index 1231570c8..1aae29e58 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -318,12 +318,7 @@ static int32_t sigchld_handler(int32_t sig, void *data)
+ 								daemon_check_first_all_devices = TRUE;
+ 							}
+ 						}
+-#if 0
+-						if (shutting_down == FALSE) {
+-							finished_count++;
+-							test_forks[index] = 0;
+-						}
+-#endif
++
+ 						finished_count++;
+ 						test_forks[index] = 0;
+ 					
+@@ -521,7 +516,7 @@ static int test_device_main(gpointer data)
+ 				}
+ 			}
+ 		} else {
+-			/* Rrun the child process timeout watch timer. */
++			/* Run the child process timeout watch timer. */
+ 			qb_loop_timer_add(storage_mon_poll_handle, QB_LOOP_MED, timeout * QB_TIME_NS_IN_SEC, NULL, child_timeout_handler, &expire_handle); 
+ 		}
+ 	}

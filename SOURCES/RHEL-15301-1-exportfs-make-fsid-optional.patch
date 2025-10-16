@@ -1,0 +1,75 @@
+From b806487ca758fce838c988767556007ecf66a6e3 Mon Sep 17 00:00:00 2001
+From: Roger Zhou <zzhou@suse.com>
+Date: Mon, 10 Apr 2023 18:08:56 +0800
+Subject: [PATCH] exportfs: make the "fsid=" parameter optional
+
+Based on feedback [1] from the kernel developer @neilbrown regarding the
+NFS clustering use case, it has been determined that the fsid= parameter
+is now considered optional and safe to omit.
+
+[1] https://bugzilla.suse.com/show_bug.cgi?id=1201271#c49
+"""
+Since some time in 2007 NFS has used the UUID of a filesystem as the
+primary identifier for that filesystem, rather than using the device
+number.  So from that time there should have been reduced need for the
+"fsid=" option.  Probably there are some filesystems that this didn't
+work for.  btrfs has been problematic at time, particularly when subvols
+are exported.  But for quite some years this has all "just worked" at
+least for the major filesystems (ext4 xfs btrfs). [...] I would suggest
+getting rid of the use of fsid= altogether. [...] I'm confident that it
+was no longer an issue in SLE-12 and similarly not in SLE-15.
+"""
+---
+ heartbeat/exportfs | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/heartbeat/exportfs b/heartbeat/exportfs
+index 2307a9e67b..435a19646b 100755
+--- a/heartbeat/exportfs
++++ b/heartbeat/exportfs
+@@ -82,7 +82,7 @@ The directory or directories to export.
+ <content type="string" />
+ </parameter>
+ 
+-<parameter name="fsid" unique="0" required="1">
++<parameter name="fsid" unique="0" required="0">
+ <longdesc lang="en">
+ The fsid option to pass to exportfs. This can be a unique positive
+ integer, a UUID (assuredly sans comma characters), or the special string
+@@ -185,6 +185,8 @@ exportfs_methods() {
+ 
+ reset_fsid() {
+ 	CURRENT_FSID=$OCF_RESKEY_fsid
++	[ -z "$CURRENT_FSID" ] && CURRENT_FSID=`echo "$OCF_RESKEY_options" | sed -n 's/.*fsid=\([^,]*\).*/\1/p'`
++	echo $CURRENT_FSID
+ }
+ bump_fsid() {
+ 	CURRENT_FSID=$((CURRENT_FSID+1))
+@@ -322,7 +324,7 @@ export_one() {
+ 	if echo "$opts" | grep fsid >/dev/null; then
+ 		#replace fsid in options list
+ 		opts=`echo "$opts" | sed "s,fsid=[^,]*,fsid=$(get_fsid),g"`
+-	else
++	elif [ -n "$OCF_RESKEY_fsid" ]; then
+ 		#tack the fsid option onto our options list.
+ 		opts="${opts}${sep}fsid=$(get_fsid)"
+ 	fi
+@@ -448,8 +450,8 @@ exportfs_validate_all ()
+ 		ocf_exit_reason "$OCF_RESKEY_fsid cannot contain a comma"
+ 		return $OCF_ERR_CONFIGURED
+ 	fi
+-	if [ $NUMDIRS -gt 1 ] &&
+-			! ocf_is_decimal "$OCF_RESKEY_fsid"; then
++	if [ $NUMDIRS -gt 1 ] && [ -n "$(reset_fsid)" ] &&
++			! ocf_is_decimal "$(reset_fsid)"; then
+ 		ocf_exit_reason "use integer fsid when exporting multiple directories"
+ 		return $OCF_ERR_CONFIGURED
+ 	fi
+@@ -485,6 +487,6 @@ done
+ OCF_RESKEY_directory="${directories%% }"
+ 
+ NUMDIRS=`echo "$OCF_RESKEY_directory" | wc -w`
+-OCF_REQUIRED_PARAMS="directory fsid clientspec"
++OCF_REQUIRED_PARAMS="directory clientspec"
+ OCF_REQUIRED_BINARIES="exportfs"
+ ocf_rarun $*
