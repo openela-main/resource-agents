@@ -73,7 +73,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.9.0
-Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.17
+Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.20
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 %if 0%{?fedora} || 0%{?centos_version} || 0%{?rhel}
@@ -174,6 +174,10 @@ Patch77: 	RHEL-85048-tomcat-fix-CATALINA_PID-not-set-and-parameter-defaults.patc
 Patch78:	RHEL-91257-Filesystem-add-support-for-aznfs.patch
 Patch79:	RHEL-102731-ocf-shellfuncs-remove-extra-sleep-from-curl_retry.patch
 Patch80:	RHEL-115783-RHEL-115781-db2-add-skip_basic_sql_health_check-and-monitor-parameters.patch
+Patch81:	RHEL-118625-db2-use-reintegration-flag-to-avoid-race-condition-on-cluster-reintegration.patch
+Patch82:	RHEL-116150-1-ocf-shellfuncs-add-ocf_promotion_score.patch
+Patch83:	RHEL-116150-2-portblock-add-promotable-support.patch
+Patch84:	RHEL-116150-3-portblock-fixes-add-method-and-status_check-parameters.patch
 
 # bundle patches
 Patch1000:	7-gcp-bundled.patch
@@ -439,6 +443,10 @@ exit 1
 %patch -p1 -P 78 -F2
 %patch -p1 -P 79
 %patch -p1 -P 80
+%patch -p1 -P 81 -F2
+%patch -p1 -P 82
+%patch -p1 -P 83
+%patch -p1 -P 84
 
 chmod 755 heartbeat/nova-compute-wait
 chmod 755 heartbeat/NovaEvacuate
@@ -1029,6 +1037,18 @@ ccs_update_schema > /dev/null 2>&1 ||:
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Tue Oct 21 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.20
+- portblock: add promotable support, and method and status_check
+  parameters
+
+  Resolves: RHEL-116150
+
+* Mon Oct 20 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.19
+- db2: use reintegration flag to avoid race condition on cluster
+  reintegration
+
+  Resolves: RHEL-118625
+
 * Thu Sep 18 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.17
 - db2: add "skip_basic_sql_health_check" parameter to avoid failing on
   systems with high load

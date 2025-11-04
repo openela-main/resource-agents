@@ -1,0 +1,362 @@
+--- a/heartbeat/portblock	2025-09-30 09:52:13.967530030 +0200
++++ b/heartbeat/portblock	2025-09-30 09:52:49.018382542 +0200
+@@ -4,6 +4,7 @@
+ #
+ # Author:	Sun Jiang Dong (initial version)
+ #               Philipp Reisner (per-IP filtering)
++#               Sebastian Baszczyj (nftables code)
+ #
+ # License:	GNU General Public License (GPL)
+ #
+@@ -43,11 +44,15 @@
+ #######################################################################
+ CMD=`basename $0`
+ TICKLETCP=$HA_BIN/tickle_tcp
++TABLE="portblock"
++# Promotion scores
++SCORE_UNPROMOTED=5
++SCORE_PROMOTED=10
+ 
+ usage()
+ {
+ 	cat <<END >&2
+-	usage: $CMD {start|stop|status|monitor|meta-data|validate-all}
++	usage: $CMD {start|stop|promote|demote|status|monitor|meta-data|validate-all}
+ 
+ 	$CMD is used to temporarily block ports using iptables.
+ 
+@@ -86,8 +91,8 @@
+ 	NOTE: iptables is Linux-specific.
+ 
+ 	An additional feature in the portblock RA is the tickle ACK function
+-	enabled by specifying the tickle_dir parameter. The tickle ACK 
+-	triggers the clients to faster reconnect their TCP connections to the 
++	enabled by specifying the tickle_dir parameter. The tickle ACK
++	triggers the clients to faster reconnect their TCP connections to the
+ 	fail-overed server.
+ 
+ 	Please note that this feature is often used for the floating IP fail-
+@@ -95,7 +100,7 @@
+ 	It doesn't support the cluster alias IP scenario.
+ 
+ 	When using the tickle ACK function, in addition to the normal usage
+-	of portblock RA, the parameter tickle_dir must be specified in the 
++	of portblock RA, the parameter tickle_dir must be specified in the
+ 	action=unblock instance of the portblock resources.
+ 	For example, you may stack resources like below:
+ 		portblock action=block
+@@ -103,18 +108,18 @@
+ 		portblock action=unblock tickle_dir=/tickle/state/dir
+ 
+ 	If you want to tickle all the TCP connections which connected to _one_
+-	floating IP but different ports, no matter how many portblock resources 
+-	you have defined, you should enable tickles for _one_ portblock 
++	floating IP but different ports, no matter how many portblock resources
++	you have defined, you should enable tickles for _one_ portblock
+ 	resource(action=unblock) only.
+-	
+-	The tickle_dir is a location which stores the established TCP 
+-	connections. It can be a shared directory(which is cluster-visible to 
++
++	The tickle_dir is a location which stores the established TCP
++	connections. It can be a shared directory(which is cluster-visible to
+ 	all nodes) or a local directory.
+ 	If you use the shared directory, you needn't do any other things.
+ 	If you use the local directory, you must also specify the sync_script
+ 	paramater. We recommend you to use csync2 as the sync_script.
+-	For example, if you use the local directory /tmp/tickle as tickle_dir, 
+-	you could setup the csync2 as the csync2 documentation says and 
++	For example, if you use the local directory /tmp/tickle as tickle_dir,
++	you could setup the csync2 as the csync2 documentation says and
+ 	configure your /etc/csync2/csync2.cfg like:
+ 		group ticklegroup {
+ 		  host node1;
+@@ -137,15 +142,19 @@
+ <version>1.0</version>
+ 
+ <longdesc lang="en">
+-Resource script for portblock. It is used to temporarily block ports 
++Resource script for portblock. It is used to block ports 
+ using iptables. In addition, it may allow for faster TCP reconnects
+ for clients on failover. Use that if there are long lived TCP
+ connections to an HA service. This feature is enabled by setting the
+ tickle_dir parameter and only in concert with action set to unblock.
+ Note that the tickle ACK function is new as of version 3.0.2 and
+ hasn't yet seen widespread use.
++
++In Promotable mode, the promote action unblocks the port(s) on the Promoted node
++and blocks the port(s) on the Unpromoted node(s) when action=unblock, and vice versa
++when action=block.
+ </longdesc>
+-<shortdesc lang="en">Block and unblocks access to TCP and UDP ports</shortdesc>
++<shortdesc lang="en">Blocks and unblocks access to TCP and UDP ports</shortdesc>
+ 
+ <parameters>
+ <parameter name="protocol" unique="0" required="1">
+@@ -167,6 +176,10 @@
+ <parameter name="action" unique="0" required="1">
+ <longdesc lang="en">
+ The action (block/unblock) to be done on the protocol::portno.
++
++In Promotable mode it is the action for the promote action,
++and the opposite action will be used for the start and demote
++actions.
+ </longdesc>
+ <shortdesc lang="en">action</shortdesc>
+ <content type="string" default="${OCF_RESKEY_action_default}" />
+@@ -202,7 +215,7 @@
+ 
+ <parameter name="tickle_dir" unique="0" required="0">
+ <longdesc lang="en">
+-The shared or local directory (_must_ be absolute path) which 
++The shared or local directory (_must_ be absolute path) which
+ stores the established TCP connections.
+ </longdesc>
+ <shortdesc lang="en">Tickle directory</shortdesc>
+@@ -236,6 +249,8 @@
+ <actions>
+ <action name="start" timeout="20s" />
+ <action name="stop" timeout="20s" />
++<action name="promote" timeout="10s"/>
++<action name="demote" timeout="10s"/>
+ <action name="status" depth="0" timeout="10s" interval="10s" />
+ <action name="monitor" depth="0" timeout="10s" interval="10s" />
+ <action name="meta-data" timeout="5s" />
+@@ -269,9 +284,9 @@
+   # iptables 1.8.9 briefly broke the output format, returning the
+   # numeric protocol value instead of a string. Support both variants.
+   if [ "$1" = "tcp" ]; then
+-    local prot="(tcp|6)"
++    local prot="\(tcp\|6\)"
+   else
+-    local prot="(udp|17)"
++    local prot="\(udp\|17\)"
+   fi
+   echo "^DROP${w}${prot}${w}--${w}${src}${w}${dst}${w}multiport${w}${4}ports${w}${2}$"
+ }
+@@ -281,7 +296,7 @@
+ {
+   [ "$4" = "OUTPUT" ] && ds="s" || ds="d"
+   PAT=$(active_grep_pat "$1" "$2" "$3" "$ds")
+-  $IPTABLES $wait -n -L "$4" | grep -qE "$PAT"
++  $IPTABLES $wait -n -L "$4" | grep -q "$PAT"
+ }
+ 
+ # netstat -tn and ss -Htn, split on whitespace and colon,
+@@ -397,6 +412,17 @@
+         rc=$OCF_NOT_RUNNING
+         ;;
+     esac
++  elif ocf_is_ms; then
++    case $5 in
++      block)
++        SayInactive $*
++        rc=$OCF_NOT_RUNNING
++        ;;
++      *)
++        SayActive $*
++        rc=$OCF_SUCCESS
++        ;;
++    esac
+   else
+     case $5 in
+       block)
+@@ -493,18 +519,21 @@
+ {
+   ha_pseudo_resource "${OCF_RESOURCE_INSTANCE}" start
+   case $5 in
+-    block)	IptablesBLOCK "$@";;
++    block)	IptablesBLOCK "$@"
++		rc=$?
++		;;
+     unblock)
+ 		IptablesUNBLOCK "$@"
+ 		rc=$?
+ 		tickle_remote
+ 		#ignore run_tickle_tcp exit code!
+-		return $rc
+ 		;;
+-    *)		usage; return 1;
++    *)		usage; return $OCF_ERR_CONFIGURED ;
+   esac
+ 
+-  return $?
++  ocf_is_ms && ocf_promotion_score -v $SCORE_UNPROMOTED -N $nodename
++
++  return $rc
+ }
+ 
+ #IptablesStop  {udp|tcp} portno,portno ip {in|out|both} {block|unblock}
+@@ -512,17 +541,73 @@
+ {
+   ha_pseudo_resource "${OCF_RESOURCE_INSTANCE}" stop
+   case $5 in
+-    block)	IptablesUNBLOCK "$@";;
++    block)	IptablesUNBLOCK "$@"
++		rc=$?
++		;;
+     unblock)
+ 		save_tcp_connections
+ 		IptablesBLOCK "$@"
++		rc=$?
+ 		;;
+-    *)		usage; return 1;;
++    *)		usage; return $OCF_ERR_CONFIGURED ;;
+   esac
+ 
++  ocf_is_ms && ocf_promotion_score -D -N $nodename
++
++  return $rc
++}
++
++IptablesPromote() {
++  IptablesStatus "$@"
++  rc=$?
++  if [ $rc -eq $OCF_SUCCESS ] && [ $promotion_score -eq $SCORE_PROMOTED ]; then
++    ocf_log info "Promote: resource already promoted."
++    return $rc
++  elif [ $rc -ne $OCF_SUCCESS ] && [ $rc -ne $OCF_NOT_RUNNING ]; then
++    ocf_exit_reason "Promote: IptablesStatus failed with rc: $rc."
++    return $rc
++  fi
++  case $5 in
++    block)	IptablesBLOCK "$@"
++		rc=$?
++		;;
++    unblock)
++		IptablesUNBLOCK "$@"
++		rc=$?
++		tickle_remote
++		#ignore run_tickle_tcp exit code!
++		;;
++    *)		usage; return $OCF_ERR_CONFIGURED ;
++  esac
++  ocf_promotion_score -v $SCORE_PROMOTED -N $nodename
+   return $?
+ }
+ 
++IptablesDemote() {
++  IptablesStatus "$@"
++  rc=$?
++  if [ $rc -eq $OCF_SUCCESS ] && [ $promotion_score -eq $SCORE_UNPROMOTED ]; then
++    ocf_log info "Demote: resource already demoted."
++    return $rc
++  elif [ $rc -ne $OCF_SUCCESS ] && [ $rc -ne $OCF_NOT_RUNNING ]; then
++    ocf_exit_reason "Demote: IptablesStatus failed with rc: $rc."
++    return $rc
++  fi
++  case $5 in
++    block)
++		save_tcp_connections
++		IptablesBLOCK "$@"
++		rc=$?
++		;;
++    unblock)	IptablesUNBLOCK "$@"
++		rc=$?
++		;;
++    *)		usage; return $OCF_ERR_CONFIGURED ;;
++  esac
++  ocf_promotion_score -v $SCORE_UNPROMOTED -N $nodename
++  return $rc
++}
++
+ #
+ #	Check if the port is valid, this function code is not decent, but works
+ #
+@@ -558,17 +643,17 @@
+ 	fi
+ 	if [ ! -d "$OCF_RESKEY_tickle_dir" ]; then
+ 		ocf_log err "The tickle dir doesn't exist!"
+-		exit $OCF_ERR_INSTALLED	  	
++		exit $OCF_ERR_INSTALLED
+ 	fi
+   fi
+ 
+   case $action in
+-    block|unblock)	
++    block|unblock)
+ 	;;
+-    *)		
++    *)
+ 	ocf_log err "Invalid action $action!"
+ 	exit $OCF_ERR_CONFIGURED
+-	;; 
++	;;
+   esac
+ 
+   if ocf_is_true $reset_local_on_unblock_stop; then
+@@ -591,7 +676,7 @@
+   exit $OCF_ERR_ARGS
+ fi
+ 
+-case $1 in
++case $__OCF_ACTION in
+   meta-data)		meta_data
+ 			exit $OCF_SUCCESS
+ 			;;
+@@ -605,12 +690,12 @@
+ if [ -z "$OCF_RESKEY_protocol" ]; then
+   ocf_log err "Please set OCF_RESKEY_protocol"
+   exit $OCF_ERR_CONFIGURED
+-fi 
++fi
+ 
+ if [ -z "$OCF_RESKEY_portno" ]; then
+   ocf_log err "Please set OCF_RESKEY_portno"
+   exit $OCF_ERR_CONFIGURED
+-fi 
++fi
+ 
+ if [ -z "$OCF_RESKEY_action" ]; then
+   ocf_log err "Please set OCF_RESKEY_action"
+@@ -632,6 +717,7 @@
+ action=$OCF_RESKEY_action
+ ip=$OCF_RESKEY_ip
+ reset_local_on_unblock_stop=$OCF_RESKEY_reset_local_on_unblock_stop
++nodename=$(ocf_local_nodename)
+ 
+ 
+ # If "tickle" is enabled, we need to record the list of currently established
+@@ -647,17 +733,35 @@
+ 	fi
+ fi
+ 
+-case $1 in
+-  start)	
+-			IptablesStart $protocol $portno $ip $direction $action
++if ocf_is_ms; then
++  promotion_score=$(ocf_promotion_score -G -N $nodename -q 2> /dev/null)
++  if { [ "$__OCF_ACTION" = "monitor" ] && [ "$promotion_score" = "$SCORE_UNPROMOTED" ]; } || [ "$__OCF_ACTION" = "demote" ] || [ "$__OCF_ACTION" = "start" ]; then
++    case $action in
++      block) action="unblock" ;;
++      unblock) action="block" ;;
++    esac
++  fi
++fi
++
++case $__OCF_ACTION in
++  start)
++			IptablesStart "$protocol" "$portno" "$ip" "$direction" "$action"
++			;;
++
++  stop)
++			IptablesStop "$protocol" "$portno" "$ip" "$direction" "$action"
++			;;
++
++  promote)
++			IptablesPromote "$protocol" "$portno" "$ip" "$direction" "$action"
+ 			;;
+ 
+-  stop)		
+-			IptablesStop $protocol $portno $ip $direction $action
++  demote)
++			IptablesDemote "$protocol" "$portno" "$ip" "$direction" "$action"
+ 			;;
+ 
+-  status|monitor)	
+-			IptablesStatus $protocol $portno $ip $direction $action
++  status|monitor)
++			IptablesStatus "$protocol" "$portno" "$ip" "$direction" "$action"
+ 			;;
+ 
+   validate-all)
