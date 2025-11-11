@@ -1,0 +1,22 @@
+From de51a1705ce761f1fb5f1b2294cfc1153af70c1c Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 27 Jan 2025 09:54:06 +0100
+Subject: [PATCH] storage-mon: log "storage_mon is already running" in
+ start-action
+
+---
+ heartbeat/storage-mon.in | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/heartbeat/storage-mon.in b/heartbeat/storage-mon.in
+index 00e42f68d..d60db4ad4 100644
+--- a/heartbeat/storage-mon.in
++++ b/heartbeat/storage-mon.in
+@@ -313,6 +313,7 @@ storage_mon_start() {
+ 	else
+ 		storage_mon_monitor pid_check_only
+ 		if [ $? -eq $OCF_SUCCESS ]; then
++			ocf_log info "storage_mon is already running. PID=`cat $PIDFILE`"
+ 			return $OCF_SUCCESS
+ 		fi
+ 		storage_mon_init

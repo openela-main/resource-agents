@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	71%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.11
+Release:	80%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -148,17 +148,21 @@ Patch95: 	RHEL-66292-2-aws-agents-reuse-imds-token-improvements.patch
 Patch96: 	RHEL-68739-awsvip-add-interface-parameter.patch
 Patch97:	RHEL-69734-1-openstack-cinder-volume-wait-for-volume-to-be-available.patch
 Patch98:	RHEL-69734-2-openstack-cinder-volume-fix-detach-not-working-during-start-action.patch
-Patch99:	RHEL-86602-portblock-fix-version-detection.patch
-Patch100:	RHEL-88430-1-podman-etcd-new-ra.patch
-Patch101:	RHEL-88430-2-podman-etcd-remove-unused-actions-from-metadata.patch
-Patch102:	RHEL-88430-3-podman-etcd-fix-listen-peer-urls-binding.patch
-Patch103:	RHEL-92481-Filesystem-add-support-for-aznfs.patch
-Patch104:	RHEL-101705-Filesystem-fix-issue-with-Vormetric-mounts.patch
-Patch105:	RHEL-113108-podman-etcd-add-oom-parameter.patch
-Patch106:	RHEL-113813-podman-etcd-wrap-ipv6-address-in-brackets.patch
-Patch107:	RHEL-113810-podman-etcd-preserve-containers-for-debugging.patch
-Patch108:	RHEL-116208-podman-etcd-add-cluster-wide-force_new_cluster-attribute-check.patch
-Patch109:	RHEL-119502-podman-etcd-add-automatic-learner-member-promotion.patch
+Patch99:	RHEL-85056-tomcat-fix-CATALINA_PID-not-set-and-parameter-defaults.patch
+Patch100: 	RHEL-76038-1-storage-mon-remove-unused-variables.patch
+Patch101: 	RHEL-76038-2-storage-mon-fix-daemon-mode-bug-that-caused-delayed-initial-score.patch
+Patch102: 	RHEL-76038-3-storage-mon-only-use-underscores-in-functions.patch
+Patch103:	RHEL-76038-4-storage-mon-check-if-daemon-is-already-running.patch
+Patch104:	RHEL-76038-5-storage-mon-log-storage_mon-is-already-running-in-start-action.patch
+Patch105:	RHEL-79819-portblock-fix-version-detection.patch
+Patch106:	RHEL-88035-Filesystem-add-support-for-aznfs.patch
+Patch107:	RHEL-88429-1-podman-etcd-new-ra.patch
+Patch108:	RHEL-88429-2-podman-etcd-remove-unused-actions-from-metadata.patch
+Patch109:	RHEL-88429-3-podman-etcd-fix-listen-peer-urls-binding.patch
+Patch110:	RHEL-70044-IPaddr2-IPsrcaddr-avoid-duplicate-route-issues.patch
+Patch111:	RHEL-7688-IPaddr2-add-link-status-DOWN-LOWERLAYERDOWN-check.patch
+Patch112:	RHEL-97123-Filesystem-fix-issue-with-Vormetric-mounts.patch
+Patch113:	RHEL-102727-ocf-shellfuncs-remove-extra-sleep-from-curl_retry.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -382,16 +386,20 @@ exit 1
 %patch -p1 -P 97
 %patch -p1 -P 98
 %patch -p1 -P 99
-%patch -p1 -P 100 -F1
+%patch -p1 -P 100
 %patch -p1 -P 101
 %patch -p1 -P 102
 %patch -p1 -P 103
 %patch -p1 -P 104
 %patch -p1 -P 105
 %patch -p1 -P 106
-%patch -p1 -P 107
+%patch -p1 -P 107 -F1
 %patch -p1 -P 108
 %patch -p1 -P 109
+%patch -p1 -P 110
+%patch -p1 -P 111
+%patch -p1 -P 112
+%patch -p1 -P 113
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -721,43 +729,44 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
-* Wed Oct 15 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-71.11
-- podman-etcd: add automatic learner member promotion
+* Tue Jul 15 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80
+- ocf-shellfuncs/AWS agents: dont sleep after the final try in
+  curl_retry()
 
-  Resolves: RHEL-119502
+  Resolves: RHEL-102727
 
-* Mon Sep 22 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-71.8
-- podman-etcd: wrap ipv6 address in brackets
-- podman-etcd: preserve containers for debugging
-- podman-etcd: add cluster-wide force_new_cluster attribute check
-
-  Resolves: RHEL-113813, RHEL-113810, RHEL-116208
-
-* Mon Sep  8 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-71.7
-- podman-etcd: add oom parameter to be able to tune the Out-Of-Memory (OOM)
-  score for etcd containers
-
-  Resolves: RHEL-113108
-
-* Thu Jul  3 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-71.6
+* Thu Jul  3 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-78
 - Filesystem: fix issue with Vormetric mounts
 
-  Resolves: RHEL-101705
+  Resolves: RHEL-97123
 
-* Tue May 20 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-71.5
+* Tue Jun 17 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-77
+- IPaddr2/IPsrcaddr: fix to avoid duplicate route issues
+- IPaddr2: add link status DOWN/LOWERLAYERDOWN check
+
+  Resolves: RHEL-70044, RHEL-7688
+
+* Tue May 20 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-76
 - podman-etcd: new resource agent
 
-  Resolves: RHEL-88430
+  Resolves: RHEL-88429
 
-* Mon May 19 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-71.4
+* Tue Apr 22 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-74
 - Filesystem: add support for aznfs
 
-  Resolves: RHEL-92481
+  Resolves: RHEL-88035
 
-* Wed Apr  9 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-71.1
+* Wed Apr  9 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-73
+- storage-mon: fix daemon mode bug that caused delayed initial score
 - portblock: fix iptables version detection
 
-  Resolves: RHEL-86602
+  Resolves: RHEL-76038, RHEL-79819
+
+* Tue Apr  1 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-72
+- tomcat: fix CATALINA_PID not set, and catalina_base and catalina_out
+  parameter defaults
+
+  Resolves: RHEL-85056
 
 * Fri Jan 10 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-71
 - openstack-cinder-volume: wait for volume to be available

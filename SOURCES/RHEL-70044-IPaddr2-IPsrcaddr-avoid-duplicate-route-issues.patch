@@ -1,0 +1,37 @@
+From d0d2a0ff92dd23ee36cb57324c1eeaa3daed65bc Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Tue, 4 Feb 2025 16:13:27 +0100
+Subject: [PATCH] findif.sh: fix to avoid duplicate route issues
+
+---
+ heartbeat/findif.sh | 14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
+
+diff --git a/heartbeat/findif.sh b/heartbeat/findif.sh
+index 2ae91e958..6fb47110c 100644
+--- a/heartbeat/findif.sh
++++ b/heartbeat/findif.sh
+@@ -217,18 +217,14 @@ findif()
+   fi
+   if [ -n "$nic" ] ; then
+     # NIC supports more than two.
+-    routematch=$(ip -o -f $family route list match $match $proto $scope | grep -v "^\(unreachable\|prohibit\|blackhole\)" | grep "dev $nic " | sed -e 's,^\([0-9.]\+\) ,\1/32 ,;s,^\([0-9a-f:]\+\) ,\1/128 ,' | sort -t/ -k2,2nr)
++    routematch=$(ip -o -f $family route list match $match $proto $scope | grep "dev $nic " | sed -e 's,^\([0-9.]\+\) ,\1/32 ,;s,^\([0-9a-f:]\+\) ,\1/128 ,' | sort -t/ -k2,2nr)
+   else
+-    routematch=$(ip -o -f $family route list match $match $proto $scope | grep -v "^\(unreachable\|prohibit\|blackhole\)" | sed -e 's,^\([0-9.]\+\) ,\1/32 ,;s,^\([0-9a-f:]\+\) ,\1/128 ,' | sort -t/ -k2,2nr)
+-  fi
+-  if [ "$family" = "inet6" ]; then
+-    routematch=$(echo "$routematch" | grep -v "^default")
++    routematch=$(ip -o -f $family route list match $match $proto $scope | sed -e 's,^\([0-9.]\+\) ,\1/32 ,;s,^\([0-9a-f:]\+\) ,\1/128 ,' | sort -t/ -k2,2nr)
+   fi
+ 
+-  if [ $(echo "$routematch" | wc -l) -gt 1 ]; then
+-    ocf_exit_reason "More than 1 routes match $match. Unable to decide which route to use."
+-    return $OCF_ERR_GENERIC
+-  fi
++  # ignore matches from unrelated tables, and sort by metric to get the route with the lowest metric
++  routematch=$(echo "$routematch" | awk '!/^(default|unreachable|prohibit|blackhole)/{match($0, /metric ([^ ]+)/, arr); print arr[1], $0}' | sort -k 1n -u | cut -d" " -f 2- | head -1)
++
+   set -- $routematch
+   if [ $# = 0 ] ; then
+     case $OCF_RESKEY_ip in

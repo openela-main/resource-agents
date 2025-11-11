@@ -1,0 +1,25 @@
+From c6f520344e830a7c946b2222f9f251be038b1b28 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Fri, 24 Jan 2025 10:01:30 +0100
+Subject: [PATCH] storage-mon: check if daemon is already running during
+ start-action
+
+---
+ heartbeat/storage-mon.in | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/heartbeat/storage-mon.in b/heartbeat/storage-mon.in
+index 5edb96979..00e42f68d 100644
+--- a/heartbeat/storage-mon.in
++++ b/heartbeat/storage-mon.in
+@@ -311,6 +311,10 @@ storage_mon_start() {
+ 		fi
+ 		touch "${OCF_RESKEY_state_file}"
+ 	else
++		storage_mon_monitor pid_check_only
++		if [ $? -eq $OCF_SUCCESS ]; then
++			return $OCF_SUCCESS
++		fi
+ 		storage_mon_init
+ 		# generate command line
+ 		cmdline=""

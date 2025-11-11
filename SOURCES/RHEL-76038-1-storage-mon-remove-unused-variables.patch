@@ -1,0 +1,23 @@
+From a1e22c5c612f369bac0830588642560dcea92e7c Mon Sep 17 00:00:00 2001
+From: Fujii Masao <fujii@postgresql.org>
+Date: Sat, 9 Nov 2024 02:33:37 +0900
+Subject: [PATCH] Remove unused macro variables from storage_mon.c.
+
+---
+ tools/storage_mon.c | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index f94268f6f..2519a9e72 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -33,9 +33,6 @@
+ #define DEFAULT_PIDFILE HA_VARRUNDIR "storage_mon.pid"
+ #define DEFAULT_ATTRNAME "#health-storage_mon"
+ #define SMON_GET_RESULT_COMMAND "get_check_value"
+-#define SMON_RESULT_OK "green"
+-#define SMON_RESULT_NG "red"
+-#define SMON_RESULT_COMMAND_ERROR "unknown command"
+ #define SMON_BUFF_1MEG 1048576
+ #define SMON_MAX_IPCSNAME 256
+ #define SMON_MAX_MSGSIZE 128

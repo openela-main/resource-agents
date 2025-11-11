@@ -1,0 +1,79 @@
+From 46715c638829598d949dffab0898fe4c07074895 Mon Sep 17 00:00:00 2001
+From: Hideo Yamauchi <renayama19661014@ybb.ne.jp>
+Date: Thu, 21 Nov 2024 15:21:19 +0900
+Subject: [PATCH 1/2] High: storage-mon: Correct the timing of setting
+ notification values to storage-mon(RA) clients.
+
+---
+ tools/storage_mon.c | 17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index 2519a9e72..27d2ff1d1 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -320,7 +320,14 @@ static int32_t sigchld_handler(int32_t sig, void *data)
+ 
+ 						finished_count++;
+ 						test_forks[index] = 0;
+-					
++
++						/* Update the result value for the client response once all checks have completed. */
++						if (device_count == finished_count) { 
++							response_final_score = final_score;
++							if (!daemon_check_first_all_devices) {
++								daemon_check_first_all_devices = TRUE;
++							}
++						}
+ 					}
+ 				}
+ 			} else {
+@@ -441,15 +448,7 @@ static int test_device_main(gpointer data)
+ 		if (is_child_runnning()) {
+ 			device_check = FALSE;
+ 		}
+-		
+-		if (device_count == finished_count && device_check) { 
+-			/* Update the result value for the client response once all checks have completed. */
+-			response_final_score = final_score;
+ 
+-			if (!daemon_check_first_all_devices) {
+-				daemon_check_first_all_devices = TRUE;
+-			}
+-		}
+ 	}
+ 
+ 	if (device_check) {
+
+From 1201390fb219d1b566c5d31463daacef60c31ab4 Mon Sep 17 00:00:00 2001
+From: Hideo Yamauchi <renayama19661014@ybb.ne.jp>
+Date: Thu, 21 Nov 2024 15:43:33 +0900
+Subject: [PATCH 2/2] Mid: storage-mon RA: Wait until monitor confirms the
+ startup pid according to the OCF resource specification.
+
+---
+ heartbeat/storage-mon.in | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/heartbeat/storage-mon.in b/heartbeat/storage-mon.in
+index 284dec30f..7c9943d4f 100644
+--- a/heartbeat/storage-mon.in
++++ b/heartbeat/storage-mon.in
+@@ -325,6 +325,17 @@ storage-mon_start() {
+ 		if [ "$?" -ne 0 ]; then
+ 			return $OCF_ERR_GENERIC
+ 		fi
++
++		#Wait until monitor confirms the startup pid according to the ocf resource specification.	
++		while true; do
++			storage-mon_monitor pid_check_only
++			rc="$?"
++			if [ $rc -eq $OCF_SUCCESS ]; then
++				break
++			fi
++			sleep 1
++			ocf_log debug "storage-mon daemon still hasn't started yet. Waiting..."
++		done
+ 	fi
+ }
+ 
