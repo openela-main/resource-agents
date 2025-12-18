@@ -1,0 +1,85 @@
+From d08a7f74427ea2cf7d355a0f7f6d8f583e2d0cba Mon Sep 17 00:00:00 2001
+From: Carlo Lobrano <c.lobrano@gmail.com>
+Date: Thu, 3 Jul 2025 12:22:12 +0200
+Subject: [PATCH] OCPBUGS-58324: podman-etcd Add OOM score adjustment for etcd
+ containers
+
+This change introduces a new `oom` parameter to the `podman-etcd` OCF
+agent. This allows tuning the Out-Of-Memory (OOM) score adjustment for
+the etcd container.
+
+The `oom` parameter accepts integer values from -1000 to 1000,
+defaulting to -997 (system-node-critical equivalent).
+
+see https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/#node-out-of-memory-behavior
+
+Key changes:
+- Added `OCF_RESKEY_oom` parameter to agent definition (`content type="integer"`).
+- Integrated `--oom-score-adj` option into `podman_start()`.
+- Implemented input validation for `oom` in `podman_validate()`,
+  ensuring values are within the [-1000:1000] range.
+---
+ heartbeat/podman-etcd | 22 +++++++++++++++++++++-
+ 1 file changed, 21 insertions(+), 1 deletion(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index 6762112ec..884b7c579 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -45,6 +45,7 @@ OCF_RESKEY_nic_default="br-ex"
+ OCF_RESKEY_authfile_default="/var/lib/kubelet/config.json"
+ OCF_RESKEY_allow_pull_default="1"
+ OCF_RESKEY_reuse_default="0"
++OCF_RESKEY_oom_default="-997"
+ 
+ : ${OCF_RESKEY_image=${OCF_RESKEY_image_default}}
+ : ${OCF_RESKEY_pod_manifest=${OCF_RESKEY_pod_manifest_default}}
+@@ -53,6 +54,7 @@ OCF_RESKEY_reuse_default="0"
+ : ${OCF_RESKEY_authfile=${OCF_RESKEY_authfile_default}}
+ : ${OCF_RESKEY_allow_pull=${OCF_RESKEY_allow_pull_default}}
+ : ${OCF_RESKEY_reuse=${OCF_RESKEY_reuse_default}}
++: ${OCF_RESKEY_oom=${OCF_RESKEY_oom_default}}
+ 
+ #######################################################################
+ 
+@@ -230,6 +232,16 @@ to stop the container before pacemaker.
+ <shortdesc lang="en">drop-in dependency</shortdesc>
+ <content type="boolean"/>
+ </parameter>
++
++<parameter name="oom" required="0" unique="0">
++<longdesc lang="en">
++Tune the host's Out-Of-Memory (OOM) preferences for containers (accepts values from -1000 to 1000).
++Default to same OOM score as system-node-critical
++https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/#node-out-of-memory-behavior
++</longdesc>
++<shortdesc lang="en">OOM for container</shortdesc>
++<content type="integer" default="${OCF_RESKEY_oom_default}"/>
++</parameter>
+ </parameters>
+ 
+ <actions>
+@@ -1226,7 +1238,10 @@ podman_start()
+ 	fi
+ 
+ 	podman_create_mounts
+-	local run_opts="-d --name=${CONTAINER}"
++	local run_opts="--detach --name=${CONTAINER}"
++
++	run_opts="$run_opts --oom-score-adj=${OCF_RESKEY_oom}"
++
+ 	# check to see if the container has already started
+ 	podman_simple_status
+ 	if [ $? -eq $OCF_SUCCESS ]; then
+@@ -1513,6 +1528,11 @@ podman_validate()
+ 		exit $OCF_ERR_CONFIGURED
+ 	fi
+ 
++	if [ "$OCF_RESKEY_oom" -lt -1000 ] || [ "$OCF_RESKEY_oom" -gt 1000 ]; then
++		ocf_exit_reason "'oom' value ${OCF_RESKEY_oom} is out of range [-1000:1000]"
++		exit $OCF_ERR_CONFIGURED
++	fi
++
+ 	return $OCF_SUCCESS
+ }
+ 

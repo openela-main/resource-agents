@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	80%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
+Release:	80%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.11
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -163,6 +163,23 @@ Patch110:	RHEL-70044-IPaddr2-IPsrcaddr-avoid-duplicate-route-issues.patch
 Patch111:	RHEL-7688-IPaddr2-add-link-status-DOWN-LOWERLAYERDOWN-check.patch
 Patch112:	RHEL-97123-Filesystem-fix-issue-with-Vormetric-mounts.patch
 Patch113:	RHEL-102727-ocf-shellfuncs-remove-extra-sleep-from-curl_retry.patch
+Patch114:	RHEL-113109-podman-etcd-add-oom-parameter.patch
+Patch115:	RHEL-113814-podman-etcd-wrap-ipv6-address-in-brackets.patch
+Patch116:	RHEL-113811-podman-etcd-preserve-containers-for-debugging.patch
+Patch117:	RHEL-116209-podman-etcd-add-cluster-wide-force_new_cluster-attribute-check.patch
+Patch118:	RHEL-119503-podman-etcd-add-automatic-learner-member-promotion.patch
+Patch119:	RHEL-123284-RHEL-123287-1-db2-add-skip_basic_sql_health_check-and-monitor-parameters.patch
+Patch120:	RHEL-123284-RHEL-123287-2-db2-fix-variable-name.patch
+Patch121:	RHEL-123293-db2-use-reintegration-flag-to-avoid-race-condition-on-cluster-reintegration.patch
+Patch122:	RHEL-124202-podman-etcd-certificate-rotation.patch
+Patch123:	RHEL-124205-podman-etcd-compute-dynamic-revision-bump-from-maxRaftIndex.patch
+Patch124:	RHEL-127892-podman-etcd-exclude-stopping-resources-from-active-count.patch
+Patch125:	RHEL-126086-1-podman-etcd-add-container-crash-detection-with-coordinated-recovery.patch
+Patch126:	RHEL-126086-2-podman-etcd-fix-count-of-fnc-holders-in-container_health_check.patch
+Patch127:	RHEL-130579-1-podman-etcd-prevent-last-active-member-from-leaving.patch
+Patch128:	RHEL-130579-2-podman-etcd-remove-test-code.patch
+Patch129:	RHEL-131184-podman-etcd-prevent-learner-from-starting-before-cluster-is-ready.patch
+Patch130:	RHEL-132051-podman-etcd-prevent-retries-on-fatal-errors.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -400,6 +417,23 @@ exit 1
 %patch -p1 -P 111
 %patch -p1 -P 112
 %patch -p1 -P 113
+%patch -p1 -P 114
+%patch -p1 -P 115
+%patch -p1 -P 116
+%patch -p1 -P 117
+%patch -p1 -P 118
+%patch -p1 -P 119
+%patch -p1 -P 120
+%patch -p1 -P 121
+%patch -p1 -P 122
+%patch -p1 -P 123
+%patch -p1 -P 124
+%patch -p1 -P 125 -F2
+%patch -p1 -P 126
+%patch -p1 -P 127
+%patch -p1 -P 128
+%patch -p1 -P 129
+%patch -p1 -P 130
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -729,6 +763,58 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Fri Dec  5 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.11
+- podman-etcd: prevent retries on fatal errors
+
+  Resolves: RHEL-132051
+
+* Thu Nov 27 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.9
+- podman-etcd: prevent learner from starting before cluster is ready
+
+  Resolves: RHEL-131184
+
+* Tue Nov 25 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.8
+- podman-etcd: add container crash detection with coordinated recovery
+- podman-etcd: prevent last active member from leaving the etcd member
+  list
+
+  Resolves: RHEL-126086, RHEL-130579
+
+* Thu Nov 13 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.7
+- podman-etcd: exclude stopping resources from active count
+
+  Resolves: RHEL-127892
+
+* Wed Oct 29 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.6
+- db2: add "skip_basic_sql_health_check" parameter to avoid failing on
+  systems with high load
+- db2: add "monitor_retries", "monitor_sleep", and "monitor_retry_all_errors"
+  parameters to be able to avoid failing on first try
+- db2: use reintegration flag to avoid race condition on cluster
+  reintegration
+- podman-etcd: add support for cert rotation
+- podman-etcd: compute dynamic revision bump from maxRaftIndex
+
+  Resolves: RHEL-123284, RHEL-123287, RHEL-123293, RHEL-124202, RHEL-124205
+
+* Thu Oct  9 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.4
+- podman-etcd: add automatic learner member promotion
+
+  Resolves: RHEL-119503
+
+* Mon Sep 22 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.2
+- podman-etcd: wrap ipv6 address in brackets
+- podman-etcd: preserve containers for debugging
+- podman-etcd: add cluster-wide force_new_cluster attribute check
+
+  Resolves: RHEL-113814, RHEL-113811, RHEL-116209
+
+* Tue Sep  9 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.1
+- podman-etcd: add oom parameter to be able to tune the Out-Of-Memory (OOM)
+  score for etcd containers
+
+  Resolves: RHEL-113109
+
 * Tue Jul 15 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80
 - ocf-shellfuncs/AWS agents: dont sleep after the final try in
   curl_retry()

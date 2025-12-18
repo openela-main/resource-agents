@@ -1,0 +1,47 @@
+From a155018f6d65edf99493804dad99412b50d13e6c Mon Sep 17 00:00:00 2001
+From: Carlo Lobrano <c.lobrano@gmail.com>
+Date: Wed, 5 Nov 2025 13:48:38 +0100
+Subject: [PATCH] podman-etcd: fix count of fnc holders in
+ container_health_check
+
+The variable `fnc_holders` (a list of nodes that have force_new_cluster
+CIB attribute set) can contain empty spaces. Because of this, the
+shell's simple `-n` test is not enough to establish if there are no
+`fnc_holders`.
+
+Fixed counting the number of words inside the variable.
+
+Moreover
+* Enhanced comment for clarity.
+* Log level changed to `info`. We want visibility when the monitor
+  detects the peer node is ready for recovery, and this is rare enough
+  not to flood the logs.
+---
+ heartbeat/podman-etcd | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index 5bdc6d184..7795130a6 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -1366,7 +1366,7 @@ container_health_check()
+ 		return
+ 	fi
+ 
+-	# State file exists - the container failed, check recovery status in this lifecycle
++	# Could not execute monitor check command and state file exists - the container failed, check recovery status in this lifecycle
+ 	local time_since_heartbeat
+ 	time_since_heartbeat=$(get_time_since_last_heartbeat)
+ 	ocf_log err "Container ${CONTAINER} failed (last healthy: ${time_since_heartbeat}s ago)"
+@@ -1379,8 +1379,9 @@ container_health_check()
+ 		return
+ 	fi
+ 
+-	if [ -n "$fnc_holders" ]; then
+-		ocf_log debug "force_new_cluster detected (set by: $fnc_holders), triggering restart"
++	local fnc_holder_count=$(echo "$fnc_holders" | wc -w)
++	if [ "$fnc_holder_count" -gt 0 ]; then
++		ocf_log info "force_new_cluster detected (set by: $fnc_holders), triggering restart"
+ 		echo "failed-restart-now"
+ 		return
+ 	fi

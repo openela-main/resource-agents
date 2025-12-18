@@ -1,0 +1,42 @@
+From 29df4255c5f65ea94fb6de997805dca65e31071c Mon Sep 17 00:00:00 2001
+From: Carlo Lobrano <c.lobrano@gmail.com>
+Date: Mon, 24 Nov 2025 12:21:55 +0100
+Subject: [PATCH] podman-etcd: remove test code (#2103)
+
+---
+ heartbeat/podman-etcd | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index 7b6e08f11..b1f52cd5c 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -1341,11 +1341,6 @@ container_health_check()
+ 	#   recently (i.e. a failure), or not (fresh start)
+ 	monitor_cmd_exec
+ 	rc=$?
+-	if [ "$rc" -ne 0 ]; then
+-		ocf_log info "Container ${CONTAINER} not-running"
+-		echo "not-running"
+-		return
+-	fi
+ 	if [ "$rc" -eq 0 ]; then
+ 		# Container is running - update state file with current epoch
+ 		local current_epoch
+@@ -1644,7 +1639,6 @@ can_reuse_container() {
+ 		OCF_RESKEY_reuse=0
+ 		return "$OCF_SUCCESS"
+ 	fi
+-
+ 	if ! filtered_original_pod_manifest=$(filter_pod_manifest "$OCF_RESKEY_pod_manifest"); then
+ 		return $OCF_ERR_GENERIC
+ 	fi
+@@ -1871,7 +1865,7 @@ podman_start()
+ 	fi
+ 
+ 	if ocf_is_true "$JOIN_AS_LEARNER"; then
+-		local wait_timeout_sec=60
++		local wait_timeout_sec=$((10*60))
+ 		local poll_interval_sec=5
+ 		local retries=$(( wait_timeout_sec / poll_interval_sec ))
+ 
