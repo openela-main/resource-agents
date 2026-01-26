@@ -73,7 +73,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.9.0
-Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.23
+Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.27
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 %if 0%{?fedora} || 0%{?centos_version} || 0%{?rhel}
@@ -196,6 +196,9 @@ Patch1009:	bz1943464-python-pygments-fix-CVE-2021-27291.patch
 Patch1010:	RHEL-44923-aliyun-gcp-fix-bundled-urllib3-CVE-2024-37891.patch
 Patch1011:	RHEL-104761-aliyun-gcp-fix-bundled-requests-CVE-2024-47081.patch
 Patch1012:	RHEL-50360-setuptools-fix-CVE-2024-6345.patch
+Patch1013:	RHEL-136031-fix-bundled-urllib3-CVE-2025-66418.patch
+Patch1014:	RHEL-139760-fix-bundled-urllib3-CVE-2025-66471.patch
+Patch1015:	RHEL-140787-fix-bundled-urllib3-CVE-2026-21441.patch
 
 Obsoletes:	heartbeat-resources <= %{version}
 Provides:	heartbeat-resources = %{version}
@@ -750,6 +753,11 @@ popd
 pushd %{buildroot}/usr/lib/%{name}/%{bundled_lib_dir}/gcp/google-cloud-sdk/lib/third_party
 /usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1012}
 popd
+pushd %{buildroot}/usr/lib/%{name}/%{bundled_lib_dir}
+/usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1013}
+/usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1014}
+/usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1015}
+popd
 %endif
 
 ## tree fixup
@@ -1043,6 +1051,17 @@ ccs_update_schema > /dev/null 2>&1 ||:
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Tue Jan 20 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.27
+- bundled urllib3: fix CVE-2025-66471
+- bundled urllib3: fix CVE-2026-21441
+
+  Resolves: RHEL-139760, RHEL-140787
+
+* Tue Jan  6 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.24
+- bundled urllib3: fix CVE-2025-66418
+
+  Resolves: RHEL-136031
+
 * Fri Oct 31 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.23
 - nfsserver: add ability to set e.g. "pipefs-directory=/run/nfs/rpc_pipefs"
   in /etc/nfs.conf to avoid issues with non-clustered Kerberized mounts
