@@ -73,7 +73,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.9.0
-Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.28
+Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.29
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 %if 0%{?fedora} || 0%{?centos_version} || 0%{?rhel}
@@ -198,7 +198,7 @@ Patch1011:	RHEL-104761-aliyun-gcp-fix-bundled-requests-CVE-2024-47081.patch
 Patch1012:	RHEL-50360-setuptools-fix-CVE-2024-6345.patch
 Patch1013:	RHEL-136031-fix-bundled-urllib3-CVE-2025-66418.patch
 Patch1014:	RHEL-139760-fix-bundled-urllib3-CVE-2025-66471.patch
-Patch1015:	RHEL-140787-fix-bundled-urllib3-CVE-2026-21441.patch
+Patch1015:	RHEL-140787-RHEL-146289-fix-bundled-urllib3-CVE-2026-21441.patch
 Patch1016:	RHEL-142448-fix-bundled-pyasn1-CVE-2026-23490.patch
 
 Obsoletes:	heartbeat-resources <= %{version}
@@ -1053,6 +1053,11 @@ ccs_update_schema > /dev/null 2>&1 ||:
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Thu Feb  5 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.29
+- bundled urllib3: fix issue with CVE-2026-21441 patch
+
+  Resolves: RHEL-146289
+
 * Tue Jan 27 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.28
 - bundled pyasn1: fix CVE-2026-23490
 
