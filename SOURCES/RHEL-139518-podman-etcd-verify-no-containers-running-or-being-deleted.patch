@@ -1,0 +1,25 @@
+From 7449fd88d21650db1eaafdc7ef85bf3553f6ac7f Mon Sep 17 00:00:00 2001
+From: Pablo Fontanilla <pfontani@redhat.com>
+Date: Thu, 8 Jan 2026 09:42:42 +0100
+Subject: [PATCH] OCPBUGS-64765: podman-etcd: add -a option to crictl ps
+ (#2112)
+
+---
+ heartbeat/podman-etcd | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index bb2900536..591a663bf 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -738,8 +738,8 @@ archive_data_folder()
+ 
+ etcd_pod_container_exists() {
+ 	local count_matches
+-	# Check whether the etcd pod exists on the same node (header line included)
+-	count_matches=$(crictl pods --label app=etcd -q | xargs -I {} crictl ps --pod {} -o json | jq -r '.containers[].metadata | select ( .name == "etcd" ).name' | wc -l)
++	# Check whether the etcd pod exists on the same node (including stopped/exited containers)
++	count_matches=$(crictl pods --label app=etcd -q | xargs -I {} crictl ps -a --pod {} -o json | jq -r '.containers[].metadata | select ( .name == "etcd" ).name' | wc -l)
+ 	if [ "$count_matches" -eq 1 ]; then
+ 		# etcd pod found
+ 		return 0

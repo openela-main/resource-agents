@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	80%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.11
+Release:	80%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.13
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -180,6 +180,8 @@ Patch127:	RHEL-130579-1-podman-etcd-prevent-last-active-member-from-leaving.patc
 Patch128:	RHEL-130579-2-podman-etcd-remove-test-code.patch
 Patch129:	RHEL-131184-podman-etcd-prevent-learner-from-starting-before-cluster-is-ready.patch
 Patch130:	RHEL-132051-podman-etcd-prevent-retries-on-fatal-errors.patch
+Patch131:	RHEL-133936-podman-etcd-align-variable-names-with-etcd-3.6-pod-manifest.patch
+Patch132:	RHEL-139518-podman-etcd-verify-no-containers-running-or-being-deleted.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -434,6 +436,8 @@ exit 1
 %patch -p1 -P 128
 %patch -p1 -P 129
 %patch -p1 -P 130
+%patch -p1 -P 131
+%patch -p1 -P 132
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -763,6 +767,18 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Thu Jan  8 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.13
+- podman-etcd: verify that no static pod containers are running or
+  being deleted before starting
+
+  Resolves: RHEL-139518
+
+* Mon Jan  5 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.12
+- podman-etcd: align environment variable names with Etcd v3.6 Pod
+  manifest
+
+  Resolves: RHEL-133936
+
 * Fri Dec  5 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.11
 - podman-etcd: prevent retries on fatal errors
 
