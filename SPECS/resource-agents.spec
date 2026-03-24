@@ -73,7 +73,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.9.0
-Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.29
+Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.30
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 %if 0%{?fedora} || 0%{?centos_version} || 0%{?rhel}
@@ -181,6 +181,7 @@ Patch84:	RHEL-116150-3-portblock-fixes-add-method-and-status_check-parameters.pa
 Patch85:	RHEL-124815-db2-fix-variable-name.patch
 Patch86:	RHEL-102979-1-nfsserver-support-non-clustered-kerberized-mounts.patch
 Patch87:	RHEL-102979-2-nfsserver-fix-error-message.patch
+Patch88:	RHEL-152316-portblock-check-inverse-action.patch
 
 # bundle patches
 Patch1000:	7-gcp-bundled.patch
@@ -457,6 +458,7 @@ exit 1
 %patch -p1 -P 85
 %patch -p1 -P 86
 %patch -p1 -P 87
+%patch -p1 -P 88
 
 chmod 755 heartbeat/nova-compute-wait
 chmod 755 heartbeat/NovaEvacuate
@@ -1053,6 +1055,12 @@ ccs_update_schema > /dev/null 2>&1 ||:
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Fri Feb 27 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.30
+- portblock: check inverse action state file for non-promotable
+  resources to avoid issues when doing e.g. block followed by unblock
+
+  Resolves: RHEL-152316
+
 * Thu Feb  5 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.29
 - bundled urllib3: fix issue with CVE-2026-21441 patch
 
