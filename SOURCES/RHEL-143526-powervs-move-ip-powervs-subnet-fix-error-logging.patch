@@ -1,0 +1,54 @@
+From 8f5c5a2a472ab404b6fd15ff492e72904dc8ac20 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Thu, 22 Jan 2026 07:37:40 +0100
+Subject: [PATCH] powervs-move-ip/powervs-subnet: fix error logging
+
+---
+ heartbeat/powervs-move-ip.in |  4 ++--
+ heartbeat/powervs-subnet.in  | 10 ++++++----
+ 2 files changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/heartbeat/powervs-move-ip.in b/heartbeat/powervs-move-ip.in
+index e2250c998..0eea89f1d 100755
+--- a/heartbeat/powervs-move-ip.in
++++ b/heartbeat/powervs-move-ip.in
+@@ -310,9 +310,9 @@ class PowerCloudTokenManager:
+                     return json.load(f)
+                 finally:
+                     fcntl.flock(f, fcntl.LOCK_UN)
+-        except (json.JSONDecodeError, FileNotFoundError, PermissionError):
++        except (json.JSONDecodeError, FileNotFoundError, PermissionError) as e:
+             ocf.logger.warning(
+-                "[PowerCloudTokenManager] _read_cache: failed to read token cache read due to missing file or malformed JSON."
++                f"[PowerCloudTokenManager] _read_cache: failed to read token cache read due to missing file or malformed JSON: '{e}'"
+             )
+             return {}
+ 
+diff --git a/heartbeat/powervs-subnet.in b/heartbeat/powervs-subnet.in
+index 062b1235e..b8f3864e9 100755
+--- a/heartbeat/powervs-subnet.in
++++ b/heartbeat/powervs-subnet.in
+@@ -837,8 +837,9 @@ def start_action(
+     if rc != ocf.OCF_SUCCESS:
+         return rc
+ 
+-    if monitor_action(**res_options) != ocf.OCF_SUCCESS:
+-        raise PowerCloudAPIError(f"start_action: start subnet: {ws.subnet_name} failed")
++    rc = monitor_action(**res_options)
++    if rc != ocf.OCF_SUCCESS:
++        raise PowerCloudAPIError(f"start_action: start subnet: {ws.subnet_name} failed", rc)
+ 
+     ocf.logger.info(
+         f"start_action: finished, added connection {conn_name} for subnet {ws.subnet_name}"
+@@ -872,8 +873,9 @@ def stop_action(
+ 
+     ws.subnet_remove()
+ 
+-    if monitor_action(**res_options) != ocf.OCF_NOT_RUNNING:
+-        raise PowerCloudAPIError(f"stop_action: stop subnet {ws.subnet_name} failed")
++    rc = monitor_action(**res_options)
++    if rc != ocf.OCF_NOT_RUNNING:
++        raise PowerCloudAPIError(f"stop_action: stop subnet {ws.subnet_name} failed", rc)
+ 
+     ocf.logger.info(
+         f"stop_action: finished, deleted connection for subnet {ws.subnet_name}"

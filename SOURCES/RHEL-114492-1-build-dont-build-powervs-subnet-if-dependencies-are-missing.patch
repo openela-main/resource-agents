@@ -1,0 +1,84 @@
+From 277370f569b34e1cfb49637f9a00afc20bcd4c54 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 17 Jul 2024 10:43:29 +0200
+Subject: [PATCH] build: dont build powervs-subnet if dependencies are missing
+
+---
+ configure.ac          | 9 +++++++++
+ doc/man/Makefile.am   | 5 ++++-
+ heartbeat/Makefile.am | 5 ++++-
+ 3 files changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index b785e2c2c..21ce27423 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -519,6 +519,8 @@ fi
+ 
+ AC_PYTHON_MODULE(json)
+ AC_PYTHON_MODULE(pyroute2)
++AC_PYTHON_MODULE(requests)
++AC_PYTHON_MODULE(urllib3)
+ 
+ AS_VERSION_COMPARE([$PYTHON_VERSION], [3.6], [BUILD_OCF_PY=0], [BUILD_OCF_PY=1], [BUILD_OCF_PY=1])
+ 
+@@ -557,6 +559,13 @@ if test -z "$PYTHON" || test $BUILD_OCF_PY -eq 0; then
+ fi
+ AM_CONDITIONAL(BUILD_GCP_VPC_MOVE_VIP, test $BUILD_GCP_VPC_MOVE_VIP -eq 1)
+ 
++BUILD_POWERVS_SUBNET=1
++if test -z "$PYTHON" || test $BUILD_OCF_PY -eq 0 || test "x${HAVE_PYMOD_REQUESTS}" != xyes || test "x${HAVE_PYMOD_URLLIB3}" != xyes; then
++    BUILD_POWERVS_SUBNET=0
++    AC_MSG_WARN("Not building powervs-subnet")
++fi
++AM_CONDITIONAL(BUILD_POWERVS_SUBNET, test $BUILD_POWERVS_SUBNET -eq 1)
++
+ AC_PATH_PROGS(ROUTE, route)
+ AC_DEFINE_UNQUOTED(ROUTE, "$ROUTE", path to route command)
+ 
+diff --git a/doc/man/Makefile.am b/doc/man/Makefile.am
+index e577e6357..ef7639bff 100644
+--- a/doc/man/Makefile.am
++++ b/doc/man/Makefile.am
+@@ -190,7 +190,6 @@ man_MANS                = ocf_heartbeat_AoEtarget.7 \
+                           ocf_heartbeat_portblock.7 \
+                           ocf_heartbeat_postfix.7 \
+                           ocf_heartbeat_pound.7 \
+-                          ocf_heartbeat_powervs-subnet.7 \
+                           ocf_heartbeat_proftpd.7 \
+                           ocf_heartbeat_rabbitmq-cluster.7 \
+                           ocf_heartbeat_rabbitmq-server-ha.7 \
+@@ -238,6 +237,10 @@ if BUILD_GCP_VPC_MOVE_VIP
+ man_MANS           	+= ocf_heartbeat_gcp-vpc-move-vip.7
+ endif
+ 
++if BUILD_POWERVS_SUBNET
++man_MANS           	+= ocf_heartbeat_powervs-subnet.7
++endif
++
+ xmlfiles		= $(man_MANS:.7=.xml)
+ 
+ %.1 %.5 %.7 %.8: %.xml
+diff --git a/heartbeat/Makefile.am b/heartbeat/Makefile.am
+index ff73a15aa..409847970 100644
+--- a/heartbeat/Makefile.am
++++ b/heartbeat/Makefile.am
+@@ -162,7 +162,6 @@ ocf_SCRIPTS	      = AoEtarget		\
+ 			portblock		\
+ 			postfix			\
+ 			pound			\
+-			powervs-subnet		\
+ 			proftpd			\
+ 			rabbitmq-cluster	\
+ 			rabbitmq-server-ha	\
+@@ -207,6 +206,10 @@ if BUILD_GCP_VPC_MOVE_VIP
+ ocf_SCRIPTS	     += gcp-vpc-move-vip
+ endif
+ 
++if BUILD_POWERVS_SUBNET
++ocf_SCRIPTS	     += powervs-subnet
++endif
++
+ ocfcommondir		= $(OCF_LIB_DIR_PREFIX)/heartbeat
+ ocfcommon_DATA		= ocf-shellfuncs 	\
+ 			  ocf-binaries	 	\

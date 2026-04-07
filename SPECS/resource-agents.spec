@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	80%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.13
+Release:	80%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.19
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -182,6 +182,21 @@ Patch129:	RHEL-131184-podman-etcd-prevent-learner-from-starting-before-cluster-i
 Patch130:	RHEL-132051-podman-etcd-prevent-retries-on-fatal-errors.patch
 Patch131:	RHEL-133936-podman-etcd-align-variable-names-with-etcd-3.6-pod-manifest.patch
 Patch132:	RHEL-139518-podman-etcd-verify-no-containers-running-or-being-deleted.patch
+Patch133:	RHEL-114492-1-build-dont-build-powervs-subnet-if-dependencies-are-missing.patch
+Patch134:	RHEL-114492-2-powervs-move-ip-new-ra.patch
+Patch135:	RHEL-114492-3-powervs-move-ip-set-bundled-path.patch
+Patch136:	RHEL-114492-4-powervs-move-ip-add-iflabel-parameter.patch
+Patch137:	RHEL-140948-powervs-subnet-wait-for-IP.patch
+Patch138:	RHEL-143526-powervs-move-ip-powervs-subnet-fix-error-logging.patch
+Patch139:	RHEL-145627-podman-etcd-enhance-etcd-data-backup-with-snapshots-and-retention.patch
+Patch140:	RHEL-150699-podman-etcd-set-attributes-if-they-fail-during-force-new-cluster.patch
+Patch141:	RHEL-116199-1-ocf-shellfuncs-add-ocf_promotion_score.patch
+Patch142:	RHEL-116199-2-portblock-add-promotable-support.patch
+Patch143:	RHEL-116199-3-portblock-fixes-add-method-and-status_check-parameters.patch
+Patch144:	RHEL-116199-4-portblock-check-inverse-action.patch
+Patch145:	RHEL-156807-podman-etcd-ignore-learners-when-considering-which-node-has-higher-revision.patch
+Patch146:	RHEL-157144-podman-etcd-handle-existing-peer-URLs-gracefully-during-force_new_cluster-recovery.patch
+Patch147:	RHEL-157272-db2-set-reintegration-when-promotion-is-successful.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -207,7 +222,7 @@ BuildRequires: python-devel
 # for pgsqlms
 BuildRequires: perl-devel perl-English perl-FindBin
 
-%ifarch x86_64
+%ifarch x86_64 ppc64le
 BuildRequires: ha-cloud-support
 %endif
 
@@ -438,6 +453,21 @@ exit 1
 %patch -p1 -P 130
 %patch -p1 -P 131
 %patch -p1 -P 132
+%patch -p1 -P 133 -F2
+%patch -p1 -P 134
+%patch -p1 -P 135
+%patch -p1 -P 136
+%patch -p1 -P 137
+%patch -p1 -P 138
+%patch -p1 -P 139
+%patch -p1 -P 140
+%patch -p1 -P 141
+%patch -p1 -P 142
+%patch -p1 -P 143
+%patch -p1 -P 144
+%patch -p1 -P 145
+%patch -p1 -P 146
+%patch -p1 -P 147
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -479,6 +509,9 @@ export CFLAGS
 %endif
 %ifarch x86_64
 	PYTHONPATH="%{_usr}/lib/fence-agents/support/google" \
+%endif
+%ifarch ppc64le
+	PYTHONPATH="%{_usr}/lib/fence-agents/support/ibm" \
 %endif
 	%{conf_opt_fatal} \
 %if %{defined _unitdir}
@@ -767,6 +800,36 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Thu Mar 19 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.19
+- podman etcd: ignore learners when considering which node has higher revision
+- podman etcd: handle existing peer URLs gracefully during force_new_cluster recovery
+- db2: set reintegration when promotion is successful
+
+  Resolves: RHEL-156807, RHEL-157144, RHEL-157272
+
+* Fri Feb 27 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.18
+- portblock: add promotable support, and method and status_check
+  parameters
+
+  Resolves: RHEL-116199
+
+* Thu Feb 19 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.17
+- podman-etcd: set attributes if they fail during force-new-cluster
+
+  Resolves: RHEL-150699
+
+* Wed Feb  4 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.16
+- podman-etcd: enhance etcd data backup with snapshots and retention
+
+  Resolves: RHEL-145627
+
+* Fri Jan 23 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.15
+- powervs-move-ip: new resource agent
+- powervs-subnet: wait until IP is activated before running monitor-check
+- powervs-move-ip/powervs-subnet: fix error logging
+
+  Resolves: RHEL-114492, RHEL-140948, RHEL-143526
+
 * Thu Jan  8 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.13
 - podman-etcd: verify that no static pod containers are running or
   being deleted before starting

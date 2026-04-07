@@ -1,0 +1,46 @@
+From 66885ea0227e847b571608015b150d391a6234d7 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Mon, 23 Feb 2026 13:35:58 +0100
+Subject: [PATCH] db2: set reintegration when promotion is successful
+
+---
+ heartbeat/db2 | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/heartbeat/db2 b/heartbeat/db2
+index 82f2f82c3..4420b9989 100755
+--- a/heartbeat/db2
++++ b/heartbeat/db2
+@@ -955,6 +955,16 @@ db2_promote() {
+             PRIMARY/PEER/*|PRIMARY/REMOTE_CATCHUP/*|PRIMARY/REMOTE_CATCHUP_PENDING/CONNECTED|Primary/Peer)
+             # nothing to do, only update pacemaker's view
+             echo MASTER > $STATE_FILE
++
++            if [ -n "$remote_host" ]; then
++                for db in $dblist
++                do
++                    reint_attr="db2hadr-${inst1}_${inst2}_${db}_reint"
++                    ocf_log debug "Promotion succeeded, setting $reint_attr = 1"
++                    crm_attribute -n "$reint_attr" -N "$remote_host" -v "1" -l forever
++                done
++            fi
++
+             return $OCF_SUCCESS
+             ;;
+ 
+@@ -981,6 +991,15 @@ db2_promote() {
+             # update pacemaker's view
+             echo MASTER > $STATE_FILE
+ 
++            if [ -n "$remote_host" ]; then
++                for db in $dblist
++                do
++                    reint_attr="db2hadr-${inst1}_${inst2}_${db}_reint"
++                    ocf_log debug "Promotion succeeded, setting $reint_attr = 1"
++                    crm_attribute -n "$reint_attr" -N "$remote_host" -v "1" -l forever
++                done
++            fi
++
+             return $OCF_SUCCESS
+         fi
+ 

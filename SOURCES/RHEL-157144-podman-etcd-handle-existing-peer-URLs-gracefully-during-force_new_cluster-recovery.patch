@@ -1,0 +1,130 @@
+From 83d16b59a354a20bf7679af45a9acfa9f344959a Mon Sep 17 00:00:00 2001
+From: Carlo Lobrano <c.lobrano@gmail.com>
+Date: Wed, 18 Mar 2026 11:30:31 +0100
+Subject: [PATCH] OCPBUGS-78482: podman-etcd: fix "Peer URLs already exists" in
+ add_member_as_learner (#2136)
+
+* podman-etcd: handle "Peer URLs already exists" in add_member_as_learner
+
+When etcdctl member add fails with "Peer URLs already exists", the stale
+member entry is removed and the add is retried.
+
+Without this fix, add_member_as_learner returns early without setting
+the learner_node attribute, causing the peer node to time out waiting
+for it.
+---
+ heartbeat/podman-etcd | 85 +++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 73 insertions(+), 12 deletions(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index 2f8aa122f..860aca817 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -1072,6 +1072,49 @@ attribute_node_member_id()
+ 	esac
+ }
+ 
++# remove an etcd member identified by its IP from the member list
++remove_etcd_member_by_ip()
++{
++	local rc
++	local out
++	local member_ip
++	local endpoint_url
++	local member_list_json
++	local stale_member_id
++	local stale_member_id_hex
++
++	member_ip=$1
++	member_list_json=$(get_member_list_json)
++	rc=$?
++	if [ "$rc" -ne 0 ] ; then
++		ocf_log err "could not remove etcd member. Failed to get member list, error code: $rc"
++		return $OCF_ERR_GENERIC
++	fi
++
++	stale_member_id=$(printf "%s" "$member_list_json" | jq -r ".members[] | select( .peerURLs | map(test(\"$member_ip\")) | any).ID")
++	if [ -z "$stale_member_id" ]; then
++		ocf_log err "could not remove etcd member. Failed to find member ID"
++		return $OCF_ERR_GENERIC
++	fi
++
++	# JSON member_id is decimal, while etcdctl command needs the hex version
++	if ! stale_member_id_hex=$(decimal_to_hex "$stale_member_id"); then
++		ocf_log err "could not remove etcd member. Failed to convert member_id '$stale_member_id' into hex format"
++		return $OCF_ERR_GENERIC
++	fi
++
++	endpoint_url=$(ip_url $(attribute_node_ip get))
++	out=$(podman exec "${CONTAINER}" etcdctl --endpoints="$endpoint_url:2379" member remove "$stale_member_id_hex" 2>&1)
++	rc=$?
++	if [ "$rc" -ne 0 ] ; then
++		ocf_log err "could not remove etcd member. etcdctl member remove command failed, error code: $rc, output: $out"
++		return $OCF_ERR_GENERIC
++	fi
++
++	ocf_log info "$out"
++	return $OCF_SUCCESS
++}
++
+ add_member_as_learner()
+ {
+ 	local rc
+@@ -1079,18 +1122,36 @@ add_member_as_learner()
+ 	local member_ip=$2
+ 	local endpoint_url=$(ip_url $(attribute_node_ip get))
+ 	local peer_url=$(ip_url $member_ip)
++	local i
++	local max_retries
++	local out
+ 
+-	ocf_log info "add $member_name ($member_ip) to the member list as learner"
+-	out=$(podman exec "${CONTAINER}" etcdctl --endpoints="$endpoint_url:2379" member add "$member_name" --peer-urls="$peer_url:2380" --learner 2>&1)
+-	rc=$?
+-	if [ $rc -ne 0 ]; then
+-		ocf_log err "could not add $member_name as learner, error code $rc, etcdctl output: $out"
+-		return $rc
+-	fi
+-	ocf_log info "$out"
++	i=0
++	max_retries=3
++	while [ "$i" -lt "$max_retries" ]; do
++		i=$((i + 1))
++		ocf_log info "adding $member_name ($member_ip) to the member list as learner (attempt $i of $max_retries)"
++		out=$(podman exec "${CONTAINER}" etcdctl --endpoints="$endpoint_url:2379" \
++				member add "$member_name" \
++				--peer-urls="$peer_url:2380" \
++				--learner 2>&1)
++		rc=$?
++		if [ "$rc" -eq 0 ]; then
++			ocf_log info "$out"
++			attribute_learner_node update "$member_name"
++			return $OCF_SUCCESS
++		fi
++		if echo "$out" | grep -q "Peer URLs already exists"; then
++			# etcd data might have stale membership data
++			ocf_log warn "could not add member: Peer URLs already exists"
++			remove_etcd_member_by_ip "$member_ip"
++		else
++			ocf_log warn "could not add member: $out"
++		fi
++	done
+ 
+-	attribute_learner_node update "$member_name"
+-	return $?
++	ocf_log err "could not add $member_name as learner, error code $rc, etcdctl output: $out"
++	return $OCF_ERR_GENERIC
+ }
+ 
+ set_force_new_cluster()
+@@ -1454,8 +1515,8 @@ manage_peer_membership()
+ 	#       "https://<node IP>:2379"
+ 	#   ]
+ 	# }
+-	# NOTE that the "name" field is present in voting members only, while "isLearner"
+-	# field in learner members only and the value is always true (not a string) in that case.
++	# NOTE: voting members have a "name" field but no "isLearner" field,
++	# while learner members have "isLearner": true (boolean) but no "name" field, so we search for peerURLs matching.
+ 	peer_member_id=$(printf "%s" "$member_list_json" | jq -r ".members[] | select( .peerURLs | map(test(\"$peer_member_ip\")) | any).ID")
+ 	if [ -z "$peer_member_id" ]; then
+ 		ocf_log info "$peer_member_name is not in the members list"
