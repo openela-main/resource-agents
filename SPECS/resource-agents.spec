@@ -73,7 +73,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.9.0
-Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.30
+Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.32
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 %if 0%{?fedora} || 0%{?centos_version} || 0%{?rhel}
@@ -182,6 +182,9 @@ Patch85:	RHEL-124815-db2-fix-variable-name.patch
 Patch86:	RHEL-102979-1-nfsserver-support-non-clustered-kerberized-mounts.patch
 Patch87:	RHEL-102979-2-nfsserver-fix-error-message.patch
 Patch88:	RHEL-152316-portblock-check-inverse-action.patch
+Patch89:	RHEL-153157-db2-set-reintegration-when-promotion-is-successful.patch
+Patch90:	RHEL-166181-1-db2-fix-bashism.patch
+Patch91:	RHEL-166181-2-db2-do-not-use-db2stop-to-avoid-divergence-in-the-log.patch
 
 # bundle patches
 Patch1000:	7-gcp-bundled.patch
@@ -459,6 +462,9 @@ exit 1
 %patch -p1 -P 86
 %patch -p1 -P 87
 %patch -p1 -P 88
+%patch -p1 -P 89
+%patch -p1 -P 90
+%patch -p1 -P 91
 
 chmod 755 heartbeat/nova-compute-wait
 chmod 755 heartbeat/NovaEvacuate
@@ -1055,6 +1061,16 @@ ccs_update_schema > /dev/null 2>&1 ||:
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Fri Apr 10 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.32
+- db2: do not use db2stop to avoid divergence in the log
+
+  Resolves: RHEL-166181
+
+* Thu Mar 19 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.31
+- db2: set reintegration when promotion is successful
+
+  Resolves: RHEL-153157
+
 * Fri Feb 27 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.30
 - portblock: check inverse action state file for non-promotable
   resources to avoid issues when doing e.g. block followed by unblock
