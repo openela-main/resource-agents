@@ -8,7 +8,7 @@
 -import requests.adapters
 -import urllib3.util
 +try:
-+    sys.path.insert(0, '/usr/lib/fence-agents/support/ibm')
++    sys.path.insert(0, '/usr/lib/fence-agents/support/ibm/lib/python#PYTHON3_VERSION#/site-packages')
 +    import requests
 +    import requests.adapters
 +    import urllib3.util

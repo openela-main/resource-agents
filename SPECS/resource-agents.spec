@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	80%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.19
+Release:	80%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.22
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -197,6 +197,9 @@ Patch144:	RHEL-116199-4-portblock-check-inverse-action.patch
 Patch145:	RHEL-156807-podman-etcd-ignore-learners-when-considering-which-node-has-higher-revision.patch
 Patch146:	RHEL-157144-podman-etcd-handle-existing-peer-URLs-gracefully-during-force_new_cluster-recovery.patch
 Patch147:	RHEL-157272-db2-set-reintegration-when-promotion-is-successful.patch
+Patch148:	RHEL-159207-podman-etcd-hardened-monitor-stop-actions.patch
+Patch149:	RHEL-166182-1-db2-fix-bashism.patch
+Patch150:	RHEL-166182-2-db2-do-not-use-db2stop-to-avoid-divergence-in-the-log.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -292,7 +295,7 @@ service managers.
 License:	GPLv2+ and LGPLv2+
 Summary:	Cloud resource agents
 Requires:	%{name} = %{version}-%{release}
-Requires:	ha-cloud-support >= 4.10.0-63
+Requires:	ha-cloud-support >= 4.10.0-98.el9_7.12
 Requires:	socat
 Provides:	resource-agents-aliyun
 Obsoletes:	resource-agents-aliyun <= %{version}
@@ -468,6 +471,9 @@ exit 1
 %patch -p1 -P 145
 %patch -p1 -P 146
 %patch -p1 -P 147
+%patch -p1 -P 148
+%patch -p1 -P 149
+%patch -p1 -P 150
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -479,6 +485,8 @@ chmod 755 heartbeat/NovaEvacuate
 chmod 755 heartbeat/pgsqlms
 
 %build
+sed -i -e "s/#PYTHON3_VERSION#/%{python3_version}/" heartbeat/*.in
+
 if [ ! -f configure ]; then
 	./autogen.sh
 fi
@@ -508,10 +516,10 @@ export CFLAGS
 	PYTHON="%{__python3}" \
 %endif
 %ifarch x86_64
-	PYTHONPATH="%{_usr}/lib/fence-agents/support/google" \
+	PYTHONPATH="%{_usr}/lib/fence-agents/support/google/lib/python%{python3_version}/site-packages" \
 %endif
 %ifarch ppc64le
-	PYTHONPATH="%{_usr}/lib/fence-agents/support/ibm" \
+	PYTHONPATH="%{_usr}/lib/fence-agents/support/ibm/lib/python%{python3_version}/site-packages" \
 %endif
 	%{conf_opt_fatal} \
 %if %{defined _unitdir}
@@ -800,6 +808,22 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Mon Apr 20 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.22
+- Cloud agents: change bundled lib paths to match changes in
+  ha-cloud-support
+
+  Resolves: RHEL-168564
+
+* Fri Apr 10 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.21
+- db2: do not use db2stop to avoid divergence in the log
+
+  Resolves: RHEL-166182
+
+* Fri Mar 27 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.20
+- podman-etcd: hardened monitor/stop actions
+
+  Resolves: RHEL-159207
+
 * Thu Mar 19 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.19
 - podman etcd: ignore learners when considering which node has higher revision
 - podman etcd: handle existing peer URLs gracefully during force_new_cluster recovery
