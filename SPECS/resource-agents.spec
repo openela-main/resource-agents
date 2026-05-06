@@ -73,7 +73,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.9.0
-Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.32
+Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.33
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 %if 0%{?fedora} || 0%{?centos_version} || 0%{?rhel}
@@ -204,6 +204,7 @@ Patch1013:	RHEL-136031-fix-bundled-urllib3-CVE-2025-66418.patch
 Patch1014:	RHEL-139760-fix-bundled-urllib3-CVE-2025-66471.patch
 Patch1015:	RHEL-140787-RHEL-146289-fix-bundled-urllib3-CVE-2026-21441.patch
 Patch1016:	RHEL-142448-fix-bundled-pyasn1-CVE-2026-23490.patch
+Patch1017:	RHEL-157190-fix-bundled-pyasn1-CVE-2026-30922.patch
 
 Obsoletes:	heartbeat-resources <= %{version}
 Provides:	heartbeat-resources = %{version}
@@ -767,6 +768,7 @@ pushd %{buildroot}/usr/lib/%{name}/%{bundled_lib_dir}
 /usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1014}
 /usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1015}
 /usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1016}
+/usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=2 < %{PATCH1017}
 popd
 %endif
 
@@ -1061,6 +1063,10 @@ ccs_update_schema > /dev/null 2>&1 ||:
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Tue Apr 28 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.33
+- bundled pyasn1: fix CVE-2026-30922
+  Resolves: RHEL-157190
+
 * Fri Apr 10 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.32
 - db2: do not use db2stop to avoid divergence in the log
 
