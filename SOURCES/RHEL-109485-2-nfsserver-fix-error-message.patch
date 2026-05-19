@@ -1,0 +1,24 @@
+From 72620db5b52c943358faaf77ce5a15fb41169fab Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Fri, 31 Oct 2025 11:22:46 +0100
+Subject: [PATCH] nfsserver: set systemd_running before nfsserver_validate() to
+ avoid error message
+
+---
+ heartbeat/nfsserver | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/nfsserver b/heartbeat/nfsserver
+index 83f4bac51..71a711305 100755
+--- a/heartbeat/nfsserver
++++ b/heartbeat/nfsserver
+@@ -1062,8 +1062,8 @@ nfsserver_validate ()
+ 	return $OCF_SUCCESS
+ }
+ 
+-nfsserver_validate
+ systemd_is_running; systemd_running=$?
++nfsserver_validate
+ 
+ case $__OCF_ACTION in
+ 	start)      nfsserver_start

@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	80%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.22
+Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -142,7 +142,7 @@ Patch89:	RHEL-61888-ocf-shellfuncs-only-create-update-reload-systemd-drop-in-if-
 Patch90:	RHEL-62200-IPaddr2-improve-fail-logic-check-ip_status-after-adding-IP.patch
 Patch91:	RHEL-40589-azure-events-az-update-API-versions-add-retry-for-metadata.patch
 Patch92:	RHEL-58632-azure-events-use-node-name-from-cluster.patch
-Patch93:	RHEL-42513-powervs-subnet-new-ra.patch
+Patch93:	RHEL-42513-1-powervs-subnet-new-ra.patch
 Patch94: 	RHEL-66292-1-aws-agents-reuse-imds-token-until-it-expires.patch
 Patch95: 	RHEL-66292-2-aws-agents-reuse-imds-token-improvements.patch
 Patch96: 	RHEL-68739-awsvip-add-interface-parameter.patch
@@ -163,43 +163,45 @@ Patch110:	RHEL-70044-IPaddr2-IPsrcaddr-avoid-duplicate-route-issues.patch
 Patch111:	RHEL-7688-IPaddr2-add-link-status-DOWN-LOWERLAYERDOWN-check.patch
 Patch112:	RHEL-97123-Filesystem-fix-issue-with-Vormetric-mounts.patch
 Patch113:	RHEL-102727-ocf-shellfuncs-remove-extra-sleep-from-curl_retry.patch
-Patch114:	RHEL-113109-podman-etcd-add-oom-parameter.patch
-Patch115:	RHEL-113814-podman-etcd-wrap-ipv6-address-in-brackets.patch
-Patch116:	RHEL-113811-podman-etcd-preserve-containers-for-debugging.patch
-Patch117:	RHEL-116209-podman-etcd-add-cluster-wide-force_new_cluster-attribute-check.patch
-Patch118:	RHEL-119503-podman-etcd-add-automatic-learner-member-promotion.patch
-Patch119:	RHEL-123284-RHEL-123287-1-db2-add-skip_basic_sql_health_check-and-monitor-parameters.patch
-Patch120:	RHEL-123284-RHEL-123287-2-db2-fix-variable-name.patch
-Patch121:	RHEL-123293-db2-use-reintegration-flag-to-avoid-race-condition-on-cluster-reintegration.patch
-Patch122:	RHEL-124202-podman-etcd-certificate-rotation.patch
-Patch123:	RHEL-124205-podman-etcd-compute-dynamic-revision-bump-from-maxRaftIndex.patch
-Patch124:	RHEL-127892-podman-etcd-exclude-stopping-resources-from-active-count.patch
-Patch125:	RHEL-126086-1-podman-etcd-add-container-crash-detection-with-coordinated-recovery.patch
-Patch126:	RHEL-126086-2-podman-etcd-fix-count-of-fnc-holders-in-container_health_check.patch
-Patch127:	RHEL-130579-1-podman-etcd-prevent-last-active-member-from-leaving.patch
-Patch128:	RHEL-130579-2-podman-etcd-remove-test-code.patch
-Patch129:	RHEL-131184-podman-etcd-prevent-learner-from-starting-before-cluster-is-ready.patch
-Patch130:	RHEL-132051-podman-etcd-prevent-retries-on-fatal-errors.patch
-Patch131:	RHEL-133936-podman-etcd-align-variable-names-with-etcd-3.6-pod-manifest.patch
-Patch132:	RHEL-139518-podman-etcd-verify-no-containers-running-or-being-deleted.patch
-Patch133:	RHEL-114492-1-build-dont-build-powervs-subnet-if-dependencies-are-missing.patch
-Patch134:	RHEL-114492-2-powervs-move-ip-new-ra.patch
-Patch135:	RHEL-114492-3-powervs-move-ip-set-bundled-path.patch
-Patch136:	RHEL-114492-4-powervs-move-ip-add-iflabel-parameter.patch
-Patch137:	RHEL-140948-powervs-subnet-wait-for-IP.patch
-Patch138:	RHEL-143526-powervs-move-ip-powervs-subnet-fix-error-logging.patch
-Patch139:	RHEL-145627-podman-etcd-enhance-etcd-data-backup-with-snapshots-and-retention.patch
-Patch140:	RHEL-150699-podman-etcd-set-attributes-if-they-fail-during-force-new-cluster.patch
-Patch141:	RHEL-116199-1-ocf-shellfuncs-add-ocf_promotion_score.patch
-Patch142:	RHEL-116199-2-portblock-add-promotable-support.patch
-Patch143:	RHEL-116199-3-portblock-fixes-add-method-and-status_check-parameters.patch
-Patch144:	RHEL-116199-4-portblock-check-inverse-action.patch
-Patch145:	RHEL-156807-podman-etcd-ignore-learners-when-considering-which-node-has-higher-revision.patch
-Patch146:	RHEL-157144-podman-etcd-handle-existing-peer-URLs-gracefully-during-force_new_cluster-recovery.patch
-Patch147:	RHEL-157272-db2-set-reintegration-when-promotion-is-successful.patch
-Patch148:	RHEL-159207-podman-etcd-hardened-monitor-stop-actions.patch
-Patch149:	RHEL-166182-1-db2-fix-bashism.patch
-Patch150:	RHEL-166182-2-db2-do-not-use-db2stop-to-avoid-divergence-in-the-log.patch
+Patch114:	RHEL-102610-podman-etcd-add-oom-parameter.patch
+Patch115:	RHEL-42513-2-build-dont-build-powervs-subnet-if-dependencies-are-missing.patch
+Patch116:	RHEL-114489-1-powervs-move-ip-new-ra.patch
+Patch117:	RHEL-114489-2-powervs-move-ip-set-bundled-path.patch
+Patch118:	RHEL-115785-RHEL-115782-1-db2-add-skip_basic_sql_health_check-and-monitor-parameters.patch
+Patch119:	RHEL-113767-podman-etcd-wrap-ipv6-address-in-brackets.patch
+Patch120:	RHEL-113766-podman-etcd-preserve-containers-for-debugging.patch
+Patch121:	RHEL-116206-podman-etcd-add-cluster-wide-force_new_cluster-attribute-check.patch
+Patch122:	RHEL-116151-1-ocf-shellfuncs-add-ocf_promotion_score.patch
+Patch123:	RHEL-116151-2-portblock-add-promotable-support.patch
+Patch124:	RHEL-116151-3-portblock-fixes-add-method-and-status_check-parameters.patch
+Patch125:	RHEL-119495-podman-etcd-add-automatic-learner-member-promotion.patch
+Patch126:	RHEL-118624-db2-use-reintegration-flag-to-avoid-race-condition-on-cluster-reintegration.patch
+Patch127:	RHEL-123887-podman-etcd-certificate-rotation.patch
+Patch128:	RHEL-123906-podman-etcd-compute-dynamic-revision-bump-from-maxRaftIndex.patch
+Patch129:	RHEL-115785-RHEL-115782-2-db2-fix-variable-name.patch
+Patch130:	RHEL-118621-MailTo-add-s-nail-support-for-multiple-recipients.patch
+Patch131:	RHEL-64949-oracle-improve-monpassword-description.patch
+Patch132:	RHEL-109485-1-nfsserver-support-non-clustered-kerberized-mounts.patch
+Patch133:	RHEL-109485-2-nfsserver-fix-error-message.patch
+Patch134:	RHEL-114489-3-powervs-move-ip-add-iflabel-parameter.patch
+Patch135:	RHEL-127006-storage_mon-fix-handling-of-4k-block-devices.patch
+Patch136:	RHEL-127891-podman-etcd-exclude-stopping-resources-from-active-count.patch
+Patch137:	RHEL-126087-1-podman-etcd-add-container-crash-detection-with-coordinated-recovery.patch
+Patch138:	RHEL-121986-Filesystem-speed-up-get-PIDs.patch
+Patch139:	RHEL-130580-1-podman-etcd-prevent-last-active-member-from-leaving.patch
+Patch140:	RHEL-130580-2-podman-etcd-remove-test-code.patch
+Patch141:	RHEL-126087-2-podman-etcd-fix-count-of-fnc-holders-in-container_health_check.patch
+Patch142:	RHEL-131185-podman-etcd-prevent-learner-from-starting-before-cluster-is-ready.patch
+Patch143:	RHEL-132052-podman-etcd-prevent-retries-on-fatal-errors.patch
+Patch144:	RHEL-133937-podman-etcd-align-variable-names-with-etcd-3.6-pod-manifest.patch
+Patch145:	RHEL-139519-podman-etcd-verify-no-containers-running-or-being-deleted.patch
+Patch146:	RHEL-42513-powervs-subnet-wait-for-IP.patch
+Patch147:	RHEL-143527-powervs-move-ip-powervs-subnet-fix-error-logging.patch
+Patch148:	RHEL-145628-podman-etcd-enhance-etcd-data-backup-with-snapshots-and-retention.patch
+Patch149:	RHEL-150700-podman-etcd-set-attributes-if-they-fail-during-force-new-cluster.patch
+Patch150:	RHEL-159196-podman-etcd-ignore-learners-when-considering-which-node-has-higher-revision.patch
+Patch151:	RHEL-159193-podman-etcd-handle-existing-peer-URLs-gracefully-during-force_new_cluster-recovery.patch
+Patch152:	RHEL-159204-podman-etcd-hardened-monitor-stop-actions.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -253,7 +255,15 @@ Requires: which
 Requires: /sbin/fsck
 Requires: /usr/sbin/fsck.ext2 /usr/sbin/fsck.ext3 /usr/sbin/fsck.ext4
 Requires: /usr/sbin/fsck.xfs
+%if 0%{?fedora} > 40 || 0%{?rhel} > 9 || 0%{?suse_version}
+Recommends: /usr/sbin/mount.nfs /usr/sbin/mount.nfs4
+%else
+%if 0%{?rhel} > 8
+Recommends: /sbin/mount.nfs /sbin/mount.nfs4
+%else
 Requires: /sbin/mount.nfs /sbin/mount.nfs4
+%endif
+%endif
 %if (0%{?fedora} && 0%{?fedora} < 33) || (0%{?rhel} && 0%{?rhel} < 9) || (0%{?centos} && 0%{?centos} < 9) || 0%{?suse_version}
 %if (0%{?rhel} && 0%{?rhel} < 8) || (0%{?centos} && 0%{?centos} < 8)
 Requires: /usr/sbin/mount.cifs
@@ -269,7 +279,20 @@ Requires: /sbin/ip
 Requires: /usr/sbin/lvm
 
 # nfsserver / netfs.sh
-Requires: /usr/sbin/rpc.nfsd /sbin/rpc.statd /usr/sbin/rpc.mountd
+%if 0%{?fedora} > 40 || 0%{?rhel} > 9 || 0%{?suse_version}
+Recommends: /usr/sbin/rpc.statd
+%else
+%if 0%{?rhel} > 8
+Recommends: /sbin/rpc.statd
+%else
+Requires: /sbin/rpc.statd
+%endif
+%endif
+%if 0%{?fedora} > 40 || 0%{?rhel} > 8 || 0%{?suse_version}
+Recommends: /usr/sbin/rpc.nfsd /usr/sbin/rpc.mountd
+%else
+Requires: /usr/sbin/rpc.nfsd /usr/sbin/rpc.mountd
+%endif
 
 # ocf.py
 Requires: python3
@@ -295,7 +318,7 @@ service managers.
 License:	GPLv2+ and LGPLv2+
 Summary:	Cloud resource agents
 Requires:	%{name} = %{version}-%{release}
-Requires:	ha-cloud-support >= 4.10.0-98.el9_7.12
+Requires:	ha-cloud-support >= 4.10.0-63
 Requires:	socat
 Provides:	resource-agents-aliyun
 Obsoletes:	resource-agents-aliyun <= %{version}
@@ -438,7 +461,7 @@ exit 1
 %patch -p1 -P 112
 %patch -p1 -P 113
 %patch -p1 -P 114
-%patch -p1 -P 115
+%patch -p1 -P 115 -F2
 %patch -p1 -P 116
 %patch -p1 -P 117
 %patch -p1 -P 118
@@ -448,7 +471,7 @@ exit 1
 %patch -p1 -P 122
 %patch -p1 -P 123
 %patch -p1 -P 124
-%patch -p1 -P 125 -F2
+%patch -p1 -P 125
 %patch -p1 -P 126
 %patch -p1 -P 127
 %patch -p1 -P 128
@@ -456,11 +479,11 @@ exit 1
 %patch -p1 -P 130
 %patch -p1 -P 131
 %patch -p1 -P 132
-%patch -p1 -P 133 -F2
+%patch -p1 -P 133
 %patch -p1 -P 134
 %patch -p1 -P 135
 %patch -p1 -P 136
-%patch -p1 -P 137
+%patch -p1 -P 137 -F2
 %patch -p1 -P 138
 %patch -p1 -P 139
 %patch -p1 -P 140
@@ -474,6 +497,8 @@ exit 1
 %patch -p1 -P 148
 %patch -p1 -P 149
 %patch -p1 -P 150
+%patch -p1 -P 151
+%patch -p1 -P 152
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -485,8 +510,6 @@ chmod 755 heartbeat/NovaEvacuate
 chmod 755 heartbeat/pgsqlms
 
 %build
-sed -i -e "s/#PYTHON3_VERSION#/%{python3_version}/" heartbeat/*.in
-
 if [ ! -f configure ]; then
 	./autogen.sh
 fi
@@ -516,10 +539,10 @@ export CFLAGS
 	PYTHON="%{__python3}" \
 %endif
 %ifarch x86_64
-	PYTHONPATH="%{_usr}/lib/fence-agents/support/google/lib/python%{python3_version}/site-packages" \
+	PYTHONPATH="%{_usr}/lib/fence-agents/support/google" \
 %endif
 %ifarch ppc64le
-	PYTHONPATH="%{_usr}/lib/fence-agents/support/ibm/lib/python%{python3_version}/site-packages" \
+	PYTHONPATH="%{_usr}/lib/fence-agents/support/ibm" \
 %endif
 	%{conf_opt_fatal} \
 %if %{defined _unitdir}
@@ -808,115 +831,142 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
-* Mon Apr 20 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.22
-- Cloud agents: change bundled lib paths to match changes in
-  ha-cloud-support
-
-  Resolves: RHEL-168564
-
-* Fri Apr 10 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.21
-- db2: do not use db2stop to avoid divergence in the log
-
-  Resolves: RHEL-166182
-
-* Fri Mar 27 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.20
-- podman-etcd: hardened monitor/stop actions
-
-  Resolves: RHEL-159207
-
-* Thu Mar 19 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.19
+* Tue Apr  7 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111
 - podman etcd: ignore learners when considering which node has higher revision
 - podman etcd: handle existing peer URLs gracefully during force_new_cluster recovery
-- db2: set reintegration when promotion is successful
+- podman-etcd: hardened monitor/stop actions
 
-  Resolves: RHEL-156807, RHEL-157144, RHEL-157272
+  Resolves: RHEL-159196, RHEL-159193, RHEL-159204
 
-* Fri Feb 27 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.18
-- portblock: add promotable support, and method and status_check
-  parameters
-
-  Resolves: RHEL-116199
-
-* Thu Feb 19 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.17
+* Fri Mar  6 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-108
 - podman-etcd: set attributes if they fail during force-new-cluster
 
-  Resolves: RHEL-150699
+  Resolves: RHEL-150700
 
-* Wed Feb  4 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.16
+* Wed Feb  4 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-107
 - podman-etcd: enhance etcd data backup with snapshots and retention
 
-  Resolves: RHEL-145627
+  Resolves: RHEL-145628
 
-* Fri Jan 23 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.15
-- powervs-move-ip: new resource agent
-- powervs-subnet: wait until IP is activated before running monitor-check
+* Thu Jan 22 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-106
 - powervs-move-ip/powervs-subnet: fix error logging
 
-  Resolves: RHEL-114492, RHEL-140948, RHEL-143526
+  Resolves: RHEL-143527
 
-* Thu Jan  8 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.13
+* Wed Jan 14 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-105
+- powervs-subnet: new resource agent
+
+  Resolves: RHEL-42513
+
+* Thu Jan  8 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-104
 - podman-etcd: verify that no static pod containers are running or
   being deleted before starting
 
-  Resolves: RHEL-139518
+  Resolves: RHEL-139519
 
-* Mon Jan  5 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.12
+* Mon Dec  8 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-103
 - podman-etcd: align environment variable names with Etcd v3.6 Pod
   manifest
 
-  Resolves: RHEL-133936
+  Resolves: RHEL-133937
 
-* Fri Dec  5 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.11
+* Tue Dec  2 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-102
 - podman-etcd: prevent retries on fatal errors
 
-  Resolves: RHEL-132051
+  Resolves: RHEL-132052
 
-* Thu Nov 27 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.9
+* Thu Nov 27 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-101
 - podman-etcd: prevent learner from starting before cluster is ready
 
-  Resolves: RHEL-131184
+  Resolves: RHEL-131185
 
-* Tue Nov 25 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.8
+* Tue Nov 25 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-100
 - podman-etcd: add container crash detection with coordinated recovery
+
+  Resolves: RHEL-126087
+
+* Mon Nov 24 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-99
 - podman-etcd: prevent last active member from leaving the etcd member
   list
 
-  Resolves: RHEL-126086, RHEL-130579
+  Resolves: RHEL-130580
 
-* Thu Nov 13 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.7
+* Thu Nov 20 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-98
+- Filesystem: speed up get PIDs
+
+  Resolves: RHEL-121986
+
+* Thu Nov 13 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-97
 - podman-etcd: exclude stopping resources from active count
 
-  Resolves: RHEL-127892
+  Resolves: RHEL-127891
 
-* Wed Oct 29 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.6
+* Mon Nov 10 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-96
+- storage_mon: fix handling of 4k block devices
+
+  Resolves: RHEL-127006
+
+* Mon Nov  3 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-95
+- powervs-move-ip: new resource agent
+
+  Resolves: RHEL-114489
+
+* Fri Oct 31 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-94
+- nfsserver: add ability to set e.g. "pipefs-directory=/run/nfs/rpc_pipefs"
+  in /etc/nfs.conf to avoid issues with non-clustered Kerberized mounts
+
+  Resolves: RHEL-109485
+
+* Wed Oct 29 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-92
+- MailTo: add s-nail support for multiple recipients
+- oracle: improve monpassword description
+
+  Resolves: RHEL-118621, RHEL-64949
+
+* Wed Oct 29 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-91
 - db2: add "skip_basic_sql_health_check" parameter to avoid failing on
   systems with high load
 - db2: add "monitor_retries", "monitor_sleep", and "monitor_retry_all_errors"
   parameters to be able to avoid failing on first try
-- db2: use reintegration flag to avoid race condition on cluster
-  reintegration
+
+  Resolves: RHEL-115785, RHEL-115782
+
+* Tue Oct 28 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-90
 - podman-etcd: add support for cert rotation
 - podman-etcd: compute dynamic revision bump from maxRaftIndex
 
-  Resolves: RHEL-123284, RHEL-123287, RHEL-123293, RHEL-124202, RHEL-124205
+  Resolves: RHEL-123887, RHEL-123906
 
-* Thu Oct  9 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.4
+* Wed Oct 22 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-89
+- portblock: add promotable support, and method and status_check
+  parameters
+- db2: use reintegration flag to avoid race condition on cluster
+  reintegration
+
+  Resolves: RHEL-116151, RHEL-118624
+
+* Thu Oct  9 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-88
 - podman-etcd: add automatic learner member promotion
 
-  Resolves: RHEL-119503
+  Resolves: RHEL-119495
 
-* Mon Sep 22 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.2
+* Wed Oct  8 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-87
+- build: make nfs-utils a weak dependency
+
+  Resolves: RHEL-116100
+
+* Mon Sep 22 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-85
 - podman-etcd: wrap ipv6 address in brackets
 - podman-etcd: preserve containers for debugging
 - podman-etcd: add cluster-wide force_new_cluster attribute check
 
-  Resolves: RHEL-113814, RHEL-113811, RHEL-116209
+  Resolves: RHEL-113767, RHEL-113766, RHEL-116206
 
-* Tue Sep  9 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80.1
+* Tue Sep  9 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-81
 - podman-etcd: add oom parameter to be able to tune the Out-Of-Memory (OOM)
   score for etcd containers
 
-  Resolves: RHEL-113109
+  Resolves: RHEL-102610
 
 * Tue Jul 15 2025 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-80
 - ocf-shellfuncs/AWS agents: dont sleep after the final try in

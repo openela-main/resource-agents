@@ -5,7 +5,7 @@ diff --color -uNr a/heartbeat/gcp-pd-move.in b/heartbeat/gcp-pd-move.in
  from ocf import logger
  
  try:
-+  sys.path.insert(0, '/usr/lib/fence-agents/support/google/lib/python#PYTHON3_VERSION#/site-packages')
++  sys.path.insert(0, '/usr/lib/fence-agents/support/google')
    import googleapiclient.discovery
  except ImportError:
    pass
@@ -16,7 +16,7 @@ diff --color -uNr a/heartbeat/gcp-vpc-move-route.in b/heartbeat/gcp-vpc-move-rou
  from ocf import *
  
  try:
-+  sys.path.insert(0, '/usr/lib/fence-agents/support/google/lib/python#PYTHON3_VERSION#/site-packages')
++  sys.path.insert(0, '/usr/lib/fence-agents/support/google')
    import googleapiclient.discovery
    import pyroute2
    try:
@@ -27,7 +27,7 @@ diff --color -uNr a/heartbeat/gcp-vpc-move-vip.in b/heartbeat/gcp-vpc-move-vip.i
  from ocf import *
  
  try:
-+  sys.path.insert(0, '/usr/lib/fence-agents/support/google/lib/python#PYTHON3_VERSION#/site-packages')
++  sys.path.insert(0, '/usr/lib/fence-agents/support/google')
    import googleapiclient.discovery
    try:
      from google.oauth2.service_account import Credentials as ServiceAccountCredentials

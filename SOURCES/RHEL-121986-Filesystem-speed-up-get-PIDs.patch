@@ -1,0 +1,135 @@
+From 93729d83fa5bf15f4ec694e08e9777bde858fb41 Mon Sep 17 00:00:00 2001
+From: Lars Ellenberg <lars.ellenberg@linbit.com>
+Date: Thu, 16 Oct 2025 10:58:37 +0200
+Subject: [PATCH 1/2] Filesystem: speed up get_pids
+
+With force_umount=safe, we "manually" scan the /proc/ file system.
+
+We look for symlinks pointing into the path we are interested in.
+Specifically, we are interested in
+  /proc/<pid>/{root,exe,cwd}
+  /proc/<pid>/fd/<fd>
+We also look for relevant memory mappings in /proc/<pid>/maps
+
+All these are per process, not per "task" or "thread".
+see procfs(5) and pthreads(7).
+Still, we currently also scan /proc/<pid>/task/<tid>/
+for all the same things.
+
+With a large system with many heavily threaded processes,
+this can significantly slow down this scanning,
+without gaining new information.
+
+Adding -maxdepth to the find command line avoids this useless work,
+potentially reducing the scanning time by orders of magnitute
+on systems with many heavily threaded processes.
+
+We could also write a dedicated helper in C to do the very same thing,
+with the option to "short circuit" and proceed with the next pid
+as soon as the first "match" is found for the currently inspected pid.
+
+That could further reduce the scanning time
+by about an additional factor of 10.
+---
+ heartbeat/Filesystem | 25 +++++++++++++++++++++----
+ 1 file changed, 21 insertions(+), 4 deletions(-)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index 6d3960162..f76339fd6 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -680,14 +680,31 @@ get_pids()
+ 		# -path "/proc/[!0-9]*" -prune -o ...
+ 		# -path "/proc/[0-9]*" -a ...
+ 		# the latter seemd to be significantly faster for this one in my naive test.
++
++		# root, cwd, exe, maps, fd: all per process, not per task ("thread").
++		# -maxdepth to avoid repeatedly scanning the same thing
++		# for all threads of a heavily threaded process.
++		#
++		# Adding -maxdepth reduced scanning from > 16 seconds to < 2 seconds
++		# on a mostly idle system that happened to run a few java processes.
++		#
++		# We can also add a dedicated helper in C do twhat is done below,
++		# which would reduce the scanning time by an
++		# additional factor of 10 again.
++		#
++		# Or trust that fuser (above) learned something in the last 15 years
++		# and avoids blocking operations meanwhile?
+ 		procs=$(exec 2>/dev/null;
+-			find /proc -path "/proc/[0-9]*" -type l \( -lname "${dir}/*" -o -lname "${dir}" \) -print |
++			find /proc -mindepth 1 -maxdepth 3 \
++				-path "/proc/[0-9]*" \
++				-type l \( -lname "${dir}/*" -o -lname "${dir}" \) -print |
+ 			awk -F/ '{print $3}' | uniq)
+ 
+-		# This finds both /proc/<pid>/maps and /proc/<pid>/task/<tid>/maps;
+-		# if you don't want the latter, add -maxdepth.
++		# memory mappings are also per process, not per task.
++		# This finds only /proc/<pid>/maps, and not /proc/<pid>/task/<tid>/maps;
++		# if you also want the latter, drop -maxdepth.
+ 		mmap_procs=$(exec 2>/dev/null;
+-			find /proc -path "/proc/[0-9]*/maps" -print |
++			find /proc -mindepth 2 -maxdepth 2 -path "/proc/[0-9]*/maps" -print |
+ 			xargs -r grep -l " ${dir}/" | awk -F/ '{print $3}' | uniq)
+ 		printf "${procs}\n${mmap_procs}" | sort -u
+ 	fi
+
+From 3d34db0c60a125126361b45ff8303358b6275298 Mon Sep 17 00:00:00 2001
+From: Lars Ellenberg <lars.ellenberg@linbit.com>
+Date: Thu, 16 Oct 2025 11:31:00 +0200
+Subject: [PATCH 2/2] Filesystem: futher speed up get_pids
+
+If we have /proc/<pid>/map_files/* symlinks,
+we don't need to additionally grep /proc/<pid>/maps.
+
+Also don't first collect output of commands into variables
+just to pipe them to sort -u later,
+just pipe the output of the commands through sort -u directly.
+---
+ heartbeat/Filesystem | 31 +++++++++++++++++++------------
+ 1 file changed, 19 insertions(+), 12 deletions(-)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index f76339fd6..7021f13da 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -694,19 +694,26 @@ get_pids()
+ 		#
+ 		# Or trust that fuser (above) learned something in the last 15 years
+ 		# and avoids blocking operations meanwhile?
+-		procs=$(exec 2>/dev/null;
+-			find /proc -mindepth 1 -maxdepth 3 \
+-				-path "/proc/[0-9]*" \
+-				-type l \( -lname "${dir}/*" -o -lname "${dir}" \) -print |
+-			awk -F/ '{print $3}' | uniq)
+-
+-		# memory mappings are also per process, not per task.
+-		# This finds only /proc/<pid>/maps, and not /proc/<pid>/task/<tid>/maps;
+-		# if you also want the latter, drop -maxdepth.
+-		mmap_procs=$(exec 2>/dev/null;
++		(
++		# If you want to debug this, drop this redirection.
++		# But it producess too much "No such file" noise for kernel
++		# threads or due to races with exiting processes or closing fds.
++		exec 2>/dev/null;
++		find /proc -mindepth 1 -maxdepth 3 \
++			-path "/proc/[0-9]*" \
++			-type l \( -lname "${dir}/*" -o -lname "${dir}" \) -print |
++		awk -F/ '{print $3}' | uniq
++
++		# If we have "map_files/", "find" above already found the
++		# relevant symlinks, and we don't need to grep "maps" below.
++		# Available since kernel 3.3, respectively 4.3.
++		test -d /proc/$$/map_files ||
++			# memory mappings are also per process, not per task.
++			# This finds only /proc/<pid>/maps, and not /proc/<pid>/task/<tid>/maps;
++			# if you also want the latter, drop -maxdepth.
+ 			find /proc -mindepth 2 -maxdepth 2 -path "/proc/[0-9]*/maps" -print |
+-			xargs -r grep -l " ${dir}/" | awk -F/ '{print $3}' | uniq)
+-		printf "${procs}\n${mmap_procs}" | sort -u
++			xargs -r grep -l " ${dir}/" | awk -F/ '{print $3}' | uniq
++		) | sort -u
+ 	fi
+ }
+ 

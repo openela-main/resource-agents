@@ -1,0 +1,158 @@
+From 48455cb6cef9c5b849045bc838bc2b5ccd01b0fe Mon Sep 17 00:00:00 2001
+From: Klaus Wenninger <klaus.wenninger@aon.at>
+Date: Fri, 7 Nov 2025 17:06:57 +0100
+Subject: [PATCH 1/3] storage_mon: refactor removing basically duplicate code
+
+---
+ tools/storage_mon.c | 45 ++++++++++++++++-----------------------------
+ 1 file changed, 16 insertions(+), 29 deletions(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index 27d2ff1d1..fa9bd0cbc 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -119,6 +119,8 @@ static void *test_device(const char *device, int verbose, int inject_error_perce
+ 	int device_fd;
+ 	int res;
+ 	off_t seek_spot;
++	int sec_size = 512;
++	void *buffer;
+ 
+ 	if (verbose) {
+ 		printf("Testing device %s\n", device);
+@@ -164,9 +166,6 @@ static void *test_device(const char *device, int verbose, int inject_error_perce
+ 	}
+ 
+ 	if (flags & O_DIRECT) {
+-		int sec_size = 0;
+-		void *buffer;
+-
+ #ifdef __FreeBSD__
+ 		res = ioctl(device_fd, DIOCGSECTORSIZE, &sec_size);
+ #else
+@@ -176,33 +175,21 @@ static void *test_device(const char *device, int verbose, int inject_error_perce
+ 			PRINT_STORAGE_MON_ERR("Failed to get block device sector size for %s: %s", device, strerror(errno));
+ 			goto error;
+ 		}
++	}
+ 
+-		if (posix_memalign(&buffer, sysconf(_SC_PAGESIZE), sec_size) != 0) {
+-			PRINT_STORAGE_MON_ERR("Failed to allocate aligned memory: %s", strerror(errno));
+-			goto error;
+-		}
+-		res = read(device_fd, buffer, sec_size);
+-		free(buffer);
+-		if (res < 0) {
+-			PRINT_STORAGE_MON_ERR("Failed to read %s: %s", device, strerror(errno));
+-			goto error;
+-		}
+-		if (res < sec_size) {
+-			PRINT_STORAGE_MON_ERR("Failed to read %d bytes from %s, got %d", sec_size, device, res);
+-			goto error;
+-		}
+-	} else {
+-		char buffer[512];
+-
+-		res = read(device_fd, buffer, sizeof(buffer));
+-		if (res < 0) {
+-			PRINT_STORAGE_MON_ERR("Failed to read %s: %s", device, strerror(errno));
+-			goto error;
+-		}
+-		if (res < (int)sizeof(buffer)) {
+-			PRINT_STORAGE_MON_ERR("Failed to read %ld bytes from %s, got %d", sizeof(buffer), device, res);
+-			goto error;
+-		}
++	if (posix_memalign(&buffer, sysconf(_SC_PAGESIZE), sec_size) != 0) {
++		PRINT_STORAGE_MON_ERR("Failed to allocate aligned memory: %s", strerror(errno));
++		goto error;
++	}
++	res = read(device_fd, buffer, sec_size);
++	free(buffer);
++	if (res < 0) {
++		PRINT_STORAGE_MON_ERR("Failed to read %s: %s", device, strerror(errno));
++		goto error;
++	}
++	if (res < sec_size) {
++		PRINT_STORAGE_MON_ERR("Failed to read %d bytes from %s, got %d", sec_size, device, res);
++		goto error;
+ 	}
+ 
+ 	/* Fake an error */
+
+From 310f224fc7d9a6f4fca234f10696e6049c8f2666 Mon Sep 17 00:00:00 2001
+From: Klaus Wenninger <klaus.wenninger@aon.at>
+Date: Fri, 7 Nov 2025 17:14:06 +0100
+Subject: [PATCH 2/3] storage_mon.c: refactor moving up getting blocksize
+
+if that fails we can bail out without unnecessary seek
+---
+ tools/storage_mon.c | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index fa9bd0cbc..960266a74 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -152,6 +152,18 @@ static void *test_device(const char *device, int verbose, int inject_error_perce
+ 		PRINT_STORAGE_MON_INFO("%s: opened %s O_DIRECT, size=%zu", device, (flags & O_DIRECT)?"with":"without", devsize);
+ 	}
+ 
++	if (flags & O_DIRECT) {
++#ifdef __FreeBSD__
++		res = ioctl(device_fd, DIOCGSECTORSIZE, &sec_size);
++#else
++		res = ioctl(device_fd, BLKSSZGET, &sec_size);
++#endif
++		if (res < 0) {
++			PRINT_STORAGE_MON_ERR("Failed to get block device sector size for %s: %s", device, strerror(errno));
++			goto error;
++		}
++	}
++
+ 	/* Don't fret about real randomness */
+ 	srand(time(NULL) + getpid());
+ 	/* Pick a random place on the device - sector aligned */
+@@ -165,18 +177,6 @@ static void *test_device(const char *device, int verbose, int inject_error_perce
+ 		PRINT_STORAGE_MON_INFO("%s: reading from pos %ld", device, seek_spot);
+ 	}
+ 
+-	if (flags & O_DIRECT) {
+-#ifdef __FreeBSD__
+-		res = ioctl(device_fd, DIOCGSECTORSIZE, &sec_size);
+-#else
+-		res = ioctl(device_fd, BLKSSZGET, &sec_size);
+-#endif
+-		if (res < 0) {
+-			PRINT_STORAGE_MON_ERR("Failed to get block device sector size for %s: %s", device, strerror(errno));
+-			goto error;
+-		}
+-	}
+-
+ 	if (posix_memalign(&buffer, sysconf(_SC_PAGESIZE), sec_size) != 0) {
+ 		PRINT_STORAGE_MON_ERR("Failed to allocate aligned memory: %s", strerror(errno));
+ 		goto error;
+
+From ac19911ce550d5eca42be6cb44632384bdf8e1c9 Mon Sep 17 00:00:00 2001
+From: Klaus Wenninger <klaus.wenninger@aon.at>
+Date: Fri, 7 Nov 2025 17:18:45 +0100
+Subject: [PATCH 3/3] storage_mon.c: fix block-seek mask deriving it from the
+ block-size
+
+now this is as well working for e.g. 4K block-devices
+---
+ tools/storage_mon.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/storage_mon.c b/tools/storage_mon.c
+index 960266a74..6c4555f04 100644
+--- a/tools/storage_mon.c
++++ b/tools/storage_mon.c
+@@ -167,7 +167,7 @@ static void *test_device(const char *device, int verbose, int inject_error_perce
+ 	/* Don't fret about real randomness */
+ 	srand(time(NULL) + getpid());
+ 	/* Pick a random place on the device - sector aligned */
+-	seek_spot = (rand() % (devsize-1024)) & 0xFFFFFFFFFFFFFE00;
++	seek_spot = (rand() % (devsize-sec_size)) & ~(((off_t) sec_size)-1);
+ 	res = lseek(device_fd, seek_spot, SEEK_SET);
+ 	if (res < 0) {
+ 		PRINT_STORAGE_MON_ERR("Failed to seek %s: %s", device, strerror(errno));
