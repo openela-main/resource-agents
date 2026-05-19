@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
+Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.1
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -199,9 +199,11 @@ Patch146:	RHEL-42513-powervs-subnet-wait-for-IP.patch
 Patch147:	RHEL-143527-powervs-move-ip-powervs-subnet-fix-error-logging.patch
 Patch148:	RHEL-145628-podman-etcd-enhance-etcd-data-backup-with-snapshots-and-retention.patch
 Patch149:	RHEL-150700-podman-etcd-set-attributes-if-they-fail-during-force-new-cluster.patch
-Patch150:	RHEL-159196-podman-etcd-ignore-learners-when-considering-which-node-has-higher-revision.patch
-Patch151:	RHEL-159193-podman-etcd-handle-existing-peer-URLs-gracefully-during-force_new_cluster-recovery.patch
-Patch152:	RHEL-159204-podman-etcd-hardened-monitor-stop-actions.patch
+Patch150:	RHEL-151828-portblock-check-inverse-action.patch
+Patch151:	RHEL-156808-podman-etcd-ignore-learners-when-considering-which-node-has-higher-revision.patch
+Patch152:	RHEL-157145-podman-etcd-handle-existing-peer-URLs-gracefully-during-force_new_cluster-recovery.patch
+Patch153:	RHEL-159202-podman-etcd-hardened-monitor-stop-actions.patch
+Patch154:	RHEL-157273-db2-set-reintegration-when-promotion-is-successful.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -499,6 +501,8 @@ exit 1
 %patch -p1 -P 150
 %patch -p1 -P 151
 %patch -p1 -P 152
+%patch -p1 -P 153
+%patch -p1 -P 154
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -831,12 +835,15 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
-* Tue Apr  7 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111
-- podman etcd: ignore learners when considering which node has higher revision
-- podman etcd: handle existing peer URLs gracefully during force_new_cluster recovery
+* Wed Apr  8 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.1
+- portblock: check inverse action state file for non-promotable
+  resources to avoid issues when doing e.g. block followed by unblock
+- podman-etcd: ignore learners when considering which node has higher revision
+- podman-etcd: handle existing peer URLs gracefully during force_new_cluster recovery
 - podman-etcd: hardened monitor/stop actions
+- db2: set reintegration when promotion is successful
 
-  Resolves: RHEL-159196, RHEL-159193, RHEL-159204
+  Resolves: RHEL-151828, RHEL-156808, RHEL-157145, RHEL-159202, RHEL-157273
 
 * Fri Mar  6 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-108
 - podman-etcd: set attributes if they fail during force-new-cluster
