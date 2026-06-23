@@ -1,0 +1,130 @@
+From db041869f4b8612e44561f4ba4a46ed09d18e24e Mon Sep 17 00:00:00 2001
+From: Vincenzo Mauro <vmauro@redhat.com>
+Date: Thu, 7 May 2026 18:14:04 +0200
+Subject: [PATCH 1/4] fixed OCPBUGS-83333
+
+---
+ heartbeat/podman-etcd | 22 +++++++++++++++++++++-
+ 1 file changed, 21 insertions(+), 1 deletion(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index 4c9bbd4fa..d96c055e3 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -2519,7 +2519,27 @@ podman_validate()
+ 
+ podman_notify()
+ {
+-	ocf_log info "notify: type=${OCF_RESKEY_CRM_meta_notify_type}, operation=${OCF_RESKEY_CRM_meta_notify_operation}, nodes { active=[${OCF_RESKEY_CRM_meta_notify_active_uname}], start=[${OCF_RESKEY_CRM_meta_notify_start_uname}], stop=[${OCF_RESKEY_CRM_meta_notify_stop_uname}] }, resources { active=[${OCF_RESKEY_CRM_meta_notify_active_resource}], start =[${OCF_RESKEY_CRM_meta_notify_start_resource}], stop=[${OCF_RESKEY_CRM_meta_notify_stop_resource}] }"
++	local notify_type="${OCF_RESKEY_CRM_meta_notify_type}"
++	local notify_operation="${OCF_RESKEY_CRM_meta_notify_operation}"
++
++	ocf_log info "notify: type=${notify_type}, operation=${notify_operation}, nodes { active=[${OCF_RESKEY_CRM_meta_notify_active_uname}], start=[${OCF_RESKEY_CRM_meta_notify_start_uname}], stop=[${OCF_RESKEY_CRM_meta_notify_stop_uname}] }, resources { active=[${OCF_RESKEY_CRM_meta_notify_active_resource}], start =[${OCF_RESKEY_CRM_meta_notify_start_resource}], stop=[${OCF_RESKEY_CRM_meta_notify_stop_resource}] }"
++
++	# Pacemaker serializes operations per resource per node. The start sequence
++	# with notifications is:
++	#   pre-notify(start) on peer → start on joiner → post-notify(start) on peer
++	# Between pre-notify and post-notify, the peer's recurring monitor is
++	# queued — Pacemaker won't overlap operations for the same resource on the
++	# same node. The monitor path (check_peer → manage_peer_membership →
++	# add_member_as_learner) is the primary way a running peer adds the
++	# starting node to the etcd member list. Without handling it here, the
++	# starting node's podman_start poll loop (waiting for learner_node attribute)
++	# deadlocks: start waits for learner_node, monitor waits for start to finish.
++	# pre_notify_start fires before the start action, giving us the window to
++	# add the learner so the joiner's poll loop finds it immediately.
++	if [ "$notify_type" = "pre" ] && [ "$notify_operation" = "start" ]; then
++		ocf_log info "pre_notify_start: running peer membership check for starting node"
++		check_peer
++	fi
+ }
+ 
+ # TODO :
+
+From d1c817108276ee3019a20164fca0646985d99cde Mon Sep 17 00:00:00 2001
+From: Vincenzo Mauro <vmauro@redhat.com>
+Date: Fri, 8 May 2026 10:38:12 +0200
+Subject: [PATCH 2/4] Updated deadlock comment
+
+---
+ heartbeat/podman-etcd | 18 ++++++------------
+ 1 file changed, 6 insertions(+), 12 deletions(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index d96c055e3..21a5e01e1 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -2524,18 +2524,12 @@ podman_notify()
+ 
+ 	ocf_log info "notify: type=${notify_type}, operation=${notify_operation}, nodes { active=[${OCF_RESKEY_CRM_meta_notify_active_uname}], start=[${OCF_RESKEY_CRM_meta_notify_start_uname}], stop=[${OCF_RESKEY_CRM_meta_notify_stop_uname}] }, resources { active=[${OCF_RESKEY_CRM_meta_notify_active_resource}], start =[${OCF_RESKEY_CRM_meta_notify_start_resource}], stop=[${OCF_RESKEY_CRM_meta_notify_stop_resource}] }"
+ 
+-	# Pacemaker serializes operations per resource per node. The start sequence
+-	# with notifications is:
+-	#   pre-notify(start) on peer → start on joiner → post-notify(start) on peer
+-	# Between pre-notify and post-notify, the peer's recurring monitor is
+-	# queued — Pacemaker won't overlap operations for the same resource on the
+-	# same node. The monitor path (check_peer → manage_peer_membership →
+-	# add_member_as_learner) is the primary way a running peer adds the
+-	# starting node to the etcd member list. Without handling it here, the
+-	# starting node's podman_start poll loop (waiting for learner_node attribute)
+-	# deadlocks: start waits for learner_node, monitor waits for start to finish.
+-	# pre_notify_start fires before the start action, giving us the window to
+-	# add the learner so the joiner's poll loop finds it immediately.
++	# Pacemaker suppresses the peer's monitor during an
++	# active start/notify cycle. Since monitor is the only path that calls
++	# add_member_as_learner (outside force_new_cluster), the joiner's
++	# podman_start poll loop deadlocks; it waits for learner_node, but
++	# no monitor runs to set it. pre_notify_start fires before start,
++	# so we add the learner here to break the deadlock
+ 	if [ "$notify_type" = "pre" ] && [ "$notify_operation" = "start" ]; then
+ 		ocf_log info "pre_notify_start: running peer membership check for starting node"
+ 		check_peer
+
+From 0fafab701878ce4b8c7413610e41dce3e69447aa Mon Sep 17 00:00:00 2001
+From: Vincenzo Mauro <vmauro@redhat.com>
+Date: Tue, 12 May 2026 10:24:26 +0200
+Subject: [PATCH 3/4] improved logging
+
+---
+ heartbeat/podman-etcd | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index 21a5e01e1..41ce84ff1 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -2531,7 +2531,7 @@ podman_notify()
+ 	# no monitor runs to set it. pre_notify_start fires before start,
+ 	# so we add the learner here to break the deadlock
+ 	if [ "$notify_type" = "pre" ] && [ "$notify_operation" = "start" ]; then
+-		ocf_log info "pre_notify_start: running peer membership check for starting node"
++		ocf_log info "pre_notify_start: running peer membership check for ${OCF_RESKEY_CRM_meta_notify_start_uname}"
+ 		check_peer
+ 	fi
+ }
+@@ -2616,4 +2616,4 @@ validate-all)	podman_validate;;
+ esac
+ rc=$?
+ ocf_log debug "${OCF_RESOURCE_INSTANCE} $__OCF_ACTION : $rc"
+-exit $rc
++exc
+
+From bdce9048b4fc2c38255d36e73a1f73a7d72b7471 Mon Sep 17 00:00:00 2001
+From: Vincenzo Mauro <vmauro@redhat.com>
+Date: Tue, 12 May 2026 10:46:49 +0200
+Subject: [PATCH 4/4] fixed typo
+
+---
+ heartbeat/podman-etcd | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index 41ce84ff1..740e2edb4 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -2616,4 +2616,4 @@ validate-all)	podman_validate;;
+ esac
+ rc=$?
+ ocf_log debug "${OCF_RESOURCE_INSTANCE} $__OCF_ACTION : $rc"
+-exc
++exit $rc

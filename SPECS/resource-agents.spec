@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.1
+Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.4
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -204,6 +204,11 @@ Patch151:	RHEL-156808-podman-etcd-ignore-learners-when-considering-which-node-ha
 Patch152:	RHEL-157145-podman-etcd-handle-existing-peer-URLs-gracefully-during-force_new_cluster-recovery.patch
 Patch153:	RHEL-159202-podman-etcd-hardened-monitor-stop-actions.patch
 Patch154:	RHEL-157273-db2-set-reintegration-when-promotion-is-successful.patch
+Patch155:	RHEL-166183-1-db2-fix-bashism.patch
+Patch156:	RHEL-166183-2-db2-do-not-use-db2stop-to-avoid-divergence-in-the-log.patch
+Patch157:	RHEL-177849-podman-etcd-fix-port-2380-binding-race.patch
+Patch158:	RHEL-177838-podman-etcd-fix-machine-deletion-deadlock.patch
+Patch159:	RHEL-177843-podman-etcd-fix-learner-start-deadlock.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -320,7 +325,7 @@ service managers.
 License:	GPLv2+ and LGPLv2+
 Summary:	Cloud resource agents
 Requires:	%{name} = %{version}-%{release}
-Requires:	ha-cloud-support >= 4.10.0-63
+Requires:	ha-cloud-support >= 4.10.0-110.el9_8.1
 Requires:	socat
 Provides:	resource-agents-aliyun
 Obsoletes:	resource-agents-aliyun <= %{version}
@@ -503,6 +508,11 @@ exit 1
 %patch -p1 -P 152
 %patch -p1 -P 153
 %patch -p1 -P 154
+%patch -p1 -P 155
+%patch -p1 -P 156
+%patch -p1 -P 157
+%patch -p1 -P 158
+%patch -p1 -P 159
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -514,6 +524,8 @@ chmod 755 heartbeat/NovaEvacuate
 chmod 755 heartbeat/pgsqlms
 
 %build
+sed -i -e "s/#PYTHON3_VERSION#/%{python3_version}/" heartbeat/*.in
+
 if [ ! -f configure ]; then
 	./autogen.sh
 fi
@@ -543,10 +555,10 @@ export CFLAGS
 	PYTHON="%{__python3}" \
 %endif
 %ifarch x86_64
-	PYTHONPATH="%{_usr}/lib/fence-agents/support/google" \
+	PYTHONPATH="%{_usr}/lib/fence-agents/support/google/lib/python%{python3_version}/site-packages" \
 %endif
 %ifarch ppc64le
-	PYTHONPATH="%{_usr}/lib/fence-agents/support/ibm" \
+	PYTHONPATH="%{_usr}/lib/fence-agents/support/ibm/lib/python%{python3_version}/site-packages" \
 %endif
 	%{conf_opt_fatal} \
 %if %{defined _unitdir}
@@ -835,6 +847,24 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Wed May 20 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.4
+- podman-etcd: fix port 2380 binding race
+- podman-etcd: fix machine deletion deadlock
+- podman-etcd: fix learner start deadlock
+
+  Resolves: RHEL-177849, RHEL-177838, RHEL-177843
+
+* Mon Apr 20 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.3
+- Cloud agents: change bundled lib paths to match changes in
+  ha-cloud-support
+
+  Resolves: RHEL-168565
+
+* Fri Apr 10 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.2
+- db2: do not use db2stop to avoid divergence in the log
+
+  Resolves: RHEL-166183
+
 * Wed Apr  8 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.1
 - portblock: check inverse action state file for non-promotable
   resources to avoid issues when doing e.g. block followed by unblock

@@ -1,0 +1,96 @@
+From 42dfef941ed80d6073022141fa1cad513e8dae4f Mon Sep 17 00:00:00 2001
+From: Pablo Fontanilla <pfontani@redhat.com>
+Date: Wed, 22 Apr 2026 12:54:58 +0200
+Subject: [PATCH 1/2] fix(podman-etcd): use -ge 1 in
+ etcd_pod_container_exists()
+
+PR #2112 added -a to crictl ps to include exited containers, but
+did not update the count check from -eq 1 to -ge 1. During install,
+etcd container crashes create exited containers that inflate the
+count past 1, causing the guard to report 'pod not found' despite
+the pod running.
+
+Fixes: OCPBUGS-83742
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+---
+ heartbeat/podman-etcd | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index 4c9bbd4fa..52b2a1386 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -932,7 +932,7 @@ etcd_pod_container_exists() {
+ 	local count_matches
+ 	# Check whether the etcd pod exists on the same node (including stopped/exited containers)
+ 	count_matches=$(crictl pods --label app=etcd -q | xargs -I {} crictl ps -a --pod {} -o json | jq -r '.containers[].metadata | select ( .name == "etcd" ).name' | wc -l)
+-	if [ "$count_matches" -eq 1 ]; then
++	if [ "$count_matches" -ge 1 ]; then
+ 		# etcd pod found
+ 		return 0
+ 	fi
+
+From 30d20f6b99ae9898bf801c0a5e690b81fc928faa Mon Sep 17 00:00:00 2001
+From: Pablo Fontanilla <pfontani@redhat.com>
+Date: Wed, 22 Apr 2026 12:57:46 +0200
+Subject: [PATCH 2/2] fix(podman-etcd): wait for etcd ports before starting
+ container
+
+During the static-pod to podman-etcd transition, the old etcd process
+may still hold ports 2379/2380 when the RA tries to start its container.
+This causes 'bind: address already in use' errors and eventual fallback
+to standalone mode.
+
+Add a 60-second wait loop (modeled on CEO's pod.gotpl.yaml port check)
+that blocks until the ports are free before calling podman run/start.
+
+Fixes: OCPBUGS-83742
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+---
+ heartbeat/podman-etcd | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index 52b2a1386..9a960914b 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -940,6 +940,25 @@ etcd_pod_container_exists() {
+ 	return 1
+ }
+ 
++wait_for_etcd_ports_release() {
++	local timeout=${1:-60}
++	local elapsed=0
++	if [ -z "$(ss -Htan '( sport = 2379 or sport = 2380 )')" ]; then
++		return 0
++	fi
++	ocf_log info "waiting for etcd ports 2379/2380 to be released (timeout: ${timeout}s)"
++	while [ -n "$(ss -Htan '( sport = 2379 or sport = 2380 )')" ]; do
++		if [ "$elapsed" -ge "$timeout" ]; then
++			ocf_log err "etcd ports still in use after ${timeout}s"
++			return 1
++		fi
++		sleep 1
++		elapsed=$((elapsed + 1))
++	done
++	ocf_log info "etcd ports released after ${elapsed}s"
++	return 0
++}
++
+ attribute_node_cluster_id()
+ {
+ 	local action="$1"
+@@ -2267,6 +2286,11 @@ podman_start()
+ 		ocf_log notice "Pull image not required, ${OCF_RESKEY_image}"
+ 	fi
+ 
++	if ! wait_for_etcd_ports_release 60; then
++		ocf_exit_reason "etcd ports 2379/2380 still bound — cannot start container"
++		return $OCF_ERR_GENERIC
++	fi
++
+ 	if ocf_is_true "$OCF_RESKEY_reuse" && container_exists; then
+ 		ocf_log info "starting existing container $CONTAINER."
+ 		ocf_run podman start "$CONTAINER"
