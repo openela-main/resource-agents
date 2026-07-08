@@ -1,0 +1,33 @@
+From f671a00108d0b272493b4b4a0a5fb838e5eca2af Mon Sep 17 00:00:00 2001
+From: Silvan Raijer <s.raijer@rayzilt.nl>
+Date: Wed, 27 May 2026 11:10:19 +0200
+Subject: [PATCH] nfsserver: Stop fsidd when stopping nfs-server
+
+Signed-off-by: Silvan Raijer <s.raijer@rayzilt.nl>
+---
+ heartbeat/nfsserver | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/heartbeat/nfsserver b/heartbeat/nfsserver
+index fe15abc06..f41ef92c0 100755
+--- a/heartbeat/nfsserver
++++ b/heartbeat/nfsserver
+@@ -1010,6 +1010,18 @@ nfsserver_stop ()
+ 		  		return $OCF_ERR_GENERIC
+ 		  	fi
+ 		  fi
++
++          nfs_exec stop fsidd > /dev/null 2>&1
++          ocf_log info "Stop: fsidd"
++          fn=`mktemp`
++          nfs_exec status fsidd > $fn 2>&1
++          rc=$?
++          ocf_log debug "$(cat $fn)"
++          rm -f $fn
++          if [ "$rc" -eq "0" ]; then
++            ocf_exit_reason "Failed to stop fsidd"
++            return $OCF_ERR_GENERIC
++          fi
+ 	esac
+ 
+ 

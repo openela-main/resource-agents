@@ -73,7 +73,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.9.0
-Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.33
+Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.35
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 %if 0%{?fedora} || 0%{?centos_version} || 0%{?rhel}
@@ -185,6 +185,9 @@ Patch88:	RHEL-152316-portblock-check-inverse-action.patch
 Patch89:	RHEL-153157-db2-set-reintegration-when-promotion-is-successful.patch
 Patch90:	RHEL-166181-1-db2-fix-bashism.patch
 Patch91:	RHEL-166181-2-db2-do-not-use-db2stop-to-avoid-divergence-in-the-log.patch
+Patch92:	RHEL-180766-1-nfsserver-fixes-unmount-failure-of-bind-mount-with-fsidd.patch
+Patch93:	RHEL-180766-2-nfsserver-fixes-incorrect-indentation.patch
+Patch94:	RHEL-180766-3-nfsserver-do-not-try-to-stop-fsidd-when-not-present.patch
 
 # bundle patches
 Patch1000:	7-gcp-bundled.patch
@@ -466,6 +469,9 @@ exit 1
 %patch -p1 -P 89
 %patch -p1 -P 90
 %patch -p1 -P 91
+%patch -p1 -P 92
+%patch -p1 -P 93
+%patch -p1 -P 94
 
 chmod 755 heartbeat/nova-compute-wait
 chmod 755 heartbeat/NovaEvacuate
@@ -1063,6 +1069,11 @@ ccs_update_schema > /dev/null 2>&1 ||:
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Wed Jun 10 2026 Arslan Ahmad <arahmad@redhat.com> - 4.9.0-54.35
+- nfsserver: stop fsidd when stopping nfsserver
+
+  Resolves: RHEL-180766
+
 * Tue Apr 28 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.33
 - bundled pyasn1: fix CVE-2026-30922
   Resolves: RHEL-157190

@@ -1,0 +1,43 @@
+From ba7d5d59308458e1892fd29c9a719c8779dd46b6 Mon Sep 17 00:00:00 2001
+From: Arslan Ahmad <arslan.ahmad97@googlemail.com>
+Date: Tue, 2 Jun 2026 18:10:11 +0530
+Subject: [PATCH] nfsserver: Fixes the incorrect indentation
+
+Signed-off-by: Arslan Ahmad <arslan.ahmad97@googlemail.com>
+---
+ heartbeat/nfsserver | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/heartbeat/nfsserver b/heartbeat/nfsserver
+index f41ef92c0..93428bfd1 100755
+--- a/heartbeat/nfsserver
++++ b/heartbeat/nfsserver
+@@ -1011,17 +1011,17 @@ nfsserver_stop ()
+ 		  	fi
+ 		  fi
+ 
+-          nfs_exec stop fsidd > /dev/null 2>&1
+-          ocf_log info "Stop: fsidd"
+-          fn=`mktemp`
+-          nfs_exec status fsidd > $fn 2>&1
+-          rc=$?
+-          ocf_log debug "$(cat $fn)"
+-          rm -f $fn
+-          if [ "$rc" -eq "0" ]; then
+-            ocf_exit_reason "Failed to stop fsidd"
+-            return $OCF_ERR_GENERIC
+-          fi
++		  nfs_exec stop fsidd > /dev/null 2>&1
++		  ocf_log info "Stop: fsidd"
++		  fn=`mktemp`
++		  nfs_exec status fsidd > $fn 2>&1
++		  rc=$?
++		  ocf_log debug "$(cat $fn)"
++		  rm -f $fn
++		  if [ "$rc" -eq "0" ]; then
++			ocf_exit_reason "Failed to stop fsidd"
++			return $OCF_ERR_GENERIC
++		  fi
+ 	esac
+ 
+ 
