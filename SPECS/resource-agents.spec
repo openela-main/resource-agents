@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.4
+Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.5
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -209,6 +209,7 @@ Patch156:	RHEL-166183-2-db2-do-not-use-db2stop-to-avoid-divergence-in-the-log.pa
 Patch157:	RHEL-177849-podman-etcd-fix-port-2380-binding-race.patch
 Patch158:	RHEL-177838-podman-etcd-fix-machine-deletion-deadlock.patch
 Patch159:	RHEL-177843-podman-etcd-fix-learner-start-deadlock.patch
+Patch160:	RHEL-188107-podman-etcd-remove-cert-monitoring.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -513,6 +514,7 @@ exit 1
 %patch -p1 -P 157
 %patch -p1 -P 158
 %patch -p1 -P 159
+%patch -p1 -P 160
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -847,6 +849,11 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Thu Jun 25 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.5
+- podman-etcd: remove cert monitoring
+
+  Resolves: RHEL-188107
+
 * Wed May 20 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.4
 - podman-etcd: fix port 2380 binding race
 - podman-etcd: fix machine deletion deadlock
