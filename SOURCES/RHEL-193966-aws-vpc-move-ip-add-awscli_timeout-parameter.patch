@@ -1,0 +1,81 @@
+From fd1c9a1cfd4463dad843f666ad951e6616f1ccf0 Mon Sep 17 00:00:00 2001
+From: Guilherme Felix <fguilher@amazon.com>
+Date: Mon, 23 Mar 2026 19:22:49 +0000
+Subject: [PATCH 1/2] aws-vpc-move-ip: Add awscli_timeout option
+
+---
+ heartbeat/aws-vpc-move-ip | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/heartbeat/aws-vpc-move-ip b/heartbeat/aws-vpc-move-ip
+index 2afc0ba537..3e798173f5 100755
+--- a/heartbeat/aws-vpc-move-ip
++++ b/heartbeat/aws-vpc-move-ip
+@@ -48,6 +48,7 @@ OCF_RESKEY_interface_default="eth0"
+ OCF_RESKEY_iflabel_default=""
+ OCF_RESKEY_monapi_default="false"
+ OCF_RESKEY_lookup_type_default="InstanceId"
++OCF_RESKEY_awscli_timeout_default=""
+ 
+ : ${OCF_RESKEY_awscli=${OCF_RESKEY_awscli_default}}
+ : ${OCF_RESKEY_auth_type=${OCF_RESKEY_auth_type_default}}
+@@ -61,6 +62,7 @@ OCF_RESKEY_lookup_type_default="InstanceId"
+ : ${OCF_RESKEY_iflabel=${OCF_RESKEY_iflabel_default}}
+ : ${OCF_RESKEY_monapi=${OCF_RESKEY_monapi_default}}
+ : ${OCF_RESKEY_lookup_type=${OCF_RESKEY_lookup_type_default}}
++: ${OCF_RESKEY_awscli_timeout=${OCF_RESKEY_awscli_timeout_default}}
+ #######################################################################
+ 
+ 
+@@ -211,6 +213,14 @@ curl sleep between tries
+ <content type="integer" default="${OCF_RESKEY_curl_sleep_default}" />
+ </parameter>
+ 
++<parameter name="awscli_timeout" unique="0">
++<longdesc lang="en">
++awscli cli-connect-timeout value
++</longdesc>
++<shortdesc lang="en">awscli cli-connect-timeout</shortdesc>
++<content type="integer" default="${OCF_RESKEY_curl_sleep_default}" />
++</parameter>
++
+ </parameters>
+ 
+ <actions>
+@@ -490,7 +500,11 @@ if ! ocf_is_root; then
+ 	exit $OCF_ERR_PERM
+ fi
+ 
+-AWSCLI_CMD="${OCF_RESKEY_awscli}"
++if [ -n "${OCF_RESKEY_awscli_timeout}" ]; then
++   AWSCLI_CMD="${OCF_RESKEY_awscli} --cli-connect-timeout ${OCF_RESKEY_awscli_timeout}"
++else
++   AWSCLI_CMD="${OCF_RESKEY_awscli}"
++fi
+ if [ "x${OCF_RESKEY_auth_type}" = "xkey" ]; then
+ 	AWSCLI_CMD="$AWSCLI_CMD --profile ${OCF_RESKEY_profile}"
+ elif [ "x${OCF_RESKEY_auth_type}" = "xrole" ]; then
+
+From be4ad4dc4978875717b84b847bcd39386405bf51 Mon Sep 17 00:00:00 2001
+From: Guilherme Felix <fguilher@amazon.com>
+Date: Tue, 24 Mar 2026 16:08:41 +0000
+Subject: [PATCH 2/2] aws-vpc-move-ip: Fix error in default value for
+ awscli_timeout
+
+---
+ heartbeat/aws-vpc-move-ip | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/aws-vpc-move-ip b/heartbeat/aws-vpc-move-ip
+index 3e798173f5..1348c59085 100755
+--- a/heartbeat/aws-vpc-move-ip
++++ b/heartbeat/aws-vpc-move-ip
+@@ -218,7 +218,7 @@ curl sleep between tries
+ awscli cli-connect-timeout value
+ </longdesc>
+ <shortdesc lang="en">awscli cli-connect-timeout</shortdesc>
+-<content type="integer" default="${OCF_RESKEY_curl_sleep_default}" />
++<content type="integer" default="${OCF_RESKEY_awscli_timeout_default}" />
+ </parameter>
+ 
+ </parameters>

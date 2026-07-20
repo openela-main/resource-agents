@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.5
+Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.7
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -210,6 +210,8 @@ Patch157:	RHEL-177849-podman-etcd-fix-port-2380-binding-race.patch
 Patch158:	RHEL-177838-podman-etcd-fix-machine-deletion-deadlock.patch
 Patch159:	RHEL-177843-podman-etcd-fix-learner-start-deadlock.patch
 Patch160:	RHEL-188107-podman-etcd-remove-cert-monitoring.patch
+Patch161:	RHEL-193966-aws-vpc-move-ip-add-awscli_timeout-parameter.patch
+Patch162:	RHEL-193691-podman-etcd-add-support-for-single-node-operation.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -515,6 +517,8 @@ exit 1
 %patch -p1 -P 158
 %patch -p1 -P 159
 %patch -p1 -P 160
+%patch -p1 -P 161
+%patch -p1 -P 162
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -849,6 +853,16 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Wed Jul 15 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.7
+- podman-etcd: add support for single-node operation
+
+  Resolves: RHEL-193691
+
+* Fri Jul 10 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-111.6
+- aws-vpc-move-ip: add awscli_timeout parameter
+
+  Resolves: RHEL-193966
+
 * Thu Jun 25 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.5
 - podman-etcd: remove cert monitoring
 
