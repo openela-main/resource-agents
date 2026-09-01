@@ -1,0 +1,33 @@
+From 24a60ef2d4a69029ec1794253a13ca12df350792 Mon Sep 17 00:00:00 2001
+From: Pablo Fontanilla <pfontani@redhat.com>
+Date: Wed, 5 Aug 2026 13:44:03 +0200
+Subject: [PATCH] podman-etcd: scope sync to etcd filesystem only
+
+Bare `sync` issues sync(2), which flushes dirty buffers for every
+mounted filesystem. When ODF is installed, CephFS kernel mounts block
+indefinitely if Ceph is unreachable (e.g. during upgrade reboot),
+causing Pacemaker's start timeout to loop.
+
+Use `sync -f` (syncfs(2)) scoped to the etcd data directory so only
+the filesystem containing /var/lib/etcd is flushed.
+
+Resolves: OCPBUGS-104449
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+---
+ heartbeat/podman-etcd | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index bad94aa44..6142724e5 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -705,7 +705,7 @@ wipe_data_folder_for_learner()
+ 		ocf_log err "could not delete etcd member directory ($ETCD_MEMBER_DIR), error code: $?"
+ 		return $OCF_ERR_GENERIC
+ 	fi
+-	sync
++	sync -f "$OCF_RESKEY_config_location"
+ 	return $OCF_SUCCESS
+ }
+ 

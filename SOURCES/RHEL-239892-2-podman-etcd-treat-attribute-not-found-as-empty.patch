@@ -1,0 +1,32 @@
+From e4d9b6b68aad48d097861fe68d9a85d9043cd13a Mon Sep 17 00:00:00 2001
+From: fracappa <fcappa@redhat.com>
+Date: Wed, 19 Aug 2026 15:27:56 +0200
+Subject: [PATCH] podman-etcd: treat crm_attribute 'not found' exits as empty,
+ not error
+
+---
+ heartbeat/podman-etcd | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index b5564b118..1eb5bd1e8 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -1252,7 +1252,7 @@ get_cib_permanent_attribute()
+ 	local output rc
+ 	output=$(crm_attribute --query --type nodes --node "$1" --name "$2" 2>/dev/null)
+ 	rc=$?
+-	[ $rc -ne 0 ] && return $rc
++	[ $rc -ne 0 ] && [ $rc -ne 105 ] && [ $rc -ne 6 ] && return $rc
+ 	echo "$output" | awk -F"value=" '{print $2}'
+ }
+ 
+@@ -1262,7 +1262,7 @@ get_cib_transient_attribute()
+ 	local output rc
+ 	output=$(crm_attribute --query --lifetime reboot --node "$1" --name "$2" 2>/dev/null)
+ 	rc=$?
+-	[ $rc -ne 0 ] && return $rc
++	[ $rc -ne 0 ] && [ $rc -ne 105 ] && [ $rc -ne 6 ] && return $rc
+ 	echo "$output" | awk -F"value=" '{print $2}' | tr -d "'"
+ }
+ 

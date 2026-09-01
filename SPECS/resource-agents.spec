@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.7
+Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.12
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -212,6 +212,12 @@ Patch159:	RHEL-177843-podman-etcd-fix-learner-start-deadlock.patch
 Patch160:	RHEL-188107-podman-etcd-remove-cert-monitoring.patch
 Patch161:	RHEL-193966-aws-vpc-move-ip-add-awscli_timeout-parameter.patch
 Patch162:	RHEL-193691-podman-etcd-add-support-for-single-node-operation.patch
+Patch163:	RHEL-235578-podman-etcd-scope-sync-to-etcd-filesystem-to-avoid-CephFS-hang.patch
+Patch164:	RHEL-239986-podman-etcd-resolve-force_new_cluster-race-during-simultaneous-dual-start.patch
+Patch165:	RHEL-239892-1-podman-etcd-add-restart_no_leave-CRM-attribute-guard-to-skip-member-removal.patch
+Patch166:	RHEL-239892-2-podman-etcd-treat-attribute-not-found-as-empty.patch
+Patch167:	RHEL-235790-powervs-subnet-fix-plaintext-token-file-support.patch
+Patch168:	RHEL-224570-mediationzone-new-ra.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -519,6 +525,12 @@ exit 1
 %patch -p1 -P 160
 %patch -p1 -P 161
 %patch -p1 -P 162
+%patch -p1 -P 163
+%patch -p1 -P 164
+%patch -p1 -P 165
+%patch -p1 -P 166
+%patch -p1 -P 167
+%patch -p1 -P 168
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -853,6 +865,24 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Thu Aug 20 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.12
+- mediationzone: new resource agent
+- podman-etcd: add restart_no_leave CRM attribute guard to skip member
+  removal
+
+  Resolves: RHEL-224570, RHEL-239892
+
+* Mon Aug 17 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.10
+- powervs-subnet: fix plaintext token file support
+
+  Resolves: RHEL-235790
+
+* Fri Aug 14 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.9
+- podman-etcd: scope sync to etcd filesystem to avoid CephFS hang
+- podman-etcd: resolve force_new_cluster race during simultaneous dual-start
+
+  Resolves: RHEL-235578, RHEL-239986
+
 * Wed Jul 15 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.7
 - podman-etcd: add support for single-node operation
 
