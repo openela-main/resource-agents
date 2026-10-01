@@ -1,0 +1,728 @@
+From afcec12ff9e3d1bf6fdc8eb4eb6cdad15b317dd3 Mon Sep 17 00:00:00 2001
+From: Chai Bot <ship-help-github@redhat.com>
+Date: Fri, 21 Aug 2026 20:02:07 +0000
+Subject: [PATCH 1/2] podman-etcd: deterministic departure lock and
+ force-new-cluster recovery
+
+Route graceful-shutdown startup off member_removal_lock instead of the
+revision comparison the departed node can win, and harden the recovery
+paths against CIB read failures and force-new-cluster edge cases.
+
+- Make member_removal_lock the authoritative leaver record and route
+  startup off it (learner-rejoin vs. force-new-cluster to seed).
+- Elect a single leaver deterministically and refuse force-new-cluster
+  from a learner, with panic rescue for the "removed all voters" crash.
+- Treat CIB read failures as distinct from unset attributes and fail
+  safe, so a transient error cannot make both nodes remove themselves.
+- Fail force-new-cluster only when adding a reachable peer fails; when
+  there is no peer to add, start standalone and succeed, ending the
+  crash loop that restarted a successfully started etcd.
+- Fail fast on podman exec errors and capture etcd inspect/logs on
+  learner-add failure to surface the underlying crash.
+
+Co-Authored-By: Chai Bot <ship-help-github@redhat.com>
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+---
+ heartbeat/podman-etcd | 445 ++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 434 insertions(+), 11 deletions(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index 1eb5bd1e8..29da42200 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -1105,6 +1105,22 @@ remove_etcd_member_by_ip()
+ 	return $OCF_SUCCESS
+ }
+ 
++# log_etcd_container_diagnostics dumps the etcd container's state and recent
++# logs to the pacemaker log. A crash *inside* the etcd process (which exits the
++# container seconds after start) is otherwise invisible to this RA because it
++# only ever sees the podman "container state improper" surface. Best-effort:
++# this never fails the caller. Since the force-new-cluster path reuses the
++# existing container, its logs are still retrievable at failure time.
++log_etcd_container_diagnostics()
++{
++	local context="$1"
++	ocf_log err "etcd container diagnostics (${context}):"
++	ocf_run podman inspect --format \
++		'status={{.State.Status}} running={{.State.Running}} exitcode={{.State.ExitCode}} oomkilled={{.State.OOMKilled}} error={{.State.Error}} startedat={{.State.StartedAt}} finishedat={{.State.FinishedAt}}' \
++		"${CONTAINER}" || ocf_log warn "podman inspect for ${CONTAINER} failed"
++	ocf_run podman logs --tail 100 "${CONTAINER}" || ocf_log warn "podman logs for ${CONTAINER} failed"
++}
++
+ add_member_as_learner()
+ {
+ 	local rc
+@@ -1131,6 +1147,18 @@ add_member_as_learner()
+ 			attribute_learner_node update "$member_name"
+ 			return $OCF_SUCCESS
+ 		fi
++		# podman exec exits 125 ("no such container"), 126 ("container
++		# state improper") or 255 ("container not running") when the etcd
++		# container is not running. Retrying etcdctl in that state cannot
++		# succeed and only masks the etcd crash behind it, so capture the
++		# container diagnostics and fail fast to let the caller restart it.
++		case "$rc" in
++			125|126|255)
++				ocf_log err "could not add $member_name as learner: etcd container not running (podman exec rc=$rc): $out"
++				log_etcd_container_diagnostics "learner-add failed, podman exec rc=$rc"
++				return $OCF_ERR_GENERIC
++				;;
++		esac
+ 		if echo "$out" | grep -q "Peer URLs already exists"; then
+ 			# etcd data might have stale membership data
+ 			ocf_log warn "could not add member: Peer URLs already exists"
+@@ -1141,6 +1169,7 @@ add_member_as_learner()
+ 	done
+ 
+ 	ocf_log err "could not add $member_name as learner, error code $rc, etcdctl output: $out"
++	log_etcd_container_diagnostics "learner-add exhausted $max_retries retries, last rc=$rc"
+ 	return $OCF_ERR_GENERIC
+ }
+ 
+@@ -1246,6 +1275,51 @@ clear_restart_no_leave()
+ 	ocf_log info "$NODENAME: restart_no_leave attribute cleared"
+ }
+ 
++# Set the member_removal_lock CIB permanent attribute on the current node.
++# Records which node successfully left the etcd member list during a
++# graceful shutdown, so the startup path can prefer the non-departed
++# node (which has fresher data).  The attribute is permanent
++# (--type nodes) so it survives reboots and is visible to the peer
++# even after this node's Pacemaker stops.
++set_member_removal_lock()
++{
++	local epoch="$1"
++
++	if ! crm_attribute --type nodes --node "$NODENAME" --name "member_removal_lock" --update "$epoch"; then
++		ocf_log err "could not set member_removal_lock attribute to $epoch"
++		return $OCF_ERR_GENERIC
++	fi
++	ocf_log info "$NODENAME: member_removal_lock set to $epoch"
++}
++
++# Clear the member_removal_lock CIB permanent attribute on the current node.
++# Called during podman_start() after a successful startup so that a
++# previous departure record does not influence future stop/start cycles.
++# Follows the same one-shot pattern as restart_no_leave.
++clear_member_removal_lock()
++{
++	local my_lock
++
++	# Distinguish "attribute genuinely unset" (read succeeds, empty output)
++	# from "CIB read failed" (non-zero return). Only the former lets us safely
++	# skip the delete; on a read failure we attempt the delete anyway, because
++	# a stale self-lock left behind would misroute the next start down the
++	# learner path. crm_attribute --delete is idempotent, so deleting an
++	# already-absent attribute is harmless.
++	if my_lock=$(get_cib_permanent_attribute "$NODENAME" "member_removal_lock"); then
++		if [ -z "$my_lock" ]; then
++			return
++		fi
++	else
++		ocf_log warn "could not read own member_removal_lock (CIB error); attempting delete anyway as fail-safe"
++	fi
++	if ! crm_attribute --type nodes --node "$NODENAME" --name "member_removal_lock" --delete; then
++		ocf_log warn "could not clear member_removal_lock attribute"
++		return
++	fi
++	ocf_log info "$NODENAME: member_removal_lock attribute cleared"
++}
++
+ # Read a permanent node attribute from CIB (not local disk) for symmetric evaluation.
+ get_cib_permanent_attribute()
+ {
+@@ -1280,6 +1354,33 @@ fnc_conflict_verdict()
+ 	local local_rev peer_rev peer_node_name
+ 
+ 	peer_node_name=$(get_peer_node_name)
++
++	# Member-removal-lock verdict: if one node left the etcd member list
++	# during graceful shutdown, prefer the non-departed node — its WAL
++	# does not contain a self-removal ConfChange that would panic on
++	# FNC replay.
++	local local_lock peer_lock
++	# A genuine CIB read error must not be read as "lock not held" — that could
++	# hand the verdict to the departed node. On error, drop the lock verdict and
++	# fall through to the revision comparison (which has its own ADMIN fallback).
++	if ! local_lock=$(get_cib_permanent_attribute "$NODENAME" "member_removal_lock") || \
++	   ! peer_lock=$(get_cib_permanent_attribute "$peer_node_name" "member_removal_lock"); then
++		ocf_log warn "fnc_conflict_verdict: could not read member_removal_lock (CIB error); skipping lock verdict, using revision comparison"
++		local_lock=""
++		peer_lock=""
++	fi
++
++	if [ -n "$local_lock" ] && [ -z "$peer_lock" ]; then
++		ocf_log notice "fnc_conflict_verdict: $NODENAME holds member_removal_lock (epoch=$local_lock), peer does not — peer wins"
++		echo "$peer_node_name"
++		return
++	elif [ -z "$local_lock" ] && [ -n "$peer_lock" ]; then
++		ocf_log notice "fnc_conflict_verdict: peer $peer_node_name holds member_removal_lock (epoch=$peer_lock), we do not — we win"
++		echo "$NODENAME"
++		return
++	fi
++	# Both hold lock or neither — fall through to revision comparison
++
+ 	local_rev=$(get_cib_permanent_attribute "$NODENAME" "revision")
+ 	peer_rev=$(get_cib_permanent_attribute "$peer_node_name" "revision")
+ 	ocf_log info "FNC conflict inputs: $NODENAME=$local_rev $peer_node_name=$peer_rev"
+@@ -1946,6 +2047,35 @@ container_health_check()
+ 	time_since_heartbeat=$(get_time_since_last_heartbeat)
+ 	ocf_log err "Container ${CONTAINER} failed (last healthy: ${time_since_heartbeat}s ago, error code: $rc)"
+ 
++	# If the heartbeat has been stale for too long, the container is
++	# irrecoverably dead in this lifecycle -- waiting for a peer that may
++	# itself be down would deadlock the cluster. Restart immediately.
++	#
++	# Scale the threshold with the configured monitor timeout
++	# (OCF_RESKEY_CRM_meta_timeout is milliseconds during a monitor op) so
++	# it tracks the deployment. Keep a 75s floor and fall back to it when
++	# the value is unset or not a number.
++	#
++	# NOTE: this guard only fires once the container has been healthy long
++	# enough to write a heartbeat file. A container that dies within
++	# seconds of a force-new-cluster start (before any monitor pass) leaves
++	# no heartbeat file, so that case returns "not-running" above and its
++	# recovery relies on podman_start returning OCF_ERR_GENERIC, not on
++	# this check.
++	local stale_threshold=75
++	case "$OCF_RESKEY_CRM_meta_timeout" in
++		''|*[!0-9]*) : ;;
++		*)
++			stale_threshold=$(( OCF_RESKEY_CRM_meta_timeout * 3 / 1000 ))
++			[ "$stale_threshold" -lt 75 ] && stale_threshold=75
++			;;
++	esac
++	if [ -n "$time_since_heartbeat" ] && [ "$time_since_heartbeat" -gt "$stale_threshold" ]; then
++		ocf_log err "Heartbeat stale for ${time_since_heartbeat}s (threshold ${stale_threshold}s), triggering restart"
++		echo "failed-restart-now"
++		return
++	fi
++
+ 	# Check if peer has set force_new_cluster for recovery
+ 	local fnc_holders
+ 	if ! fnc_holders=$(get_force_new_cluster); then
+@@ -1973,6 +2103,12 @@ container_health_check()
+ 		return
+ 	fi
+ 
++	# No node holds FNC and this is not a single-node cluster: the peer is
++	# reachable (get_force_new_cluster succeeded above) but has not yet
++	# initiated recovery. Wait for it -- if the local container stays down,
++	# the stale-heartbeat guard above escalates to a restart once the
++	# heartbeat ages past the threshold.
++	ocf_log warn "No FNC holders found - peer has not initiated recovery yet, will re-check next cycle"
+ 	echo "failed-wait-for-peer"
+ }
+ 
+@@ -2329,7 +2465,121 @@ podman_start()
+ 		return "$OCF_ERR_GENERIC"
+ 	fi
+ 
+-	if is_restart_no_leave; then
++	# FNC panic rescue: before starting etcd, check whether the PREVIOUS
++	# container panicked with the deterministic "removed all voters" crash.
++	# This happens when force-new-cluster replays a departed node's WAL
++	# that contains a self-removal ConfChange.  Catch it early and yield
++	# FNC to the peer whose WAL is clean.
++	# This is a SAFETY NET; the member_removal_lock -> fnc_conflict_verdict
++	# departure-aware verdict is the primary fix.
++	if is_force_new_cluster; then
++		local prev_logs prev_container
++		# The previous (possibly panicked) container still exists as
++		# ${CONTAINER} (stopped, not yet archived) or was already
++		# archived to ${CONTAINER}-previous by an earlier start cycle.
++		if podman inspect "${CONTAINER}" >/dev/null 2>&1; then
++			prev_container="${CONTAINER}"
++		elif podman inspect "${CONTAINER}-previous" >/dev/null 2>&1; then
++			prev_container="${CONTAINER}-previous"
++		fi
++		if [ -n "$prev_container" ]; then
++			prev_logs=$(podman logs --tail 200 "$prev_container" 2>&1 || true)
++			# Require BOTH the raw panic line AND the precursor
++			# "membership: ID removed" error to avoid false triggers.
++			if echo "$prev_logs" | grep -qF 'panic: removed all voters' \
++				&& echo "$prev_logs" | grep -qF 'membership: ID removed'; then
++				ocf_log crit "FNC panic rescue: previous container ($prev_container) panicked with 'removed all voters'"
++				# The panic is deterministic proof that THIS node's WAL ends
++				# with a self-removal ConfChange (it left the member list) and
++				# has no voter entry for itself: it can never seed a voterless
++				# WAL.
++				#
++				# If the PEER already holds a member_removal_lock, it also had
++				# the right to leave the member list and cannot be trusted to
++				# seed normally either. With both nodes carrying voterless data,
++				# no node can force a new cluster — an unrecoverable state that
++				# needs operator intervention (e.g. restore from a snapshot).
++				# Fail loudly instead of self-demoting into a both-learner
++				# deadlock.
++				local rescue_peer_node rescue_peer_lock
++				rescue_peer_node=$(get_peer_node_name)
++				# We are provably voterless here. Self-demoting is only safe if we
++				# can confirm the peer did NOT also leave (no lock). A CIB read
++				# error leaves that unknown, so fail loud rather than risk a
++				# both-learner deadlock that would look like a recoverable state.
++				if ! rescue_peer_lock=$(get_cib_permanent_attribute "$rescue_peer_node" "member_removal_lock"); then
++					ocf_exit_reason "FNC panic rescue: $NODENAME has voterless data (panicked on 'removed all voters') but could not read peer $rescue_peer_node member_removal_lock (CIB error) — cannot confirm the peer can seed, refusing to self-demote; operator intervention required"
++					return "$OCF_ERR_GENERIC"
++				fi
++				if [ -n "$rescue_peer_lock" ]; then
++					ocf_exit_reason "FNC panic rescue: peer $rescue_peer_node holds member_removal_lock and $NODENAME has voterless data (panicked on 'removed all voters') — unrecoverable, operator intervention required (e.g. restore from snapshot)"
++					return "$OCF_ERR_GENERIC"
++				fi
++				# Peer has not left: self-demote. Clear our FNC claim and record
++				# a member_removal_lock so the NEXT start routes us down the
++				# learner-rejoin path. The peer — currently waiting to be added
++				# as a learner — will time out, restart, see no FNC holder (and
++				# our lock), acquire FNC, and seed the cluster itself. The lock
++				# doubles as the anti-loop marker: once set, we always take the
++				# learner path until a successful start clears it.
++				clear_force_new_cluster
++				local rescue_epoch
++				rescue_epoch=$(date +%s)
++				if ! set_member_removal_lock "$rescue_epoch"; then
++					ocf_log err "FNC panic rescue: could not set member_removal_lock — may re-enter FNC and panic again on next start"
++				fi
++				return "$OCF_ERR_GENERIC"
++			fi
++		fi
++	fi
++
++	# Departure-aware startup routing (PRIMARY graceful-shutdown fix).
++	# A recorded member_removal_lock is authoritative over the FNC-holder and
++	# revision comparisons below:
++	#   - If WE hold it, we left the member list on our last stop; our WAL is
++	#     voterless, so we must rejoin as a learner (never force-new-cluster).
++	#   - If the PEER holds it, the peer left; we are the surviving voter and
++	#     must seed the cluster (force-new-cluster) regardless of the recorded
++	#     revisions — the departed peer's revision is inflated by its own
++	#     self-removal ConfChange and must not win the comparison.
++	# The lock is cleared only after a successful start.
++	local removal_lock_decided=false
++	if ! is_restart_no_leave && ! ocf_is_true "$pod_was_running"; then
++		local my_removal_lock peer_removal_lock startup_peer_node
++		startup_peer_node=$(get_peer_node_name)
++		# On a CIB read error, do not treat the lock as absent — that could route
++		# a voterless node into force-new-cluster. Skip lock-based routing and let
++		# the FNC-holder/revision decision below run (the FNC panic rescue is the
++		# backstop if a voterless node still reaches force-new-cluster).
++		if ! my_removal_lock=$(get_cib_permanent_attribute "$NODENAME" "member_removal_lock") || \
++		   ! peer_removal_lock=$(get_cib_permanent_attribute "$startup_peer_node" "member_removal_lock"); then
++			ocf_log warn "startup routing: could not read member_removal_lock (CIB error); skipping lock-based routing, using FNC-holder/revision decision"
++			my_removal_lock=""
++			peer_removal_lock=""
++		fi
++		if [ -n "$my_removal_lock" ]; then
++			ocf_log notice "member_removal_lock held by $NODENAME (epoch=$my_removal_lock): this node left the member list - rejoining as learner"
++			if is_force_new_cluster; then
++				ocf_log notice "clearing stale force_new_cluster on departed node $NODENAME"
++				clear_force_new_cluster
++			fi
++			JOIN_AS_LEARNER=true
++			removal_lock_decided=true
++		elif [ -n "$peer_removal_lock" ]; then
++			ocf_log notice "member_removal_lock held by peer $startup_peer_node (epoch=$peer_removal_lock): we are the surviving voter - forcing new cluster to seed"
++			if ! is_force_new_cluster; then
++				if ! set_force_new_cluster; then
++					return "$OCF_ERR_GENERIC"
++				fi
++			fi
++			JOIN_AS_LEARNER=false
++			removal_lock_decided=true
++		fi
++	fi
++
++	if ocf_is_true "$removal_lock_decided"; then
++		ocf_log info "startup routing decided by member_removal_lock: skipping FNC-holder/revision decision"
++	elif is_restart_no_leave; then
+ 		ocf_log notice "restart_no_leave set: starting normally (non-destructive restart)"
+ 		restart_no_leave_flag=true
+ 	elif ocf_is_true "$pod_was_running"; then
+@@ -2554,6 +2804,16 @@ podman_start()
+ 			return "$OCF_ERR_GENERIC"
+ 		fi
+ 		ocf_log notice "post-set guard: $NODENAME is sole FNC holder, proceeding with force-new-cluster"
++
++		# FNC precondition: refuse force-new-cluster when this node is a
++		# learner — its data has no voter entry for itself, so FNC replay
++		# would hit "removed all voters" and panic.  Route to learner-rejoin
++		# or fail-safe instead.
++		if is_learner; then
++			ocf_log crit "FNC precondition failed: $NODENAME is a learner — force-new-cluster would panic on voterless data; clearing FNC and retrying as learner"
++			clear_force_new_cluster
++			JOIN_AS_LEARNER=true
++		fi
+ 	fi
+ 
+ 	# Both-yield guard: if CIB divergence caused both nodes to yield,
+@@ -2579,11 +2839,26 @@ podman_start()
+ 		local wait_timeout_sec=$((2*60))
+ 		local poll_interval_sec=5
+ 		local retries=$(( wait_timeout_sec / poll_interval_sec ))
++		local wait_peer_node early_peer_lock
++		wait_peer_node=$(get_peer_node_name)
+ 
+ 		ocf_log info "ensure the leader node added $NODENAME as learner member before continuing (timeout: $wait_timeout_sec seconds)"
+ 		for try in $(seq $retries); do
+ 			learner_node=$(attribute_learner_node get)
+ 			if [ "$NODENAME" != "$learner_node" ]; then
++				# Early exit: if the peer recorded a member_removal_lock while
++				# we waited, it self-demoted to the leaver (e.g. via the FNC
++				# panic rescue) and released force-new-cluster. We are the
++				# surviving voter and should restart NOW to seed the cluster
++				# instead of waiting out the full timeout. The timeout below
++				# remains as the belt-and-suspenders backstop.
++				# Best-effort optimization: a CIB read error just skips the early
++				# exit and lets the timeout backstop below handle it, so only act
++				# on a successful, non-empty read.
++				if early_peer_lock=$(get_cib_permanent_attribute "$wait_peer_node" "member_removal_lock") && [ -n "$early_peer_lock" ]; then
++					ocf_log warn "peer $wait_peer_node set member_removal_lock (epoch=$early_peer_lock) while $NODENAME waited as learner: peer is the leaver - restarting to seed the cluster"
++					return "$OCF_ERR_GENERIC"
++				fi
+ 				ocf_log info "$NODENAME is not in the member list yet. Retry in $poll_interval_sec seconds."
+ 				sleep $poll_interval_sec
+ 				continue
+@@ -2719,9 +2994,8 @@ podman_start()
+ 			if ocf_is_true "$restart_no_leave_flag"; then
+ 				clear_restart_no_leave
+ 			fi
++			clear_member_removal_lock
+ 			if is_force_new_cluster; then
+-				clear_force_new_cluster
+-
+ 				local peer_node_name
+ 				local peer_node_ip
+ 				peer_node_name="$(get_peer_node_name)"
+@@ -2731,16 +3005,30 @@ podman_start()
+ 						ocf_log info "peer Machine is being deleted, skipping learner addition for $peer_node_name"
+ 					else
+ 						add_member_as_learner "$peer_node_name" "$peer_node_ip"
++						rc=$?
++						if [ $rc -ne 0 ]; then
++							ocf_log err "failed to add peer as learner after force-new-cluster (rc=$rc), returning error to trigger restart"
++							return $OCF_ERR_GENERIC
++						fi
+ 					fi
++					clear_force_new_cluster
+ 					set_standalone_node
+ 				else
+-					# Check if this is a single-node cluster
++					# No peer to add as a learner right now: peer name/IP are unknown.
++					# This is either a genuine single-node cluster, or the sole-survivor
++					# force-new-cluster case where the configured peer is currently offline
++					# (an offline peer is the normal precondition for force-new-cluster).
++					# etcd is already up as a single member at this point, so declare
++					# success and let the standalone/learner re-add path attach the peer
++					# once it rejoins. Only a genuine failure to add an *existing*,
++					# reachable peer (above) returns an error to trigger a restart.
+ 					if is_single_node; then
+ 						ocf_log info "Single-node cluster: setting standalone_node"
+-						set_standalone_node
+ 					else
+-						ocf_log err "could not add peer as learner (peer node name: ${peer_node_name:-unknown}, peer ip: ${peer_node_ip:-unknown})"
++						ocf_log info "no peer to add as learner (peer offline/unknown); starting standalone, peer will be re-added when it rejoins"
+ 					fi
++					clear_force_new_cluster
++					set_standalone_node
+ 				fi
+ 			fi
+ 			return $OCF_SUCCESS
+@@ -2800,13 +3088,132 @@ leave_etcd_member_list()
+ 		return
+ 	fi
+ 
++	# Member removal lock for graceful shutdown restart selection.
++	#
++	# etcd's strict-reconfig-check guarantees at most one member can be
++	# removed from a two-node cluster (removing the last voter is rejected),
++	# but its outcome is timing-dependent: it hinges on which member is still
++	# "started" when each remove arrives. To make the leaver deterministic
++	# AND crash-safe, we claim the member_removal_lock BEFORE removing
++	# ourselves, using the CIB as the mutual-exclusion arbiter:
++	#   (1) confirm the peer does not already hold the lock,
++	#   (2) claim it for ourselves,
++	#   (3) settle for CIB propagation, then pick the SOLE winner by claim
++	#       timestamp — the earlier claim wins and leaves, the later claim
++	#       yields (exact-second ties broken by node name so both sides
++	#       agree). This guarantees exactly one leaver,
++	#   (4) attempt the remove; keep the lock on success, and release it only
++	#       when we can CONFIRM the removal did not take effect.
++	#
++	# Claiming before the remove closes the crash window: if we die after the
++	# ConfChange commits but before recording anything, the lock is already
++	# set, so restart still routes us (the now-voterless node) down the
++	# learner path instead of force-new-cluster.
++	#
++	# The concurrent-stop delay above is kept as a first-pass guard that
++	# keeps the two claims/removes from racing at the same instant.
++	local peer_node_name
++	peer_node_name="$(get_peer_node_name)"
++
++	# Without a resolvable peer we cannot run the mutual-exclusion protocol
++	# safely. Fail safe: skip the leave. An unnecessary skip keeps us a member
++	# (benign); a blind leave with no peer arbitration is not.
++	if [ -z "$peer_node_name" ]; then
++		ocf_log warn "could not resolve peer node name: skipping leave as safety fallback"
++		return
++	fi
++
++	# (1) If the peer already holds the lock, it is leaving/left first, so we
++	#     are the surviving member — skip.
++	#
++	#     get_cib_permanent_attribute returns non-zero ONLY on a genuine CIB
++	#     read failure; an unset attribute is reported as success with empty
++	#     output. Treat a read failure as fail-safe: if we cannot confirm the
++	#     peer's lock state we must NOT leave, otherwise a transient CIB error
++	#     on both nodes could make each believe it is the sole claimant and
++	#     both remove themselves.
++	local peer_lock
++	if ! peer_lock=$(get_cib_permanent_attribute "$peer_node_name" "member_removal_lock"); then
++		ocf_log warn "could not read peer $peer_node_name member_removal_lock from CIB: skipping leave as safety fallback"
++		return
++	fi
++	if [ -n "$peer_lock" ]; then
++		ocf_log info "peer $peer_node_name already holds member_removal_lock (epoch=$peer_lock): skipping leave, we are the surviving member"
++		return
++	fi
++
++	# (2) Claim the lock (--update overwrites any stale self value).
++	local my_epoch
++	my_epoch=$(date +%s)
++	if ! set_member_removal_lock "$my_epoch"; then
++		ocf_log warn "could not claim member_removal_lock: skipping leave as safety fallback"
++		return
++	fi
++
++	# (3) Settle for CIB propagation, then pick the sole winner by claim
++	#     timestamp: the EARLIER claim wins and leaves; the later claim
++	#     yields. This guarantees a single leaver even when both nodes claim
++	#     concurrently. Exact-second ties are broken deterministically by
++	#     node name so both sides choose the same winner.
++	sleep 2
++	# A failed re-read here is the most dangerous case: if the value silently
++	# became empty we would fall through to step (4) and leave as the assumed
++	# sole claimant. Fail safe instead — release our own claim and skip the
++	# leave, so a CIB error cannot produce two simultaneous leavers.
++	if ! peer_lock=$(get_cib_permanent_attribute "$peer_node_name" "member_removal_lock"); then
++		ocf_log warn "could not re-read peer $peer_node_name member_removal_lock after settle: releasing own claim and skipping leave as safety fallback"
++		clear_member_removal_lock
++		return
++	fi
++	if [ -n "$peer_lock" ]; then
++		local we_yield=false
++		if [ "$my_epoch" -gt "$peer_lock" ] 2>/dev/null; then
++			# Our claim happened second: the peer claimed first and wins.
++			we_yield=true
++		elif [ "$my_epoch" -eq "$peer_lock" ] 2>/dev/null; then
++			# Exact tie: the lexicographically-first node name wins.
++			local lock_winner
++			lock_winner=$(printf '%s\n%s\n' "$NODENAME" "$peer_node_name" | sort | head -n1)
++			if [ "$NODENAME" != "$lock_winner" ]; then
++				we_yield=true
++			fi
++		fi
++		if ocf_is_true "$we_yield"; then
++			ocf_log info "peer $peer_node_name won member_removal_lock (peer=$peer_lock, ours=$my_epoch): yielding, peer is the leaver"
++			clear_member_removal_lock
++			return
++		fi
++		ocf_log info "$NODENAME won member_removal_lock (ours=$my_epoch, peer=$peer_lock): proceeding as the leaver"
++	fi
++
++	# (4) Sole claimant — attempt to leave. On success keep the lock so the
++	#     next start routes us to the learner path. On failure, release the
++	#     lock ONLY if we can confirm we are still a member; on an ambiguous
++	#     failure (etcd unreachable / timeout) keep it — an unnecessary
++	#     learner rejoin next start is wasteful but safe, whereas seeding a
++	#     voterless WAL panics with "removed all voters".
+ 	ocf_log info "leaving members list as member with ID $member_id"
+ 	local endpoint
+ 	endpoint="$(ip_url $(attribute_node_ip get)):2379"
+-	ocf_run timeout 30 podman exec "$CONTAINER" etcdctl member remove "$member_id" --endpoints="$endpoint"
+-	rc=$?
+-	if [ $rc -ne 0 ]; then
+-		ocf_log err "error leaving members list, error code: $rc"
++	if ocf_run timeout 30 podman exec "$CONTAINER" etcdctl member remove "$member_id" --endpoints="$endpoint"; then
++		ocf_log info "$NODENAME left the etcd member list; member_removal_lock retained for learner rejoin on next start"
++	else
++		local rc=$?
++		local still_member=unknown
++		local mlist
++		if mlist=$(timeout 10 podman exec "$CONTAINER" etcdctl member list --endpoints="$endpoint" 2>/dev/null); then
++			if echo "$mlist" | grep -qw "$member_id"; then
++				still_member=yes
++			else
++				still_member=no
++			fi
++		fi
++		if [ "$still_member" = "yes" ]; then
++			ocf_log warn "etcdctl member remove failed (rc=$rc) but $NODENAME is still a member: releasing member_removal_lock"
++			clear_member_removal_lock
++		else
++			ocf_log warn "etcdctl member remove failed (rc=$rc); membership=${still_member}: retaining member_removal_lock (safe: routes to learner on next start)"
++		fi
+ 	fi
+ }
+ 
+@@ -2823,8 +3230,16 @@ podman_stop()
+ 	fi
+ 
+ 	attribute_learner_node clear
+-	attribute_node_revision update
++
++	# Snapshot cluster_id and revision from disk BEFORE checking container
++	# state. Both read /var/lib/etcd/revision.json (not the container), so they
++	# are available even when the container has already crashed. On the graceful
++	# path the container flushes its final state during podman stop and the
++	# revision snapshot at the END of this function overwrites this one with the
++	# newest maxRaftIndex; on the crashed-container path (early return below)
++	# this is the only snapshot, preserving the peer's startup revision fallback.
+ 	attribute_node_cluster_id update
++	attribute_node_revision update
+ 
+ 	# Use podman inspect instead of podman exec (podman_simple_status) to check
+ 	# container state. podman exec enters the container's process namespace and
+@@ -2877,6 +3292,14 @@ podman_stop()
+ 		fi
+ 	fi
+ 
++	# Revision update is the LAST action on the graceful-stop path: etcd
++	# flushes its final state during podman stop, so reading revision.json
++	# after the container has stopped captures the newest maxRaftIndex sync and
++	# overwrites the pre-check snapshot taken at the top of this function. This
++	# is the fallback the peer's startup revision comparison relies on when no
++	# member_removal_lock is present.
++	attribute_node_revision update
++
+ 	return $OCF_SUCCESS
+ }
+ 
+
+From ec3d5a8333e1d74df908ccca386e575ae4cf3e02 Mon Sep 17 00:00:00 2001
+From: Jeremy Poulin <jpoulin@redhat.com>
+Date: Fri, 4 Sep 2026 13:48:10 -0400
+Subject: [PATCH 2/2] podman-etcd: address review feedback on departure
+ handshake
+
+- Fail start when the etcd container crashes during the post-force-new-cluster
+  learner-add, but continue (letting the monitor retry) when it stays healthy,
+  so a live voter is not needlessly restarted
+- Bound the FNC panic-rescue log scan to the container's most recent start
+  (--since StartedAt) so an accumulated panic from an earlier reuse-start
+  cannot falsely trigger the rescue
+- Surface terminal start failures via ocf_exit_reason instead of ocf_log err
+- Flag the panic-rescue's etcd log-string coupling (regression test tracked
+  in OCPEDGE-3056) and document the is_learner cold-boot precondition
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+---
+ heartbeat/podman-etcd | 66 +++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 61 insertions(+), 5 deletions(-)
+
+diff --git a/heartbeat/podman-etcd b/heartbeat/podman-etcd
+index 29da42200..40436bf4e 100755
+--- a/heartbeat/podman-etcd
++++ b/heartbeat/podman-etcd
+@@ -2473,7 +2473,7 @@ podman_start()
+ 	# This is a SAFETY NET; the member_removal_lock -> fnc_conflict_verdict
+ 	# departure-aware verdict is the primary fix.
+ 	if is_force_new_cluster; then
+-		local prev_logs prev_container
++		local prev_logs prev_container prev_started
+ 		# The previous (possibly panicked) container still exists as
+ 		# ${CONTAINER} (stopped, not yet archived) or was already
+ 		# archived to ${CONTAINER}-previous by an earlier start cycle.
+@@ -2483,9 +2483,31 @@ podman_start()
+ 			prev_container="${CONTAINER}-previous"
+ 		fi
+ 		if [ -n "$prev_container" ]; then
+-			prev_logs=$(podman logs --tail 200 "$prev_container" 2>&1 || true)
++			# Bound the scan to the container's most recent start. In the
++			# reuse path (OCF_RESKEY_reuse -> `podman start ${CONTAINER}`)
++			# the same container is restarted in place, so its logs
++			# accumulate across incarnations; an unbounded --tail could
++			# match a panic from an EARLIER start and fire the rescue on a
++			# stale crash. .State.StartedAt.Unix emits an integer Unix
++			# timestamp (avoids RFC3339/Go-String --since format quirks);
++			# if it can't be read we fall back to the unbounded scan.
++			prev_started=$(podman inspect --format '{{.State.StartedAt.Unix}}' "$prev_container" 2>/dev/null)
++			if [ -n "$prev_started" ]; then
++				prev_logs=$(podman logs --since "$prev_started" --tail 200 "$prev_container" 2>&1 || true)
++			else
++				prev_logs=$(podman logs --tail 200 "$prev_container" 2>&1 || true)
++			fi
+ 			# Require BOTH the raw panic line AND the precursor
+ 			# "membership: ID removed" error to avoid false triggers.
++			# NOTE: both patterns are literal etcd log strings, so this
++			# rescue is coupled to etcd's wording. If an etcd bump changes
++			# either message this grep silently stops matching and the
++			# rescue no longer fires — the member_removal_lock ->
++			# fnc_conflict_verdict routing above stays the primary fix, so
++			# this degrades to no-safety-net rather than misbehaving.
++			# OCPEDGE-3056 adds a test that fails if an etcd bump breaks
++			# this match, so drift is caught before it ships; update these
++			# strings when that test flags them.
+ 			if echo "$prev_logs" | grep -qF 'panic: removed all voters' \
+ 				&& echo "$prev_logs" | grep -qF 'membership: ID removed'; then
+ 				ocf_log crit "FNC panic rescue: previous container ($prev_container) panicked with 'removed all voters'"
+@@ -2793,7 +2815,7 @@ podman_start()
+ 				break
+ 			fi
+ 			if [ "$fnc_guard_wait" -ge 10 ]; then
+-				ocf_log err "own force_new_cluster write not visible after ${fnc_guard_wait}s: retrying"
++				ocf_exit_reason "own force_new_cluster write not visible after ${fnc_guard_wait}s: retrying"
+ 				return "$OCF_ERR_GENERIC"
+ 			fi
+ 			sleep 1
+@@ -2809,6 +2831,16 @@ podman_start()
+ 		# learner — its data has no voter entry for itself, so FNC replay
+ 		# would hit "removed all voters" and panic.  Route to learner-rejoin
+ 		# or fail-safe instead.
++		#
++		# is_learner reads the learner_node CIB attribute. That attribute is
++		# only trustworthy while a resource agent is up: the monitor keeps it
++		# in sync with the live etcd member list. On a cold boot (no agent
++		# running) it is stale from the previous session, so it is cleared
++		# earlier in this function and is_learner will not fire here. That is
++		# intentional — the cold-boot voterless case is not guarded here but by
++		# the FNC panic rescue in podman_start (which reads the real on-disk
++		# state after the panic) and the member_removal_lock startup routing
++		# (which sends a departed node to learner-rejoin before it reaches FNC).
+ 		if is_learner; then
+ 			ocf_log crit "FNC precondition failed: $NODENAME is a learner — force-new-cluster would panic on voterless data; clearing FNC and retrying as learner"
+ 			clear_force_new_cluster
+@@ -3007,8 +3039,32 @@ podman_start()
+ 						add_member_as_learner "$peer_node_name" "$peer_node_ip"
+ 						rc=$?
+ 						if [ $rc -ne 0 ]; then
+-							ocf_log err "failed to add peer as learner after force-new-cluster (rc=$rc), returning error to trigger restart"
+-							return $OCF_ERR_GENERIC
++							# add_member_as_learner returns OCF_ERR_GENERIC for
++							# two very different failures, so re-check the
++							# container to tell them apart:
++							#
++							#   - Container crashed before/at the learner-add
++							#     (it exited between monitor_cmd_exec above and
++							#     here): we MUST fail so start is retried.
++							#     Otherwise a dead container is reported as
++							#     started and recovery is delayed until the next
++							#     monitor catches it.
++							#
++							#   - Container is still healthy (transient add error
++							#     or stale membership): do NOT fail. Restarting a
++							#     healthy seeded voter can live-lock against a
++							#     peer waiting to be added as a learner. The
++							#     monitor path (check_peer ->
++							#     manage_peer_membership) re-adds an absent peer
++							#     as a learner on the next cycle without a
++							#     restart.
++							podman_simple_status
++							if [ $? -ne $OCF_SUCCESS ]; then
++								ocf_exit_reason "container exited during learner-add after force-new-cluster (rc=$rc); failing start to retry"
++								ocf_run podman logs --tail 20 "${CONTAINER}"
++								return $OCF_ERR_GENERIC
++							fi
++							ocf_log warn "failed to add peer as learner after force-new-cluster (rc=$rc); container is healthy, monitor will retry the learner-add on the next cycle"
+ 						fi
+ 					fi
+ 					clear_force_new_cluster

@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.12
+Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.17
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -218,6 +218,7 @@ Patch165:	RHEL-239892-1-podman-etcd-add-restart_no_leave-CRM-attribute-guard-to-
 Patch166:	RHEL-239892-2-podman-etcd-treat-attribute-not-found-as-empty.patch
 Patch167:	RHEL-235790-powervs-subnet-fix-plaintext-token-file-support.patch
 Patch168:	RHEL-224570-mediationzone-new-ra.patch
+Patch169:	RHEL-260313-podman-etcd-fix-graceful-shutdown-causing-crash-loop.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -531,6 +532,7 @@ exit 1
 %patch -p1 -P 166
 %patch -p1 -P 167
 %patch -p1 -P 168
+%patch -p1 -P 169
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -865,6 +867,11 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Wed Sep 16 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-111.17
+- podman-etcd: record departed member to fix graceful shutdown restart selection
+
+  Resolves: RHEL-260313
+
 * Thu Aug 20 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.12
 - mediationzone: new resource agent
 - podman-etcd: add restart_no_leave CRM attribute guard to skip member
