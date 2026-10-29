@@ -73,7 +73,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.9.0
-Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.37
+Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.39
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 %if 0%{?fedora} || 0%{?centos_version} || 0%{?rhel}
@@ -188,6 +188,8 @@ Patch91:	RHEL-166181-2-db2-do-not-use-db2stop-to-avoid-divergence-in-the-log.pat
 Patch92:	RHEL-180766-1-nfsserver-fixes-unmount-failure-of-bind-mount-with-fsidd.patch
 Patch93:	RHEL-180766-2-nfsserver-fixes-incorrect-indentation.patch
 Patch94:	RHEL-180766-3-nfsserver-do-not-try-to-stop-fsidd-when-not-present.patch
+Patch95:	RHEL-255529-aws-vpc-route53-fix-multi-active-resource-state-during-probe-action.patch
+Patch96:	RHEL-259558-aws-vpc-move-ip-handling-credentials-output-from-assume-role.patch
 
 # bundle patches
 Patch1000:	7-gcp-bundled.patch
@@ -474,6 +476,8 @@ exit 1
 %patch -p1 -P 92
 %patch -p1 -P 93
 %patch -p1 -P 94
+%patch -p1 -P 95
+%patch -p1 -P 96
 
 chmod 755 heartbeat/nova-compute-wait
 chmod 755 heartbeat/NovaEvacuate
@@ -1073,6 +1077,16 @@ ccs_update_schema > /dev/null 2>&1 ||:
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Thu Oct  1 2026 Arslan Ahmad <arahmad@redhat.com> - 4.9.0-54.39
+- aws-vpc-move-ip: fix credential handling from assume-role output
+
+  Resolves: RHEL-259558
+
+* Fri Sep 11 2026 Arslan Ahmad <arahmad@redhat.com> - 4.9.0-54.38
+- aws-vpc-route53: fix multi-active resource state during probe action
+
+  Resolves: RHEL-255529
+
 * Thu Jul 30 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.9.0-54.37
 - bundled pyasn1: fix CVE-2026-59886
   Resolves: RHEL-217924
