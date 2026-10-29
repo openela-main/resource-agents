@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.18
+Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.19
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -221,6 +221,8 @@ Patch168:	RHEL-224570-mediationzone-new-ra.patch
 Patch169:	RHEL-260313-podman-etcd-fix-graceful-shutdown-causing-crash-loop.patch
 Patch170:	RHEL-188499-powervs-move-ip-add-trusted-profile-support.patch
 Patch171:	RHEL-220634-powervs-move-ip-add-support-for-guaranteed-routes.patch
+Patch172:	RHEL-255532-aws-vpc-route53-fix-multi-active-resource-state-during-probe-action.patch
+Patch173:	RHEL-270679-aws-vpc-move-ip-handling-credentials-output-from-assume-role.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -537,6 +539,8 @@ exit 1
 %patch -p1 -P 169
 %patch -p1 -P 170
 %patch -p1 -P 171
+%patch -p1 -P 172
+%patch -p1 -P 173
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -871,6 +875,12 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Thu Oct  1 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-111.19
+- aws-vpc-route53: fix multi-active resource state during probe action
+- aws-vpc-move-ip: fix credential handling from assume-role output
+
+  Resolves: RHEL-255532, RHEL-270679
+
 * Wed Sep 30 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-111.18
 - powervs-move-ip: add Trusted Profile support
 - powervs-move-ip: add support for guaranteed routes
