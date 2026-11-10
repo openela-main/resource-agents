@@ -45,7 +45,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.10.0
-Release:	111%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.19
+Release:	130%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 Source0:	%{upstream_prefix}-%{upstream_version}.tar.gz
@@ -199,30 +199,35 @@ Patch146:	RHEL-42513-powervs-subnet-wait-for-IP.patch
 Patch147:	RHEL-143527-powervs-move-ip-powervs-subnet-fix-error-logging.patch
 Patch148:	RHEL-145628-podman-etcd-enhance-etcd-data-backup-with-snapshots-and-retention.patch
 Patch149:	RHEL-150700-podman-etcd-set-attributes-if-they-fail-during-force-new-cluster.patch
-Patch150:	RHEL-151828-portblock-check-inverse-action.patch
-Patch151:	RHEL-156808-podman-etcd-ignore-learners-when-considering-which-node-has-higher-revision.patch
-Patch152:	RHEL-157145-podman-etcd-handle-existing-peer-URLs-gracefully-during-force_new_cluster-recovery.patch
-Patch153:	RHEL-159202-podman-etcd-hardened-monitor-stop-actions.patch
-Patch154:	RHEL-157273-db2-set-reintegration-when-promotion-is-successful.patch
-Patch155:	RHEL-166183-1-db2-fix-bashism.patch
-Patch156:	RHEL-166183-2-db2-do-not-use-db2stop-to-avoid-divergence-in-the-log.patch
-Patch157:	RHEL-177849-podman-etcd-fix-port-2380-binding-race.patch
-Patch158:	RHEL-177838-podman-etcd-fix-machine-deletion-deadlock.patch
-Patch159:	RHEL-177843-podman-etcd-fix-learner-start-deadlock.patch
-Patch160:	RHEL-188107-podman-etcd-remove-cert-monitoring.patch
-Patch161:	RHEL-193966-aws-vpc-move-ip-add-awscli_timeout-parameter.patch
-Patch162:	RHEL-193691-podman-etcd-add-support-for-single-node-operation.patch
-Patch163:	RHEL-235578-podman-etcd-scope-sync-to-etcd-filesystem-to-avoid-CephFS-hang.patch
-Patch164:	RHEL-239986-podman-etcd-resolve-force_new_cluster-race-during-simultaneous-dual-start.patch
-Patch165:	RHEL-239892-1-podman-etcd-add-restart_no_leave-CRM-attribute-guard-to-skip-member-removal.patch
-Patch166:	RHEL-239892-2-podman-etcd-treat-attribute-not-found-as-empty.patch
-Patch167:	RHEL-235790-powervs-subnet-fix-plaintext-token-file-support.patch
-Patch168:	RHEL-224570-mediationzone-new-ra.patch
-Patch169:	RHEL-260313-podman-etcd-fix-graceful-shutdown-causing-crash-loop.patch
-Patch170:	RHEL-188499-powervs-move-ip-add-trusted-profile-support.patch
-Patch171:	RHEL-220634-powervs-move-ip-add-support-for-guaranteed-routes.patch
-Patch172:	RHEL-255532-aws-vpc-route53-fix-multi-active-resource-state-during-probe-action.patch
-Patch173:	RHEL-270679-aws-vpc-move-ip-handling-credentials-output-from-assume-role.patch
+Patch150:	RHEL-116151-4-portblock-check-inverse-action.patch
+Patch151:	RHEL-156709-podman-etcd-ignore-learners-when-considering-which-node-has-higher-revision.patch
+Patch152:	RHEL-157146-podman-etcd-handle-existing-peer-URLs-gracefully-during-force_new_cluster-recovery.patch
+Patch153:	RHEL-153158-db2-set-reintegration-when-promotion-is-successful.patch
+Patch154:	RHEL-159203-podman-etcd-hardened-monitor-stop-actions.patch
+Patch155:	RHEL-148198-1-db2-fix-bashism.patch
+Patch156:	RHEL-148198-2-db2-do-not-use-db2stop-to-avoid-divergence-in-the-log.patch
+Patch157:	RHEL-160863-1-Filesystem-do-not-return-CONFIGURED-during-monitor-action.patch
+Patch158:	RHEL-160863-2-Filesystem-always-return-OCF_ERR_GENERIC-when-another-device-is-mounted-on-mountpoint.patch
+Patch159:	RHEL-150850-pgsql-use-monitor_user-for-monitor-calls-and-use-pgpass-when-monitor_password-is-not-specified.patch
+Patch160:	RHEL-177850-podman-etcd-fix-port-2380-binding-race.patch
+Patch161:	RHEL-177840-podman-etcd-fix-machine-deletion-deadlock.patch
+Patch162:	RHEL-177845-podman-etcd-fix-learner-start-deadlock.patch
+Patch163:	RHEL-150842-pgsqlms-use-monitor_user-for-monitor-calls-and-use-pgpass-when-monitor_password-is-not-specified.patch
+Patch164:	RHEL-179069-IPaddr2-fix-interfaces-named-with-keywords.patch
+Patch165:	RHEL-173130-iSCSILogicalUnit-add-block-size-override-and-backstore-type-selection.patch
+Patch166:	RHEL-180734-IPaddr2-dont-return-OCF_ERR_INSTALLED-during-monitor.patch
+Patch167:	RHEL-162108-aws-vpc-move-ip-add-awscli_timeout-parameter.patch
+Patch168:	RHEL-180767-1-nfsserver-fixes-unmount-failure-of-bind-mount-with-fsidd.patch
+Patch169:	RHEL-180767-2-nfsserver-fixes-incorrect-indentation.patch
+Patch170:	RHEL-182808-sybaseASE-fix-for-missing-sybaseASE-env-during-probe-action.patch
+Patch171:	RHEL-180767-3-nfsserver-do-not-try-to-stop-fsidd-when-not-present.patch
+Patch172:	RHEL-184272-nfsserver-monitor-nfsdcld-and-nfs-mountd-services-to-trigger-recovery-on-failure.patch
+Patch173:	RHEL-171180-portblock-add-IPv6-support.patch
+Patch174:	RHEL-183132-portblock-fix-IPv6-rule-detection-in-the-iptables-backend.patch
+Patch175:	RHEL-191368-db2-avoid-promoting-in-standby_remote_catchup_pending-state.patch
+Patch176:	RHEL-224062-1-Route-update-destination-parameter-to-non-unique.patch
+Patch177:	RHEL-224062-2-Route-update-destination-description-and-add-warning-message.patch
+Patch178:	RHEL-235788-powervs-subnet-fix-plaintext-token-file-support.patch
 
 # bundled ha-cloud-support libs
 Patch500:	ha-cloud-support-aliyun.patch
@@ -339,7 +344,7 @@ service managers.
 License:	GPLv2+ and LGPLv2+
 Summary:	Cloud resource agents
 Requires:	%{name} = %{version}-%{release}
-Requires:	ha-cloud-support >= 4.10.0-110.el9_8.1
+Requires:	ha-cloud-support >= 4.10.0-111
 Requires:	socat
 Provides:	resource-agents-aliyun
 Obsoletes:	resource-agents-aliyun <= %{version}
@@ -541,6 +546,11 @@ exit 1
 %patch -p1 -P 171
 %patch -p1 -P 172
 %patch -p1 -P 173
+%patch -p1 -P 174
+%patch -p1 -P 175
+%patch -p1 -P 176
+%patch -p1 -P 177
+%patch -p1 -P 178
 
 # bundled ha-cloud-support libs
 %patch -p1 -P 500
@@ -875,85 +885,117 @@ rm -rf %{buildroot}/usr/share/doc/resource-agents
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
-* Thu Oct  1 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-111.19
-- aws-vpc-route53: fix multi-active resource state during probe action
-- aws-vpc-move-ip: fix credential handling from assume-role output
-
-  Resolves: RHEL-255532, RHEL-270679
-
-* Wed Sep 30 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-111.18
-- powervs-move-ip: add Trusted Profile support
-- powervs-move-ip: add support for guaranteed routes
-
-  Resolves: RHEL-188499, RHEL-220634
-
-* Wed Sep 16 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-111.17
-- podman-etcd: record departed member to fix graceful shutdown restart selection
-
-  Resolves: RHEL-260313
-
-* Thu Aug 20 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.12
-- mediationzone: new resource agent
-- podman-etcd: add restart_no_leave CRM attribute guard to skip member
-  removal
-
-  Resolves: RHEL-224570, RHEL-239892
-
-* Mon Aug 17 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.10
+* Mon Aug 17 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-130
 - powervs-subnet: fix plaintext token file support
 
-  Resolves: RHEL-235790
+  Resolves: RHEL-235788
 
-* Fri Aug 14 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.9
-- podman-etcd: scope sync to etcd filesystem to avoid CephFS hang
-- podman-etcd: resolve force_new_cluster race during simultaneous dual-start
+* Tue Aug 04 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-129
+- Route: update 'destination' description and add warning message
+  when 'default' destination is used
 
-  Resolves: RHEL-235578, RHEL-239986
+  Resolves: RHEL-224062
 
-* Wed Jul 15 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.7
-- podman-etcd: add support for single-node operation
+* Thu Jul 02 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-128
+- db2: avoid promoting in STANDBY/REMOTE_CATCHUP_PENDING state
 
-  Resolves: RHEL-193691
+  Resolves: RHEL-191368
 
-* Fri Jul 10 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-111.6
+* Fri Jun 19 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-127
+- portblock: add IPv6 support
+- portblock: fix IPv6 rule detection in the iptables backend
+
+  Resolves: RHEL-171180, RHEL-183132
+
+* Fri Jun 12 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-126
+- nfsserver: monitor nfsdcld and nfs-mountd services to trigger
+  recovery on failure
+
+  Resolves: RHEL-184272
+
+* Wed Jun 10 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-125
+- nfsserver: stop fsidd when stopping nfsserver
+
+  Resolves: RHEL-180767
+
+* Mon Jun 08 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-124
+- sybaseASE: dont report error about missing sybaseASE env file
+
+  Resolves: RHEL-182808
+
+* Tue Jun  2 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-122
+- IPaddr2: dont return OCF_ERR_INSTALLED during monitor
 - aws-vpc-move-ip: add awscli_timeout parameter
 
-  Resolves: RHEL-193966
+  Resolves: RHEL-180734, RHEL-162108
 
-* Thu Jun 25 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.5
-- podman-etcd: remove cert monitoring
+* Mon Jun 01 2026 Arslan Ahmad <arahmad@redhat.com> - 4.10.0-121
+- pgsqlms: use monitor_user for monitor-calls and use .pgpass when
+  monitor_password is not specified
 
-  Resolves: RHEL-188107
+  Resolves: RHEL-150842
 
-* Wed May 20 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.4
+* Thu May 28 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-120
+- iSCSILogicalUnit: add block size override and backstore type selection
+
+  Resolves: RHEL-173130
+
+* Wed May 27 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-119
+- IPaddr2: fix interfaces named with keywords like primary, secondary,
+  etc
+
+  Resolves: RHEL-179069
+
+* Wed May 20 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-117
 - podman-etcd: fix port 2380 binding race
 - podman-etcd: fix machine deletion deadlock
 - podman-etcd: fix learner start deadlock
 
-  Resolves: RHEL-177849, RHEL-177838, RHEL-177843
+  Resolves: RHEL-177850, RHEL-177840, RHEL-177845
 
-* Mon Apr 20 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.3
+* Tue May 19 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-116
+- pgsql: use monitor_user for monitor-calls and use .pgpass when
+  monitor_password is not specified
+
+  Resolves: RHEL-150850
+
+* Wed May 13 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-115
+- Filesystem: always return OCF_ERR_GENERIC when another device is
+  mounted on mountpoint to ensure relocation after trying to restart
+  (default behaviour)
+
+  Resolves: RHEL-160863
+
+* Mon Apr 20 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-113
 - Cloud agents: change bundled lib paths to match changes in
   ha-cloud-support
 
-  Resolves: RHEL-168565
+  Resolves: RHEL-168563
 
-* Fri Apr 10 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.2
+* Fri Apr 10 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-112
 - db2: do not use db2stop to avoid divergence in the log
 
-  Resolves: RHEL-166183
+  Resolves: RHEL-148198
 
-* Wed Apr  8 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111.1
-- portblock: check inverse action state file for non-promotable
-  resources to avoid issues when doing e.g. block followed by unblock
-- podman-etcd: ignore learners when considering which node has higher revision
-- podman-etcd: handle existing peer URLs gracefully during force_new_cluster recovery
+* Fri Mar 27 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-111
 - podman-etcd: hardened monitor/stop actions
+
+  Resolves: RHEL-159203
+
+* Thu Mar 19 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-110
+- podman etcd: ignore learners when considering which node has higher revision
+- podman etcd: handle existing peer URLs gracefully during force_new_cluster recovery
 - db2: set reintegration when promotion is successful
 
-  Resolves: RHEL-151828, RHEL-156808, RHEL-157145, RHEL-159202, RHEL-157273
+  Resolves: RHEL-156709, RHEL-157146, RHEL-153158
 
-* Fri Mar  6 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-108
+* Fri Feb 27 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-109
+- portblock: check inverse action state file for non-promotable
+  resources to avoid issues when doing e.g. block followed by unblock
+
+  Resolves: RHEL-116151
+
+* Wed Feb 18 2026 Oyvind Albrigtsen <oalbrigt@redhat.com> - 4.10.0-108
 - podman-etcd: set attributes if they fail during force-new-cluster
 
   Resolves: RHEL-150700

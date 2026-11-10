@@ -1,0 +1,26 @@
+--- a/heartbeat/portblock	2026-06-19 09:34:28.950367810 +0200
++++ b/heartbeat/portblock	2026-06-19 10:06:09.851173500 +0200
+@@ -47,6 +47,14 @@
+ : ${OCF_RESKEY_method=${OCF_RESKEY_method_default}}
+ : ${OCF_RESKEY_status_check=${OCF_RESKEY_status_check_default}}
+ : ${OCF_RESKEY_ip=${OCF_RESKEY_ip_default}}
++
++# IPv6 support: detect family from service IP and parameterise both backends.
++case "$OCF_RESKEY_ip" in
++  *:*) ip_family=ip6 ;;
++  *)   ip_family=ip  ;;
++esac
++IPTABLES=${ip_family}tables
++
+ : ${OCF_RESKEY_reset_local_on_unblock_stop=${OCF_RESKEY_reset_local_on_unblock_stop_default}}
+ : ${OCF_RESKEY_tickle_dir=${OCF_RESKEY_tickle_dir_default}}
+ : ${OCF_RESKEY_sync_script=${OCF_RESKEY_sync_script_default}}
+@@ -778,7 +786,7 @@
+ fi 
+ 
+ # iptables v1.4.20+ is required to use -w (wait)
+-version=$(iptables -V | grep -oE '[0-9]+[\.0-9]+')
++version=$($IPTABLES -V | grep -oE '[0-9]+[\.0-9]+')
+ ocf_version_cmp "$version" "1.4.19.1"
+ if [ "$?" -eq "2" ]; then
+     wait="-w"

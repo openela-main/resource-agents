@@ -1,0 +1,28 @@
+From f2cfc150da843a6c57bb6f6eebb4e44eb9d23213 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 13 May 2026 09:28:59 +0200
+Subject: [PATCH] Filesystem: always return OCF_ERR_GENERIC when another device
+ is mounted on mountpoint to ensure relocation after trying to restart
+ (default behaviour)
+
+---
+ heartbeat/Filesystem | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index b4f16f17f..f7d2aa34b 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -1029,11 +1029,7 @@ Filesystem_status()
+ 					rc=$OCF_NOT_RUNNING
+ 				else
+ 					ocf_exit_reason "Another device ($mounted_device) is already mounted on $MOUNTPOINT"
+-					if [ "$__OCF_ACTION" = "monitor" ]; then
+-						rc=$OCF_ERR_GENERIC
+-					else
+-						rc=$OCF_ERR_CONFIGURED
+-					fi
++					rc=$OCF_ERR_GENERIC
+ 				fi
+ 			fi
+ 		else

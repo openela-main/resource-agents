@@ -1,0 +1,24 @@
+From b6527e11a9afaa2876f5c0ea9d4ecda0e4eea100 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Tue, 19 May 2026 12:28:29 +0200
+Subject: [PATCH] IPaddr2: fix interfaces named with keywords like primary,
+ secondary, etc
+
+This can cause issues when another interface is in DOWN state.
+---
+ heartbeat/IPaddr2 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/IPaddr2 b/heartbeat/IPaddr2
+index e9c1cdb74..462d8db5a 100755
+--- a/heartbeat/IPaddr2
++++ b/heartbeat/IPaddr2
+@@ -1028,7 +1028,7 @@ ip_served() {
+ 		return 0
+ 	fi
+ 
+-	if ocf_is_true "$OCF_RESKEY_check_link_status" && $IP2UTIL -f $FAMILY addr show $cur_nic | \
++	if ocf_is_true "$OCF_RESKEY_check_link_status" && $IP2UTIL -f $FAMILY addr show dev $cur_nic | \
+ 	    grep -q "[[:space:]]\(DOWN\|LOWERLAYERDOWN\)[[:space:]]"; then
+ 		echo "down"
+ 		return 0

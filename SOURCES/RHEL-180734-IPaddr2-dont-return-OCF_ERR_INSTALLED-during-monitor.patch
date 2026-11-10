@@ -1,0 +1,28 @@
+From ab77b1df5f2c98ff8461b8819052000997cb4b52 Mon Sep 17 00:00:00 2001
+From: Hideo Yamauchi <renayama19661014@ybb.ne.jp>
+Date: Mon, 1 Jun 2026 20:00:27 +0900
+Subject: [PATCH] Mid: IPaddr2: To allow Pacemaker to handle error handling, it
+ returns NOT_RUNNING even when down.
+
+---
+ heartbeat/IPaddr2 | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/heartbeat/IPaddr2 b/heartbeat/IPaddr2
+index 462d8db5a..7953a5596 100755
+--- a/heartbeat/IPaddr2
++++ b/heartbeat/IPaddr2
+@@ -1256,12 +1256,9 @@ ip_monitor() {
+ 		run_arp_sender refresh
+ 		return $OCF_SUCCESS
+ 		;;
+-	no)
++	no|down)
+ 		exit $OCF_NOT_RUNNING
+ 		;;
+-	down)
+-		exit $OCF_ERR_INSTALLED
+-		;;
+ 	*)
+ 		# Errors on this interface?
+ 		return $OCF_ERR_GENERIC

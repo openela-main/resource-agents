@@ -1,0 +1,52 @@
+From 18f01d598fb654ed629d27d69c2bfccd74cef4a8 Mon Sep 17 00:00:00 2001
+From: Arslan Ahmad <arslan.ahmad97@googlemail.com>
+Date: Thu, 9 Apr 2026 01:30:58 +0530
+Subject: [PATCH] db2: Avoid promotion in STANDBY/REMOTE_CATCHUP_PENDING state
+
+So to prevent data loss, promoting the standby node which is in
+STANDBY/REMOTE_CATCHUP_PENDING/DISCONNECTED state will be avoided,
+reporting same in cluster status.
+
+Fixes #2043
+
+Signed-off-by: Arslan Ahmad <arslan.ahmad97@googlemail.com>
+---
+ heartbeat/db2 | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/heartbeat/db2 b/heartbeat/db2
+index 4420b9989e..744917574b 100755
+--- a/heartbeat/db2
++++ b/heartbeat/db2
+@@ -944,7 +944,7 @@ db2_promote() {
+     for i in 1 2
+     do
+         hadr=$(db2_hadr_status $db) || return $OCF_ERR_GENERIC
+-        ocf_log info "DB2 database $instance($db2node)/$db has HADR status $hadr and will be promoted"
++        ocf_log info "DB2 database $instance($db2node)/$db has HADR status $hadr"
+ 
+         case "$hadr" in
+             Standard/Standalone)
+@@ -965,6 +965,7 @@ db2_promote() {
+                 done
+             fi
+ 
++            ocf_log info "DB2 database $instance($db2node)/$db is already promoted"
+             return $OCF_SUCCESS
+             ;;
+ 
+@@ -975,11 +976,12 @@ db2_promote() {
+             STANDBY/*PEER/DISCONNECTED|Standby/DisconnectedPeer)
+             # must take over by force peer window only
+             force="by force peer window only"
++            ocf_log info "DB2 database will be promoted using 'by force peer window only' option"
+             ;;
+ 
+-            # must take over by force
+             STANDBY/REMOTE_CATCHUP_PENDING/DISCONNECTED)
+-            force="by force"
++            ocf_exit_reason "Promoting database in $hadr state can result in data loss. Manual intervention required."
++            return $OCF_ERR_GENERIC
+             ;;
+ 
+             *)

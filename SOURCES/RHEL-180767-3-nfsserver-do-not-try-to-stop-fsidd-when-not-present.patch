@@ -1,0 +1,42 @@
+From 8000ba8d308a775c2cc8358ae2ef5b1b78b68221 Mon Sep 17 00:00:00 2001
+From: Oyvind Albrigtsen <oalbrigt@redhat.com>
+Date: Wed, 10 Jun 2026 08:50:12 +0200
+Subject: [PATCH] nfsserver: dont try to stop fsidd when not present
+
+---
+ heartbeat/nfsserver | 22 ++++++++++++----------
+ 1 file changed, 12 insertions(+), 10 deletions(-)
+
+diff --git a/heartbeat/nfsserver b/heartbeat/nfsserver
+index ab0710c48..ed916cac5 100755
+--- a/heartbeat/nfsserver
++++ b/heartbeat/nfsserver
+@@ -1012,16 +1012,18 @@ nfsserver_stop ()
+ 		  	fi
+ 		  fi
+ 
+-		  nfs_exec stop fsidd > /dev/null 2>&1
+-		  ocf_log info "Stop: fsidd"
+-		  fn=`mktemp`
+-		  nfs_exec status fsidd > $fn 2>&1
+-		  rc=$?
+-		  ocf_log debug "$(cat $fn)"
+-		  rm -f $fn
+-		  if [ "$rc" -eq "0" ]; then
+-			ocf_exit_reason "Failed to stop fsidd"
+-			return $OCF_ERR_GENERIC
++		  if systemctl --no-legend list-unit-files "fsidd.service" | grep -q fsidd.service; then
++		  	nfs_exec stop fsidd > /dev/null 2>&1
++		  	ocf_log info "Stop: fsidd"
++		  	fn=`mktemp`
++		  	nfs_exec status fsidd > $fn 2>&1
++		  	rc=$?
++		  	ocf_log debug "$(cat $fn)"
++		  	rm -f $fn
++		  	if [ "$rc" -eq "0" ]; then
++		  		ocf_exit_reason "Failed to stop fsidd"
++		  		return $OCF_ERR_GENERIC
++		  	fi
+ 		  fi
+ 	esac
+ 

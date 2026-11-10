@@ -1,0 +1,27 @@
+From 46e305ab4cb80fb6e28d2f8a1d90587d1cb1b549 Mon Sep 17 00:00:00 2001
+From: SatomiOSAWA <satomi.t.osawa@gmail.com>
+Date: Wed, 18 Mar 2026 09:32:05 +0900
+Subject: [PATCH] Modify the return code when a mismatch between mount state
+ and configuration is detected in monitor operation.
+
+---
+ heartbeat/Filesystem | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/heartbeat/Filesystem b/heartbeat/Filesystem
+index dda8e66e5..b4f16f17f 100755
+--- a/heartbeat/Filesystem
++++ b/heartbeat/Filesystem
+@@ -1029,7 +1029,11 @@ Filesystem_status()
+ 					rc=$OCF_NOT_RUNNING
+ 				else
+ 					ocf_exit_reason "Another device ($mounted_device) is already mounted on $MOUNTPOINT"
+-					rc=$OCF_ERR_CONFIGURED
++					if [ "$__OCF_ACTION" = "monitor" ]; then
++						rc=$OCF_ERR_GENERIC
++					else
++						rc=$OCF_ERR_CONFIGURED
++					fi
+ 				fi
+ 			fi
+ 		else

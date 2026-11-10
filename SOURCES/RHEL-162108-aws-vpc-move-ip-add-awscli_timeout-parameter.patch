@@ -8,7 +8,7 @@ Subject: [PATCH 1/2] aws-vpc-move-ip: Add awscli_timeout option
  1 file changed, 15 insertions(+), 1 deletion(-)
 
 diff --git a/heartbeat/aws-vpc-move-ip b/heartbeat/aws-vpc-move-ip
-index 2afc0ba537..3e798173f5 100755
+index 2afc0ba53..3e798173f 100755
 --- a/heartbeat/aws-vpc-move-ip
 +++ b/heartbeat/aws-vpc-move-ip
 @@ -48,6 +48,7 @@ OCF_RESKEY_interface_default="eth0"
@@ -67,7 +67,7 @@ Subject: [PATCH 2/2] aws-vpc-move-ip: Fix error in default value for
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/heartbeat/aws-vpc-move-ip b/heartbeat/aws-vpc-move-ip
-index 3e798173f5..1348c59085 100755
+index 3e798173f..1348c5908 100755
 --- a/heartbeat/aws-vpc-move-ip
 +++ b/heartbeat/aws-vpc-move-ip
 @@ -218,7 +218,7 @@ curl sleep between tries

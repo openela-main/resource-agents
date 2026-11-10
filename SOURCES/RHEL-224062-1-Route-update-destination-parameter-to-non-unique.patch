@@ -1,0 +1,28 @@
+From 5dc076738621f75db5d2760f596507ba7a3b73d3 Mon Sep 17 00:00:00 2001
+From: Arslan Ahmad <arahmad@redhat.com>
+Date: Fri, 31 Jul 2026 22:07:12 +0530
+Subject: [PATCH] Route: update destination parameter to non-unique
+
+Allows multiple routes to use the string "default" for
+different address families (e.g. dual-stack IPv4/IPv6).
+
+Fixes #2182
+
+Signed-off-by: Arslan Ahmad <arahmad@redhat.com>
+---
+ heartbeat/Route | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/heartbeat/Route b/heartbeat/Route
+index 7db41d0ae9..75da16fa75 100755
+--- a/heartbeat/Route
++++ b/heartbeat/Route
+@@ -88,7 +88,7 @@ of the Route resource agent:
+ 
+ <parameters>
+ 
+-<parameter name="destination" unique="1" required="1">
++<parameter name="destination" unique="0" required="1">
+ <longdesc lang="en">
+ The destination network (or host) to be configured for the route. 
+ Specify the netmask suffix in CIDR notation (e.g. "/24").
