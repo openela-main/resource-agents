@@ -73,7 +73,7 @@
 Name:		resource-agents
 Summary:	Open Source HA Reusable Cluster Resource Scripts
 Version:	4.9.0
-Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.39
+Release:	54%{?rcver:%{rcver}}%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}.41
 License:	GPLv2+ and LGPLv2+
 URL:		https://github.com/ClusterLabs/resource-agents
 %if 0%{?fedora} || 0%{?centos_version} || 0%{?rhel}
@@ -212,6 +212,13 @@ Patch1016:	RHEL-142448-fix-bundled-pyasn1-CVE-2026-23490.patch
 Patch1017:	RHEL-157190-fix-bundled-pyasn1-CVE-2026-30922.patch
 Patch1018:	RHEL-178598-fix-bundled-urllib3-CVE-2026-44431.patch
 Patch1019:	RHEL-217924-fix-bundled-pyasn1-CVE-2026-59886.patch
+Patch1020:	RHEL-296261-fix-bundled-pyasn1-CVE-2026-119196.patch
+# https://issues.redhat.com/browse/RHEL-296302
+# https://github.com/pyasn1/pyasn1/commit/3dee1c2719c1f56c5c6676abb65888e95f82c8a5
+Patch1021:	RHEL-296302-fix-bundled-pyasn1-CVE-2026-119194.patch
+# https://github.com/pyasn1/pyasn1/commit/4579c469eed10f8516190e88b1c488c5769b882a
+Patch1022:	RHEL-296408-fix-bundled-pyasn1-CVE-2026-119195.patch
+Patch1023:	RHEL-296007-google-use-system-ca-bundle-to-fix-CVEs.patch
 
 Obsoletes:	heartbeat-resources <= %{version}
 Provides:	heartbeat-resources = %{version}
@@ -326,6 +333,7 @@ Group:		Productivity/Clustering/HA
 Requires:	%{name} = %{version}-%{release}
 Requires:	python3-google-api-client
 Requires:	socat
+Requires:	ca-certificates
 # google-cloud-sdk bundle
 Requires:	python3-cryptography >= 1.7.2
 Requires:	python3-dateutil >= 2.6.0
@@ -783,6 +791,16 @@ pushd %{buildroot}/usr/lib/%{name}/%{bundled_lib_dir}
 /usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=2 < %{PATCH1017}
 /usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1018}
 /usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1019}
+/usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1020}
+/usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1021}
+/usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1022}
+/usr/bin/patch --no-backup-if-mismatch -p1 --fuzz=0 < %{PATCH1023}
+
+rm gcp/google-cloud-sdk/lib/third_party/certifi/cacert.pem
+rm gcp/google-cloud-sdk/lib/third_party/requests/cacert.pem
+rm gcp/google-cloud-sdk/lib/third_party/botocore/cacert.pem
+rm gcp/google-cloud-sdk/lib/third_party/httplib2/python3/httplib2/cacerts.txt
+rm gcp/httplib2/cacerts.txt
 popd
 %endif
 
@@ -1077,6 +1095,21 @@ ccs_update_schema > /dev/null 2>&1 ||:
 %{_usr}/lib/ocf/lib/heartbeat/OCF_*.pm
 
 %changelog
+* Tue Nov 10 2026 Arslan Ahmad <arahmad@redhat.com> - 4.9.0-54.41
+- gcp: use the system CA bundle for bundled Python libraries and
+  remove obsolete SDK certificate bundles
+
+  Resolves: RHEL-296077
+
+* Fri Oct 30 2026 RHEL Packaging Agent <redhat-ymir-agent@redhat.com> - 4.9.0-54.40
+- CVE-2026-119196 resource-agents: pyasn1: Denial of Service via constructed bit string decoding
+- CVE-2026-119194 resource-agents: pyasn1: Denial of Service via hash
+  collisions in schemaless decoding
+- CVE-2026-119195 resource-agents: pyasn1: Denial of Service via
+  quadratic processing of fragmented ASN.1 data
+
+  Resolves: RHEL-296261, RHEL-296302, RHEL-296408
+
 * Thu Oct  1 2026 Arslan Ahmad <arahmad@redhat.com> - 4.9.0-54.39
 - aws-vpc-move-ip: fix credential handling from assume-role output
 

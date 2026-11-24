@@ -1,0 +1,91 @@
+--- a/gcp/google-cloud-sdk/lib/third_party/certifi/core.py
++++ b/gcp/google-cloud-sdk/lib/third_party/certifi/core.py
+@@ -5,8 +5,7 @@
+ """
+ import os
+ 
++RHEL_CA_CERTS = "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
+ 
+ def where():
+-  f = os.path.dirname(__file__)
+-
+-  return os.path.join(f, 'cacert.pem')
++  return RHEL_CA_CERTS
+--- a/gcp/google-cloud-sdk/lib/third_party/requests/certs.py
++++ b/gcp/google-cloud-sdk/lib/third_party/requests/certs.py
+@@ -12,9 +12,11 @@
+ """
+ import os.path
+ 
++RHEL_CA_CERTS = "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
++
+ def where():
+     """Return the preferred certificate bundle."""
+-    return os.path.join(os.path.dirname(__file__), 'cacert.pem')
++    return RHEL_CA_CERTS
+ 
+ if __name__ == '__main__':
+     print(where())
+--- a/gcp/google-cloud-sdk/lib/third_party/httplib2/python3/httplib2/certs.py
++++ b/gcp/google-cloud-sdk/lib/third_party/httplib2/python3/httplib2/certs.py
+@@ -19,10 +19,7 @@
+     pass
+ 
+ 
+-BUILTIN_CA_CERTS = os.path.join(
+-    os.path.dirname(os.path.abspath(__file__)), "cacerts.txt"
+-)
+-
++RHEL_CA_CERTS = "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
+ 
+ def where():
+     env = os.environ.get("HTTPLIB2_CA_CERTS")
+@@ -35,7 +32,7 @@
+         return custom_ca_locater_where()
+     if certifi_available:
+         return certifi_where()
+-    return BUILTIN_CA_CERTS
++    return RHEL_CA_CERTS
+ 
+ 
+ if __name__ == "__main__":
+--- a/gcp/google-cloud-sdk/lib/third_party/botocore/httpsession.py
++++ b/gcp/google-cloud-sdk/lib/third_party/botocore/httpsession.py
+@@ -31,13 +31,13 @@
+ logger = logging.getLogger(__name__)
+ DEFAULT_TIMEOUT = 60
+ MAX_POOL_CONNECTIONS = 10
+-DEFAULT_CA_BUNDLE = os.path.join(os.path.dirname(__file__), 'cacert.pem')
++RHEL_CA_BUNDLE = "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
+ 
+ try:
+     from certifi import where
+ except ImportError:
+     def where():
+-        return DEFAULT_CA_BUNDLE
++        return RHEL_CA_BUNDLE
+ 
+ 
+ def get_cert_path(verify):
+--- a/gcp/google-cloud-sdk/lib/third_party/containerregistry/tools/patched_.py
++++ b/gcp/google-cloud-sdk/lib/third_party/containerregistry/tools/patched_.py
+@@ -36,7 +36,8 @@
+   if os.path.isfile(httplib2.CA_CERTS):
+     # Not inside of a PAR file, so don't bother.
+     return
+-  cacerts_contents = pkgutil.get_data('httplib2', 'cacerts.txt')
++  with open('/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem', 'rb') as ca_bundle:
++    cacerts_contents = ca_bundle.read()
+   cacerts_filename = os.path.join(extract_dir, 'cacerts.txt')
+   with open(cacerts_filename, 'wb') as f:
+     f.write(cacerts_contents)
+--- a/gcp/httplib2/certs.py
++++ b/gcp/httplib2/certs.py
+@@ -22,3 +22 @@
+-BUILTIN_CA_CERTS = os.path.join(
+-    os.path.dirname(os.path.abspath(__file__)), "cacerts.txt"
+-)
++RHEL_CA_CERTS = "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
+@@ -38 +36 @@
+-    return BUILTIN_CA_CERTS
++    return RHEL_CA_CERTS
